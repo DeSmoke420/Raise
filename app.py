@@ -427,3 +427,7 @@ if __name__ == '__main__':
     # Use environment variable for debug mode
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+        return 1.0 if forecast == 0 else 0.0
+    
+    accuracy = 1 - (abs(forecast - actual) / actual)
+    return max(0.0, min(1.0, accuracy))  # Clip between 0 and 1
