@@ -133,9 +133,9 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         if len(ts) >= 3:
             # Use simple moving average as fallback
             window_size = min(3, len(ts) // 2)
-            ma_series = ts.rolling(window=window_size).mean()
-            # Get the last valid value
-            ma_value = ma_series.dropna().iloc[-1] if not ma_series.dropna().empty else ts.iloc[-1]
+            # Calculate simple average of last few values
+            recent_values = ts.tail(window_size)
+            ma_value = recent_values.mean()
             ma_forecast = [ma_value] * period_count
             diagnostics.append(f"Simple MA: window={window_size}")
             if best_forecast is None:
