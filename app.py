@@ -327,8 +327,10 @@ def forecast():
         
         # Check if dates look like DD/MM/YYYY format
         sample_dates = df[date_col].head(10).astype(str).tolist()
+        logger.info(f"Analyzing date patterns in: {sample_dates}")
         dd_mm_yyyy_pattern = False
         
+        # Enhanced DD/MM/YYYY detection
         for date_str in sample_dates:
             if '/' in date_str:
                 parts = date_str.split('/')
@@ -337,10 +339,14 @@ def forecast():
                         day = int(parts[0])
                         month = int(parts[1])
                         year = int(parts[2])
-                        # If day > 12, it's likely DD/MM/YYYY
-                        if day > 12 and month <= 12:
+                        
+                        # Check for clear DD/MM/YYYY indicators:
+                        # 1. Day > 12 (obvious DD/MM)
+                        # 2. Day <= 12 but month > 12 (obvious DD/MM)
+                        # 3. Day = 1 and month varies (likely DD/MM with day=1)
+                        if (day > 12 and month <= 12) or (day <= 12 and month > 12) or (day == 1 and month <= 12):
                             dd_mm_yyyy_pattern = True
-                            logger.info(f"Detected DD/MM/YYYY pattern: {date_str}")
+                            logger.info(f"Detected DD/MM/YYYY pattern: {date_str} (day={day}, month={month})")
                             break
                     except ValueError:
                         continue
@@ -388,6 +394,8 @@ def forecast():
         df = df.dropna(subset=[date_col, qty_col, item_col])
         logger.info(f"Valid rows after date parsing: {len(df)}")
         logger.info(f"Sample parsed dates: {df[date_col].head(3).tolist()}")
+        logger.info(f"Date range after parsing: {df[date_col].min()} to {df[date_col].max()}")
+        logger.info(f"Unique months in data: {df[date_col].dt.to_period('M').nunique()}")
         
         try:
             df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
