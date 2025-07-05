@@ -188,18 +188,9 @@ def validate_input_data(data: dict) -> Tuple[bool, str]:
         return False, "Invalid period count"
     return True, ""
 
-def find_forecast_column(df: pd.DataFrame) -> Optional[str]:
-    """Find a forecast quantity column in the forecast file."""
-    candidates = COLUMN_SYNONYMS['quantity']
-    return find_column(df, candidates)
 
-def calculate_accuracy_safely(actual: float, forecast: float) -> float:
-    """Calculate accuracy safely avoiding division by zero."""
-    if actual == 0:
-        return 1.0 if forecast == 0 else 0.0
-    
-    accuracy = 1 - (abs(forecast - actual) / actual)
-    return max(0.0, min(1.0, accuracy))  # Clip between 0 and 1
+
+
 
 @app.route('/')
 def index():
@@ -284,13 +275,18 @@ def forecast():
             # Generate future dates
             last_date = ts.index.max()
             # Type checking for last_date - handle pandas scalar properly
-            if pd.isna(last_date):
-                continue
-            
-            # Convert to pandas Timestamp for consistent handling
             try:
+                # Convert to scalar if it's a pandas object
+                if hasattr(last_date, 'item'):
+                    last_date = last_date.item()
+                
+                # Check if it's a valid date
+                if pd.isna(last_date) or last_date is None:
+                    continue
+                
+                # Convert to pandas Timestamp for consistent handling
                 last_date = pd.Timestamp(last_date)
-            except (ValueError, TypeError):
+            except (ValueError, TypeError, AttributeError):
                 continue
             
             future_dates = []
@@ -349,76 +345,7 @@ def forecast():
         logger.error(f"Forecast error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
 
-@app.route('/api/accuracy', methods=['POST'])
-def accuracy():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        actual_csv = data.get('actuals', '')
-        forecast_csv = data.get('forecast', '')
-        export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
-        if not actual_csv or not forecast_csv:
-            return jsonify({'error': 'Both actuals and forecast data are required'}), 400
-        
-        # Parse CSVs safely
-        df_actuals = parse_csv_safely(actual_csv)
-        df_forecast = parse_csv_safely(forecast_csv)
-        if df_actuals is None or df_forecast is None:
-            return jsonify({'error': 'CSV format not recognized'}), 400
-        
-        # Identify columns robustly
-        date_col, item_col, qty_col, missing = identify_columns_robust(df_actuals)
-        forecast_qty_col = find_forecast_column(df_forecast)
-        if not all([date_col, item_col, qty_col, forecast_qty_col]):
-            return jsonify({'error': 'Missing required columns for accuracy calculation. Expecting date, item, quantity in actuals and forecast quantity in forecast.'}), 400
-        
-        # Process data
-        df_actuals[date_col] = pd.to_datetime(df_actuals[date_col], errors='coerce')
-        df_forecast[date_col] = pd.to_datetime(df_forecast[date_col], errors='coerce')
-        df_actuals = df_actuals.groupby([date_col, item_col])[qty_col].sum().reset_index()
-        df_forecast = df_forecast.groupby([date_col, item_col])[forecast_qty_col].sum().reset_index()
-        
-        # Merge and calculate accuracy
-        merged = pd.merge(df_actuals, df_forecast, on=[date_col, item_col], how='inner')
-        if merged.empty:
-            return jsonify({'error': 'No matching data found between actuals and forecasts'}), 400
-        
-        # Calculate accuracy safely
-        merged['accuracy'] = merged.apply(
-            lambda row: calculate_accuracy_safely(row[qty_col], row[forecast_qty_col]), 
-            axis=1
-        )
-        
-        # Create output based on format
-        if export_format == 'xlsx':
-            # Export to Excel using temporary file
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
-                merged[[date_col, item_col, 'accuracy']].to_excel(tmp_file.name, index=False, engine='openpyxl')
-                with open(tmp_file.name, 'rb') as f:
-                    excel_data = f.read()
-                os.unlink(tmp_file.name)  # Clean up temp file
-            
-            return send_file(
-                io.BytesIO(excel_data),
-                download_name="Forecast_Accuracy.xlsx",
-                as_attachment=True,
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-        else:  # Default to CSV
-            output = io.StringIO()
-            merged[[date_col, item_col, 'accuracy']].to_csv(output, index=False)
-            output.seek(0)
-            return send_file(
-                io.BytesIO(output.read().encode()),
-                download_name="Forecast_Accuracy.csv",
-                as_attachment=True,
-                mimetype='text/csv'
-            )
-    except Exception as e:
-        logger.error(f"Accuracy calculation error: {e}")
-        return jsonify({'error': 'Internal server error'}), 500
+
 
 # For Vercel deployment
 app.debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
@@ -427,7 +354,3 @@ if __name__ == '__main__':
     # Use environment variable for debug mode
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
-        return 1.0 if forecast == 0 else 0.0
-    
-    accuracy = 1 - (abs(forecast - actual) / actual)
-    return max(0.0, min(1.0, accuracy))  # Clip between 0 and 1
