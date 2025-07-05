@@ -388,7 +388,7 @@ def forecast():
 
 
 
-# For Vercel deployment
+# For Railway deployment
 app.debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
 if __name__ == '__main__':
