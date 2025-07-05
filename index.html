@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Forecast Intelligence Platform</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -473,8 +474,8 @@
       background: rgb(239 68 68 / 0.05) !important;
     }
 
-    /* Data Preview */
-    .data-preview {
+    /* Forecast Preview */
+    .forecast-preview {
       margin-top: 1rem;
       padding: 1rem;
       background: var(--bg-color);
@@ -483,33 +484,37 @@
       display: none;
     }
 
-    .data-preview h4 {
+    .forecast-preview h4 {
       color: var(--text-primary);
       font-size: 0.9rem;
       font-weight: 600;
       margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
-    .data-preview table {
-      width: 100%;
-      font-size: 0.8rem;
-      border-collapse: collapse;
+    .chart-container {
+      position: relative;
+      height: 300px;
+      margin: 1rem 0;
     }
 
-    .data-preview th,
-    .data-preview td {
-      padding: 0.25rem 0.5rem;
-      text-align: left;
-      border-bottom: 1px solid var(--border-color);
+    .preview-info {
+      margin-top: 0.5rem;
+      padding: 0.5rem;
+      background: rgba(99, 102, 241, 0.1);
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--primary-color);
     }
 
-    .data-preview th {
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .data-preview td {
+    .preview-info p {
       color: var(--text-secondary);
+      font-size: 0.8rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
   </style>
 </head>
@@ -554,9 +559,14 @@
             <span>Choose file or drag and drop</span>
           </div>
         </div>
-        <div class="data-preview" id="dataPreview">
-          <h4>Data Preview</h4>
-          <div id="previewTable"></div>
+        <div class="forecast-preview" id="forecastPreview">
+          <h4><i class="fas fa-chart-line"></i> Forecast Preview</h4>
+          <div class="chart-container">
+            <canvas id="forecastChart"></canvas>
+          </div>
+          <div class="preview-info">
+            <p><i class="fas fa-info-circle"></i> This preview shows historical data and forecasted values</p>
+          </div>
         </div>
       </div>
       
@@ -688,9 +698,15 @@
       document.getElementById('periodCount').value = '12';
       document.getElementById('dateFormat').value = 'EUR';
       document.getElementById('decimalPlaces').value = '0';
-      document.getElementById('dataPreview').style.display = 'none';
+      document.getElementById('forecastPreview').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
+      
+      // Destroy chart if it exists
+      if (window.forecastChart) {
+        window.forecastChart.destroy();
+        window.forecastChart = null;
+      }
     }
 
 
@@ -774,55 +790,130 @@
           const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
           
           if (data.length > 0) {
-            const headers = data[0];
-            const preview = data.slice(1, 6); // Show first 5 rows
+            // Show loading state
+            document.getElementById('forecastPreview').style.display = 'block';
+            document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Generating forecast preview...</div>';
             
-            let tableHTML = '<table><thead><tr>';
-            headers.forEach(header => {
-              tableHTML += `<th>${header}</th>`;
-            });
-            tableHTML += '</tr></thead><tbody>';
-            
-            preview.forEach(row => {
-              tableHTML += '<tr>';
-              row.forEach((cell, index) => {
-                // Check if this might be a date column (first column or contains date-like headers)
-                const header = headers[index] ? headers[index].toLowerCase() : '';
-                const isDateColumn = header.includes('date') || header.includes('time') || header.includes('period') || index === 0;
-                
-                let displayValue = cell || '';
-                
-                // Try to format as date if it's a number and might be a date column
-                if (isDateColumn && typeof cell === 'number' && cell > 1000) {
-                  try {
-                    // Convert Excel serial number to date
-                    const excelDate = new Date((cell - 25569) * 86400 * 1000);
-                    if (!isNaN(excelDate.getTime())) {
-                      displayValue = excelDate.toLocaleDateString('en-US', {
-                        year: 'numeric',
-                        month: 'short'
-                      });
-                    }
-                  } catch (dateError) {
-                    // If date conversion fails, keep original value
-                    console.log('Date conversion failed for:', cell);
-                  }
-                }
-                
-                tableHTML += `<td>${displayValue}</td>`;
-              });
-              tableHTML += '</tr>';
-            });
-            tableHTML += '</tbody></table>';
-            
-            document.getElementById('previewTable').innerHTML = tableHTML;
-            document.getElementById('dataPreview').style.display = 'block';
+            // Process data and create forecast preview
+            createForecastPreview(wb, data);
           }
         } catch (error) {
           console.error('Error previewing data:', error);
         }
       };
       reader.readAsBinaryString(file);
+    }
+
+    async function createForecastPreview(wb, data) {
+      try {
+        // Convert data to CSV for processing
+        const csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ',', RS: '\n', strip: true });
+        
+        // Get current form values
+      const timeUnit = document.getElementById('timeUnit').value;
+      const periods = document.getElementById('periodCount').value.trim();
+        const dateFormat = document.getElementById('dateFormat').value;
+        const decimalPlaces = document.getElementById('decimalPlaces').value;
+        
+        // Send preview request
+        const res = await fetch('/api/forecast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            csv, 
+            timeUnit, 
+            periods, 
+            exportFormat: 'csv',
+            dateFormat: dateFormat,
+            decimalPlaces: parseInt(decimalPlaces),
+            preview: true
+          })
+        });
+        
+        if (!res.ok) {
+          throw new Error('Preview generation failed');
+        }
+        
+        const previewData = await res.json();
+        displayForecastChart(previewData);
+        
+      } catch (error) {
+        console.error('Preview error:', error);
+        document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> Could not generate preview</div>';
+      }
+    }
+
+    function displayForecastChart(data) {
+      const ctx = document.getElementById('forecastChart');
+      
+      // Destroy existing chart if it exists
+      if (window.forecastChart) {
+        window.forecastChart.destroy();
+      }
+      
+      // Prepare chart data
+      const historicalData = data.historical || [];
+      const forecastData = data.forecast || [];
+      
+      const labels = [...historicalData.map(d => d.date), ...forecastData.map(d => d.date)];
+      const historicalValues = historicalData.map(d => d.quantity);
+      const forecastValues = forecastData.map(d => d.quantity);
+      
+      // Create chart
+      window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: 'Historical Data',
+              data: [...historicalValues, ...Array(forecastValues.length).fill(null)],
+              borderColor: 'rgb(99, 102, 241)',
+              backgroundColor: 'rgba(99, 102, 241, 0.1)',
+              borderWidth: 2,
+              fill: false,
+              tension: 0.1
+            },
+            {
+              label: 'Forecast',
+              data: [...Array(historicalValues.length).fill(null), ...forecastValues],
+              borderColor: 'rgb(16, 185, 129)',
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              borderWidth: 2,
+              fill: false,
+              tension: 0.1,
+              borderDash: [5, 5]
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+            },
+            title: {
+              display: false
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'Quantity'
+              }
+            },
+            x: {
+              title: {
+                display: true,
+                text: 'Time'
+              }
+            }
+          }
+        }
+      });
     }
 
     function readFileAsCSV(file) {
@@ -1019,6 +1110,28 @@
           input.dispatchEvent(new Event('change'));
         }
       });
+    });
+
+    // Add event listeners for form controls to update preview
+    document.addEventListener('DOMContentLoaded', function() {
+      const timeUnitSelect = document.getElementById('timeUnit');
+      const periodCountInput = document.getElementById('periodCount');
+      const dateFormatSelect = document.getElementById('dateFormat');
+      const decimalPlacesSelect = document.getElementById('decimalPlaces');
+      
+      // Update preview when any setting changes
+      function updatePreviewIfNeeded() {
+        const file = document.getElementById('historicalFile').files[0];
+        if (file && document.getElementById('forecastPreview').style.display !== 'none') {
+          // Re-trigger preview generation
+          previewData(document.getElementById('historicalFile'));
+        }
+      }
+      
+      timeUnitSelect.addEventListener('change', updatePreviewIfNeeded);
+      periodCountInput.addEventListener('change', updatePreviewIfNeeded);
+      dateFormatSelect.addEventListener('change', updatePreviewIfNeeded);
+      decimalPlacesSelect.addEventListener('change', updatePreviewIfNeeded);
     });
   </script>
 </body>

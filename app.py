@@ -301,8 +301,9 @@ def forecast():
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         date_format = data.get('dateFormat', 'EUR')  # Default to EUR
         decimal_places = int(data.get('decimalPlaces', 0))  # Default to 0
+        preview_mode = data.get('preview', False)  # Preview mode for chart display
         
-        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}")
+        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}, preview={preview_mode}")
         logger.info(f"CSV data length: {len(csv_text)} characters")
         
         # Parse CSV safely
@@ -548,6 +549,52 @@ def forecast():
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
         
         logger.info(f"Generated {len(forecasts)} forecast entries")
+        
+        # Handle preview mode - return JSON for chart display
+        if preview_mode:
+            try:
+                # Get the first item's data for preview (most common case)
+                first_item_forecasts = [f for f in forecasts if f[1] == forecasts[0][1]]
+                
+                # Get historical data for the same item
+                first_item_id = forecasts[0][1]
+                historical_data = df[df[item_col] == first_item_id].groupby('period')[qty_col].sum().sort_index()
+                
+                # Format historical data
+                historical_formatted = []
+                for date, value in historical_data.items():
+                    if time_unit == 'monthly':
+                        if date_format == 'EUR':
+                            date_str = date.strftime('01/%m/%Y')
+                        else:
+                            date_str = date.strftime('%m/01/%Y')
+                    else:
+                        if date_format == 'EUR':
+                            date_str = date.strftime('%d/%m/%Y')
+                        else:
+                            date_str = date.strftime('%m/%d/%Y')
+                    historical_formatted.append({
+                        'date': date_str,
+                        'quantity': round(float(value), decimal_places)
+                    })
+                
+                # Format forecast data
+                forecast_formatted = []
+                for date_str, item_id, value, model in first_item_forecasts:
+                    forecast_formatted.append({
+                        'date': date_str,
+                        'quantity': round(float(value), decimal_places)
+                    })
+                
+                return jsonify({
+                    'historical': historical_formatted,
+                    'forecast': forecast_formatted,
+                    'item_id': first_item_id,
+                    'model': first_item_forecasts[0][3] if first_item_forecasts else 'Unknown'
+                })
+            except Exception as e:
+                logger.error(f"Preview generation error: {e}")
+                return jsonify({'error': 'Could not generate preview'}), 500
         
         # Create result dataframe
         result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
