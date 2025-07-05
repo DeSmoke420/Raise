@@ -199,26 +199,40 @@ def index():
 @app.route('/api/forecast', methods=['POST'])
 def forecast():
     try:
+        logger.info("Forecast request received")
         if request.content_type != 'application/json':
+            logger.error(f"Unsupported content type: {request.content_type}")
             return jsonify({'error': 'Unsupported content type'}), 400
+        
         data = request.get_json()
+        logger.info(f"Request data keys: {list(data.keys()) if data else 'None'}")
+        
         # Validate input
         is_valid, error_msg = validate_input_data(data)
         if not is_valid:
+            logger.error(f"Validation failed: {error_msg}")
             return jsonify({'error': error_msg}), 400
         csv_text = data.get('csv', '')
         time_unit = data.get('timeUnit', 'monthly')
         period_count = int(data.get('periods', 1))
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         
+        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}")
+        logger.info(f"CSV data length: {len(csv_text)} characters")
+        
         # Parse CSV safely
         df = parse_csv_safely(csv_text)
         if df is None:
+            logger.error("CSV parsing failed")
             return jsonify({'error': 'CSV format not recognized or file too large'}), 400
+        
+        logger.info(f"CSV parsed successfully: {df.shape[0]} rows, {df.shape[1]} columns")
         
         # Identify columns robustly
         date_col, item_col, qty_col, missing = identify_columns_robust(df)
+        logger.info(f"Identified columns: date={date_col}, item={item_col}, qty={qty_col}")
         if missing:
+            logger.error(f"Missing columns: {missing}")
             return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
         
         # Process data
@@ -252,6 +266,8 @@ def forecast():
         
         forecasts = []
         diagnostics_log = []
+        
+        logger.info(f"Starting forecast generation for {len(df[item_col].unique())} unique items")
         
         for item_id, group in df.groupby(item_col):
             ts = group.groupby('period')[qty_col].sum().sort_index()
@@ -309,7 +325,10 @@ def forecast():
                 forecasts.append([date_str, item_id, val, model_name])
         
         if not forecasts:
+            logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
+        
+        logger.info(f"Generated {len(forecasts)} forecast entries")
         
         # Create result dataframe
         result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
