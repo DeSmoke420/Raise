@@ -135,7 +135,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             window_size = min(3, len(ts) // 2)
             # Calculate simple average of last few values
             recent_values = ts.tail(window_size)
-            ma_value = recent_values.mean()
+            ma_value = float(recent_values.mean())
             ma_forecast = [ma_value] * period_count
             diagnostics.append(f"Simple MA: window={window_size}")
             if best_forecast is None:
@@ -219,7 +219,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     
     # Last resort: use the last value repeated
     if best_forecast is None and len(ts) > 0:
-        last_value = ts.iloc[-1]
+        last_value = float(ts.iloc[-1])
         best_forecast = [last_value] * period_count
         best_name = "Last Value"
         diagnostics.append("Using last value as fallback")
@@ -507,9 +507,10 @@ def forecast():
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
-                # Export to Excel directly to memory without temporary files
+                # Export to Excel using BytesIO
                 output = io.BytesIO()
-                result_df.to_excel(output, index=False, float_format="%.2f", engine='openpyxl')
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    result_df.to_excel(writer, index=False, float_format="%.2f")
                 output.seek(0)
                 
                 response = send_file(
