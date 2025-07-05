@@ -599,12 +599,7 @@
         </div>
       </div>
       
-      <div class="progress-container" id="progressContainer">
-        <div class="progress-bar">
-          <div class="progress-fill" id="progressFill"></div>
-        </div>
-        <div class="progress-text" id="progressText">Processing...</div>
-      </div>
+
       
       <button class="btn btn-primary" onclick="generateForecast()" id="generateBtn">
         <i class="fas fa-rocket"></i>
@@ -625,6 +620,12 @@
     <div class="modal-content">
       <div class="spinner" id="modalSpinner"></div>
       <p class="modal-text" id="modalText">Processing your request<span id="dots">.</span></p>
+      <div class="progress-container" id="progressContainer" style="display: none;">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">Processing...</div>
+      </div>
       <div class="modal-details" id="modalDetails" style="display: none;"></div>
       <div class="modal-buttons" id="modalButtons" style="display: none;">
         <button class="btn btn-back" onclick="hideModal()">
@@ -659,7 +660,6 @@
       document.getElementById('historicalFile').value = '';
       document.getElementById('periodCount').value = '12';
       document.getElementById('dataPreview').style.display = 'none';
-      document.getElementById('progressContainer').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
     }
@@ -673,11 +673,12 @@
       label.innerHTML = `<i class="fas fa-file-upload"></i><span>${defaultText}</span>`;
     }
 
-    function showModal(msg, details = null, showButtons = false) {
+    function showModal(msg, details = null, showButtons = false, showProgress = false) {
       document.getElementById('modalText').textContent = msg;
       const detailsDiv = document.getElementById('modalDetails');
       const buttonsDiv = document.getElementById('modalButtons');
       const spinner = document.getElementById('modalSpinner');
+      const progressContainer = document.getElementById('progressContainer');
       
       if (details) {
         detailsDiv.innerHTML = details;
@@ -689,9 +690,16 @@
       if (showButtons) {
         buttonsDiv.style.display = 'flex';
         spinner.style.display = 'none';
+        progressContainer.style.display = 'none';
         clearInterval(dotInterval);
+      } else if (showProgress) {
+        buttonsDiv.style.display = 'none';
+        spinner.style.display = 'none';
+        progressContainer.style.display = 'block';
+        simulateProgress();
       } else {
         buttonsDiv.style.display = 'none';
+        progressContainer.style.display = 'none';
         spinner.style.display = 'block';
         let count = 1;
         dotInterval = setInterval(() => {
@@ -708,13 +716,7 @@
       clearInterval(dotInterval);
     }
 
-    function showProgress(show = true) {
-      const container = document.getElementById('progressContainer');
-      container.style.display = show ? 'block' : 'none';
-      if (show) {
-        simulateProgress();
-      }
-    }
+
 
     function simulateProgress() {
       const fill = document.getElementById('progressFill');
@@ -830,8 +832,7 @@
 
       const generateBtn = document.getElementById('generateBtn');
       generateBtn.disabled = true;
-      showProgress(true);
-      showModal("Analyzing your data and generating forecasts...");
+      showModal("Analyzing your data and generating forecasts...", null, false, true);
 
       try {
         const csv = await readFileAsCSV(file);
@@ -877,7 +878,6 @@
         showError('Error: ' + e.message);
       } finally {
         generateBtn.disabled = false;
-        showProgress(false);
         hideModal();
       }
     }
