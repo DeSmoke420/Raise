@@ -211,6 +211,11 @@ def index():
 def health():
     return jsonify({'status': 'healthy', 'message': 'AI Forecast Intelligence Platform is running'})
 
+# Add a simple root health check
+@app.route('/api/health')
+def api_health():
+    return jsonify({'status': 'healthy'})
+
 @app.route('/api/forecast', methods=['POST'])
 def forecast():
     try:
@@ -409,4 +414,5 @@ app.debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 if __name__ == '__main__':
     # Use environment variable for debug mode
     debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    logger.info("Starting Flask application...")
     app.run(debug=debug_mode, host='0.0.0.0', port=5000)
