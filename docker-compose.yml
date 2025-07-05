@@ -10,4 +10,4 @@ services:
       - FLASK_DEBUG=False
     restart: unless-stopped
     volumes:
-      - ./logs:/app/logs 
+      - ./data:/app/data 

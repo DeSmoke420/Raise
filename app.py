@@ -5,7 +5,7 @@ import pandas as pd
 import io
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from flask_cors import CORS
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from prophet import Prophet
 try:
     import pmdarima as pm
@@ -116,6 +116,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     best_aic = float('inf')
     best_forecast = None
     best_name = None
+    
     # Holt-Winters
     try:
         model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
@@ -128,6 +129,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             best_name = "Holt-Winters"
     except Exception as e:
         diagnostics.append(f"Holt-Winters failed: {e}")
+    
     # Prophet
     try:
         model = Prophet()
@@ -150,6 +152,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             best_name = "Prophet"
     except Exception as e:
         diagnostics.append(f"Prophet failed: {e}")
+    
     # ARIMA
     if pm is not None:
         try:
@@ -162,6 +165,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                 best_name = "ARIMA"
         except Exception as e:
             diagnostics.append(f"ARIMA failed: {e}")
+    
     if best_forecast is not None:
         return best_forecast, best_name or '', ' | '.join(diagnostics)
     return None, '', ' | '.join(diagnostics)
@@ -215,14 +219,17 @@ def forecast():
         time_unit = data.get('timeUnit', 'monthly')
         period_count = int(data.get('periods', 1))
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
+        
         # Parse CSV safely
         df = parse_csv_safely(csv_text)
         if df is None:
             return jsonify({'error': 'CSV format not recognized or file too large'}), 400
+        
         # Identify columns robustly
         date_col, item_col, qty_col, missing = identify_columns_robust(df)
         if missing:
             return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
+        
         # Process data
         df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
         df = df.dropna(subset=[date_col, qty_col, item_col])
@@ -230,10 +237,12 @@ def forecast():
             df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
         except Exception:
             return jsonify({'error': f'Could not convert {qty_col} to numeric.'}), 400
+        
         # Warn about negative values but allow them
         neg_count = (df[qty_col] < 0).sum()
         if neg_count > 0:
             logger.warning(f"{neg_count} negative values found in {qty_col}. These will be kept.")
+        
         # Warn about missing values
         missing_qty = df[qty_col].isna().sum()
         if missing_qty > 0:
@@ -241,6 +250,7 @@ def forecast():
         df = df.dropna(subset=[qty_col])
         if df.empty:
             return jsonify({'error': 'No valid data after processing'}), 400
+        
         # Create periods based on time unit
         if time_unit == 'monthly':
             df['period'] = df[date_col].dt.to_period('M').dt.to_timestamp()
@@ -248,51 +258,78 @@ def forecast():
             df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
         else:  # daily
             df['period'] = df[date_col]
+        
         forecasts = []
         diagnostics_log = []
+        
         for item_id, group in df.groupby(item_col):
-            ts: pd.Series = group.groupby('period')[qty_col].sum().sort_index()
+            ts = group.groupby('period')[qty_col].sum().sort_index()
+            
+            # Ensure ts is a Series for type checking
+            if not isinstance(ts, pd.Series):
+                continue
+            
             # Data validation
             val_result = validate_time_series_data(ts, time_unit)
             if not val_result['sufficient']:
                 diagnostics_log.append(f"Item {item_id}: {val_result['warnings']}")
                 continue
+            
             # Model selection with diagnostics
             forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
             diagnostics_log.append(f"Item {item_id}: {diag}")
             if forecast_values is None:
                 continue
+            
             # Generate future dates
             last_date = ts.index.max()
-            if pd.isna(last_date) or not isinstance(last_date, pd.Timestamp):
+            # Type checking for last_date - handle pandas scalar properly
+            if pd.isna(last_date):
                 continue
+            
+            # Convert to pandas Timestamp for consistent handling
+            try:
+                last_date = pd.Timestamp(last_date)
+            except (ValueError, TypeError):
+                continue
+            
             future_dates = []
             for i in range(1, period_count + 1):
-                if time_unit == 'monthly':
-                    next_date = (last_date + pd.DateOffset(months=i)).strftime('%Y-%m')
-                elif time_unit == 'weekly':
-                    next_date = (last_date + timedelta(weeks=i)).strftime('%Y-%m-%d')
-                else:  # daily
-                    next_date = (last_date + timedelta(days=i)).strftime('%Y-%m-%d')
-                future_dates.append(next_date)
+                try:
+                    if time_unit == 'monthly':
+                        next_date = (last_date + pd.DateOffset(months=i)).strftime('%Y-%m')
+                    elif time_unit == 'weekly':
+                        next_date = (last_date + timedelta(weeks=i)).strftime('%Y-%m-%d')
+                    else:  # daily
+                        next_date = (last_date + timedelta(days=i)).strftime('%Y-%m-%d')
+                    future_dates.append(next_date)
+                except (TypeError, AttributeError):
+                    # Skip if date arithmetic fails
+                    continue
+            
             # Add forecasts to results
             for date_str, val in zip(future_dates, forecast_values):
                 val = round(float(val), 2)
                 forecasts.append([date_str, item_id, val, model_name])
+        
         if not forecasts:
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
         
         # Create result dataframe
-        result_df = pd.DataFrame(forecasts, columns=("Date", "Item ID", "Forecast Quantity", "Model"))
+        result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
         
         # Return single file based on export format
         if export_format == 'xlsx':
-            # Export to Excel
-            output = io.BytesIO()
-            result_df.to_excel(output, index=False, float_format="%.2f", engine='openpyxl')
-            output.seek(0)
+            # Export to Excel using temporary file
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+                result_df.to_excel(tmp_file.name, index=False, float_format="%.2f", engine='openpyxl')
+                with open(tmp_file.name, 'rb') as f:
+                    excel_data = f.read()
+                os.unlink(tmp_file.name)  # Clean up temp file
+            
             return send_file(
-                output,
+                io.BytesIO(excel_data),
                 download_name="AI_generated_Forecast.xlsx",
                 as_attachment=True,
                 mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -323,25 +360,30 @@ def accuracy():
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         if not actual_csv or not forecast_csv:
             return jsonify({'error': 'Both actuals and forecast data are required'}), 400
+        
         # Parse CSVs safely
         df_actuals = parse_csv_safely(actual_csv)
         df_forecast = parse_csv_safely(forecast_csv)
         if df_actuals is None or df_forecast is None:
             return jsonify({'error': 'CSV format not recognized'}), 400
+        
         # Identify columns robustly
         date_col, item_col, qty_col, missing = identify_columns_robust(df_actuals)
         forecast_qty_col = find_forecast_column(df_forecast)
         if not all([date_col, item_col, qty_col, forecast_qty_col]):
             return jsonify({'error': 'Missing required columns for accuracy calculation. Expecting date, item, quantity in actuals and forecast quantity in forecast.'}), 400
+        
         # Process data
         df_actuals[date_col] = pd.to_datetime(df_actuals[date_col], errors='coerce')
         df_forecast[date_col] = pd.to_datetime(df_forecast[date_col], errors='coerce')
         df_actuals = df_actuals.groupby([date_col, item_col])[qty_col].sum().reset_index()
         df_forecast = df_forecast.groupby([date_col, item_col])[forecast_qty_col].sum().reset_index()
+        
         # Merge and calculate accuracy
         merged = pd.merge(df_actuals, df_forecast, on=[date_col, item_col], how='inner')
         if merged.empty:
             return jsonify({'error': 'No matching data found between actuals and forecasts'}), 400
+        
         # Calculate accuracy safely
         merged['accuracy'] = merged.apply(
             lambda row: calculate_accuracy_safely(row[qty_col], row[forecast_qty_col]), 
@@ -350,11 +392,16 @@ def accuracy():
         
         # Create output based on format
         if export_format == 'xlsx':
-            output = io.BytesIO()
-            merged[[date_col, item_col, 'accuracy']].to_excel(output, index=False, engine='openpyxl')
-            output.seek(0)
+            # Export to Excel using temporary file
+            import tempfile
+            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+                merged[[date_col, item_col, 'accuracy']].to_excel(tmp_file.name, index=False, engine='openpyxl')
+                with open(tmp_file.name, 'rb') as f:
+                    excel_data = f.read()
+                os.unlink(tmp_file.name)  # Clean up temp file
+            
             return send_file(
-                output,
+                io.BytesIO(excel_data),
                 download_name="Forecast_Accuracy.xlsx",
                 as_attachment=True,
                 mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
