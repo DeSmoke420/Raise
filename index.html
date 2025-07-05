@@ -811,17 +811,17 @@
           // Excel file
           console.log('Downloading Excel file...');
           downloadBlob(blob, 'AI_generated_Forecast.xlsx');
-          showSuccess('Excel forecast generated successfully!');
+          showSuccess('Excel forecast generated successfully! Check your downloads folder or browser downloads.');
         } else if (contentType && contentType.includes('text/csv')) {
           // CSV file
           console.log('Downloading CSV file...');
           downloadBlob(blob, 'AI_generated_Forecast.csv');
-          showSuccess('CSV forecast generated successfully!');
+          showSuccess('CSV forecast generated successfully! Check your downloads folder or browser downloads.');
         } else {
           // Fallback
           console.log('Downloading fallback file...');
           downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
-          showSuccess('Forecast generated successfully!');
+          showSuccess('Forecast generated successfully! Check your downloads folder or browser downloads.');
         }
       } catch (e) {
         console.error('Forecast error:', e);
@@ -854,40 +854,33 @@
       console.log('Blob type:', blob.type);
       console.log('Blob size:', blob.size);
       
-      try {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.style.display = 'none';
-        a.target = '_blank';
-        
-        document.body.appendChild(a);
-        console.log('Triggering download...');
-        
-        // Try multiple approaches to trigger download
-        a.click();
-        
-        // Fallback: try with a small delay
-        setTimeout(() => {
-          if (document.body.contains(a)) {
-            a.click();
-            document.body.removeChild(a);
-          }
-        }, 100);
-        
-        // Cleanup
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 1000);
-        
-        console.log('Download triggered for:', filename);
-      } catch (error) {
-        console.error('Download error:', error);
-        // Fallback: open in new window
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
-      }
+      // Method 1: Direct download with proper MIME type
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      // Add to DOM and trigger
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Method 2: If Method 1 fails, try opening in new window
+      setTimeout(() => {
+        try {
+          window.open(url, '_blank');
+        } catch (e) {
+          console.error('Window open failed:', e);
+        }
+      }, 500);
+      
+      // Cleanup
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 2000);
+      
+      console.log('Download methods triggered for:', filename);
     }
 
     function downloadXLSX(csvText, filename) {
