@@ -786,11 +786,15 @@
 
       try {
         const csv = await readFileAsCSV(file);
+        console.log('Sending forecast request...');
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ csv, timeUnit, periods, exportFormat: outputFormat })
         });
+        
+        console.log('Response status:', res.status);
+        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
         
         if (!res.ok) {
           const errorData = await res.json();
@@ -799,22 +803,28 @@
         
         // Handle single file response
         const contentType = res.headers.get('content-type');
+        console.log('Content-Type:', contentType);
         const blob = await res.blob();
+        console.log('Blob size:', blob.size);
         
         if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
           // Excel file
+          console.log('Downloading Excel file...');
           downloadBlob(blob, 'AI_generated_Forecast.xlsx');
           showSuccess('Excel forecast generated successfully!');
         } else if (contentType && contentType.includes('text/csv')) {
           // CSV file
+          console.log('Downloading CSV file...');
           downloadBlob(blob, 'AI_generated_Forecast.csv');
           showSuccess('CSV forecast generated successfully!');
         } else {
           // Fallback
+          console.log('Downloading fallback file...');
           downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
           showSuccess('Forecast generated successfully!');
         }
       } catch (e) {
+        console.error('Forecast error:', e);
         showError('Error: ' + e.message);
       } finally {
         generateBtn.disabled = false;
@@ -840,14 +850,22 @@
     }
 
     function downloadBlob(blob, filename) {
+      console.log('Starting download for:', filename);
+      console.log('Blob type:', blob.type);
+      console.log('Blob size:', blob.size);
+      
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
+      a.style.display = 'none';
+      
       document.body.appendChild(a);
+      console.log('Triggering download...');
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      console.log('Download triggered for:', filename);
     }
 
     function downloadXLSX(csvText, filename) {
