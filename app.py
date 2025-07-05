@@ -278,14 +278,48 @@ def forecast():
         # Simple and reliable date parsing
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
+        # Check if dates look like DD/MM/YYYY format
+        sample_dates = df[date_col].head(10).astype(str).tolist()
+        dd_mm_yyyy_pattern = False
+        
+        for date_str in sample_dates:
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    try:
+                        day = int(parts[0])
+                        month = int(parts[1])
+                        year = int(parts[2])
+                        # If day > 12, it's likely DD/MM/YYYY
+                        if day > 12 and month <= 12:
+                            dd_mm_yyyy_pattern = True
+                            logger.info(f"Detected DD/MM/YYYY pattern: {date_str}")
+                            break
+                    except ValueError:
+                        continue
+        
         # Try pandas default parsing first (works for most cases)
         try:
-            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-            valid_dates = df[date_col].notna().sum()
-            logger.info(f"Pandas default parsing: {valid_dates} valid dates out of {len(df)}")
+            if dd_mm_yyyy_pattern:
+                # For DD/MM/YYYY, try specific format first
+                logger.info("Trying DD/MM/YYYY format first")
+                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+                logger.info(f"DD/MM/YYYY parsing: {valid_dates} valid dates out of {len(df)}")
+                
+                if valid_dates == 0:
+                    # If DD/MM/YYYY failed, try pandas default
+                    logger.info("DD/MM/YYYY failed, trying pandas default")
+                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                    valid_dates = df[date_col].notna().sum()
+            else:
+                # For other formats, try pandas default first
+                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+                logger.info(f"Pandas default parsing: {valid_dates} valid dates out of {len(df)}")
             
             if valid_dates > 0:
-                logger.info("Using pandas default date parsing")
+                logger.info("Date parsing successful")
             else:
                 # If pandas default failed, try specific formats
                 logger.info("Pandas default failed, trying specific formats")
