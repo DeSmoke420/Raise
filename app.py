@@ -133,7 +133,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         if len(ts) >= 3:
             # Use simple moving average as fallback
             window_size = min(3, len(ts) // 2)
-            ma_value = ts.rolling(window=window_size).mean().iloc[-1]
+            ma_series = ts.rolling(window=window_size).mean()
+            ma_value = ma_series.iloc[-1]
             ma_forecast = [ma_value] * period_count
             diagnostics.append(f"Simple MA: window={window_size}")
             if best_forecast is None:
@@ -406,8 +407,14 @@ def forecast():
             return jsonify({'error': 'No valid data after processing'}), 400
         
         # Create periods based on time unit
+        logger.info(f"Creating periods for time_unit: {time_unit}")
+        logger.info(f"Date range: {df[date_col].min()} to {df[date_col].max()}")
+        
         if time_unit == 'monthly':
+            # Convert to monthly periods - this works for both MM/YYYY and DD/MM/YYYY
             df['period'] = df[date_col].dt.to_period('M').dt.to_timestamp()
+            logger.info(f"Monthly periods created. Unique periods: {df['period'].nunique()}")
+            logger.info(f"Sample periods: {df['period'].head(5).tolist()}")
         elif time_unit == 'weekly':
             df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
         else:  # daily
