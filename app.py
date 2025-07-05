@@ -205,7 +205,21 @@ def validate_input_data(data: dict) -> Tuple[bool, str]:
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    try:
+        return send_from_directory('.', 'index.html')
+    except Exception as e:
+        logger.error(f"Error serving index.html: {e}")
+        # Fallback: return a simple HTML response
+        return """
+        <!DOCTYPE html>
+        <html>
+        <head><title>AI Forecast Intelligence Platform</title></head>
+        <body>
+        <h1>AI Forecast Intelligence Platform</h1>
+        <p>Service is running. Please check the application logs.</p>
+        </body>
+        </html>
+        """, 200
 
 @app.route('/health')
 def health():
