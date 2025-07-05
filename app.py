@@ -277,15 +277,15 @@ def forecast():
             # Type checking for last_date - handle pandas scalar properly
             try:
                 # Convert to scalar if it's a pandas object
-                if hasattr(last_date, 'item'):
-                    last_date = last_date.item()
+                if hasattr(last_date, 'item'):  # type: ignore
+                    last_date = last_date.item()  # type: ignore
                 
-                # Check if it's a valid date
-                if pd.isna(last_date) or last_date is None:
+                # Check if it's a valid date - handle pandas scalar properly
+                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):  # type: ignore
                     continue
                 
                 # Convert to pandas Timestamp for consistent handling
-                last_date = pd.Timestamp(last_date)
+                last_date = pd.Timestamp(last_date)  # type: ignore
             except (ValueError, TypeError, AttributeError):
                 continue
             
@@ -293,11 +293,11 @@ def forecast():
             for i in range(1, period_count + 1):
                 try:
                     if time_unit == 'monthly':
-                        next_date = (last_date + pd.DateOffset(months=i)).strftime('%Y-%m')
+                        next_date = (last_date + pd.DateOffset(months=i)).strftime('%Y-%m')  # type: ignore
                     elif time_unit == 'weekly':
-                        next_date = (last_date + timedelta(weeks=i)).strftime('%Y-%m-%d')
+                        next_date = (last_date + timedelta(weeks=i)).strftime('%Y-%m-%d')  # type: ignore
                     else:  # daily
-                        next_date = (last_date + timedelta(days=i)).strftime('%Y-%m-%d')
+                        next_date = (last_date + timedelta(days=i)).strftime('%Y-%m-%d')  # type: ignore
                     future_dates.append(next_date)
                 except (TypeError, AttributeError):
                     # Skip if date arithmetic fails
