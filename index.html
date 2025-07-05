@@ -728,8 +728,31 @@
             
             preview.forEach(row => {
               tableHTML += '<tr>';
-              row.forEach(cell => {
-                tableHTML += `<td>${cell || ''}</td>`;
+              row.forEach((cell, index) => {
+                // Check if this might be a date column (first column or contains date-like headers)
+                const header = headers[index] ? headers[index].toLowerCase() : '';
+                const isDateColumn = header.includes('date') || header.includes('time') || header.includes('period') || index === 0;
+                
+                let displayValue = cell || '';
+                
+                // Try to format as date if it's a number and might be a date column
+                if (isDateColumn && typeof cell === 'number' && cell > 1000) {
+                  try {
+                    // Convert Excel serial number to date
+                    const excelDate = new Date((cell - 25569) * 86400 * 1000);
+                    if (!isNaN(excelDate.getTime())) {
+                      displayValue = excelDate.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short'
+                      });
+                    }
+                  } catch (dateError) {
+                    // If date conversion fails, keep original value
+                    console.log('Date conversion failed for:', cell);
+                  }
+                }
+                
+                tableHTML += `<td>${displayValue}</td>`;
               });
               tableHTML += '</tr>';
             });
