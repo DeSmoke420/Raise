@@ -205,6 +205,8 @@ def validate_input_data(data: dict) -> Tuple[bool, str]:
 
 @app.route('/')
 def index():
+    # Always return 200 for health check - Railway might be checking root path
+    logger.info("Root endpoint accessed - returning 200 OK")
     try:
         return send_from_directory('.', 'index.html')
     except Exception as e:
