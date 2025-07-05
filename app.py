@@ -119,7 +119,7 @@ def validate_time_series_data(ts: pd.Series, time_unit: str) -> Dict[str, Any]:
             result['warnings'].append(f"Detected {outliers} outlier(s) in the data.")
     return result
 
-def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int, preview_mode: bool = False) -> Tuple[Optional[List[float]], str, str]:
+def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int) -> Tuple[Optional[List[float]], str, str]:
     """Try all models, select the best one, and return diagnostics."""
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
     diagnostics = []
@@ -165,41 +165,39 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     except Exception as e:
         diagnostics.append(f"Holt-Winters failed: {e}")
     
-    # Skip Prophet for preview mode (too slow)
-    if not preview_mode:
-        # Prophet (try with different frequency settings)
-        try:
-            model = Prophet()
-            df_prophet = ts.reset_index()
-            df_prophet.columns = ['ds', 'y']
-            model.fit(df_prophet)
+    # Prophet (try with different frequency settings)
+    try:
+        model = Prophet()
+        df_prophet = ts.reset_index()
+        df_prophet.columns = ['ds', 'y']
+        model.fit(df_prophet)
+        
+        # Use appropriate frequency based on time unit
+        if time_unit == 'monthly':
+            freq = 'M'  # Monthly frequency
+        elif time_unit == 'weekly':
+            freq = 'W'
+        else:  # daily
+            freq = 'D'
             
-            # Use appropriate frequency based on time unit
-            if time_unit == 'monthly':
-                freq = 'M'  # Monthly frequency
-            elif time_unit == 'weekly':
-                freq = 'W'
-            else:  # daily
-                freq = 'D'
-                
-            future = model.make_future_dataframe(periods=period_count, freq=freq)
-            forecast_df = model.predict(future)
-            forecast_values = forecast_df.tail(period_count)['yhat'].values
-            
-            # Prophet doesn't have AIC, so use MSE as a proxy
-            y_true = df_prophet['y']
-            y_pred = model.predict(df_prophet)['yhat']
-            mse = ((y_true - y_pred) ** 2).mean()
-            diagnostics.append(f"Prophet: MSE={mse:.2f}")
-            if mse < best_aic:  # Use MSE as a proxy for AIC
-                best_aic = mse
-                best_forecast = forecast_values.tolist()
-                best_name = "Prophet"
-        except Exception as e:
-            diagnostics.append(f"Prophet failed: {e}")
+        future = model.make_future_dataframe(periods=period_count, freq=freq)
+        forecast_df = model.predict(future)
+        forecast_values = forecast_df.tail(period_count)['yhat'].values
+        
+        # Prophet doesn't have AIC, so use MSE as a proxy
+        y_true = df_prophet['y']
+        y_pred = model.predict(df_prophet)['yhat']
+        mse = ((y_true - y_pred) ** 2).mean()
+        diagnostics.append(f"Prophet: MSE={mse:.2f}")
+        if mse < best_aic:  # Use MSE as a proxy for AIC
+            best_aic = mse
+            best_forecast = forecast_values.tolist()
+            best_name = "Prophet"
+    except Exception as e:
+        diagnostics.append(f"Prophet failed: {e}")
     
     # ARIMA (try non-seasonal for small datasets)
-    if pm is not None and not preview_mode:  # Skip ARIMA for preview too
+    if pm is not None:
         try:
             if len(ts) >= seasonal_periods * 2:
                 # Seasonal ARIMA
@@ -281,6 +279,408 @@ def health():
 def api_health():
     return jsonify({'status': 'healthy'})
 
+@app.route('/api/forecast-data', methods=['POST'])
+def forecast_data():
+    """Return forecast data as JSON for chart preview"""
+    try:
+        data = request.get_json()
+        logger.info(f"Request data keys: {list(data.keys()) if data else 'None'}")
+        
+        # Validate input
+        is_valid, error_msg = validate_input_data(data)
+        if not is_valid:
+            logger.error(f"Validation failed: {error_msg}")
+            return jsonify({'error': error_msg}), 400
+        
+        csv_text = data.get('csv', '')
+        time_unit = data.get('timeUnit', 'monthly')
+        period_count = int(data.get('periods', 1))
+        date_format = data.get('dateFormat', 'EUR')
+        decimal_places = int(data.get('decimalPlaces', 0))
+        
+        logger.info(f"Processing forecast data: time_unit={time_unit}, periods={period_count}, date_format={date_format}, decimal_places={decimal_places}")
+        
+        # Parse CSV safely
+        df = parse_csv_safely(csv_text)
+        if df is None:
+            logger.error("CSV parsing failed")
+            return jsonify({'error': 'CSV format not recognized or file too large'}), 400
+        
+        # Identify columns robustly
+        date_col, item_col, qty_col, missing = identify_columns_robust(df)
+        if missing:
+            return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
+        
+        # Auto-detect input date format
+        sample_dates = df[date_col].head(10).astype(str).tolist()
+        dd_mm_yyyy_pattern = False
+        day_values = []
+        month_values = []
+        
+        for date_str in sample_dates:
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    try:
+                        day = int(parts[0])
+                        month = int(parts[1])
+                        year = int(parts[2])
+                        day_values.append(day)
+                        month_values.append(month)
+                    except ValueError:
+                        continue
+        
+        if day_values and month_values:
+            unique_days = set(day_values)
+            unique_months = set(month_values)
+            has_day_over_12 = any(d > 12 for d in unique_days)
+            has_month_over_12 = any(m > 12 for m in unique_months)
+            day_always_one = unique_days == {1}
+            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
+            
+            if has_day_over_12 or has_month_over_12:
+                dd_mm_yyyy_pattern = True
+            elif day_always_one and month_varies_1_to_12:
+                dd_mm_yyyy_pattern = True
+        
+        # Parse dates
+        try:
+            if dd_mm_yyyy_pattern:
+                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+                if valid_dates == 0:
+                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+            else:
+                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+            
+            if valid_dates == 0:
+                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
+                for fmt in date_formats:
+                    try:
+                        df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
+                        valid_dates = df[date_col].notna().sum()
+                        if valid_dates > 0:
+                            break
+                    except Exception:
+                        continue
+        except Exception as e:
+            return jsonify({'error': f'Could not parse date column: {e}'}), 400
+        
+        df = df.dropna(subset=[date_col, qty_col, item_col])
+        df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
+        df = df.dropna(subset=[qty_col])
+        
+        if df.empty:
+            return jsonify({'error': 'No valid data after processing'}), 400
+        
+        # Create periods
+        if time_unit == 'monthly':
+            df['period'] = df[date_col].dt.to_period('M').dt.to_timestamp()
+        elif time_unit == 'weekly':
+            df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
+        else:  # daily
+            df['period'] = df[date_col]
+        
+        # Process each item
+        chart_data = {
+            'actuals': [],
+            'forecasts': [],
+            'items': []
+        }
+        
+        for item_id, group in df.groupby(item_col):
+            ts = group.groupby('period')[qty_col].sum().sort_index()
+            
+            if not isinstance(ts, pd.Series):
+                continue
+            
+            val_result = validate_time_series_data(ts, time_unit)
+            if not val_result['sufficient']:
+                continue
+            
+            forecast_values, model_name, _ = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
+            if forecast_values is None:
+                continue
+            
+            # Generate future dates
+            last_date = ts.index.max()
+            try:
+                if hasattr(last_date, 'item'):
+                    last_date = last_date.item()
+                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
+                    continue
+                last_date = pd.Timestamp(last_date)
+            except (ValueError, TypeError, AttributeError):
+                continue
+            
+            future_dates = []
+            for i in range(1, period_count + 1):
+                try:
+                    if time_unit == 'monthly':
+                        next_date = (last_date + pd.DateOffset(months=i))
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('01/%m/%Y'))
+                        else:
+                            future_dates.append(next_date.strftime('%m/01/%Y'))
+                    elif time_unit == 'weekly':
+                        next_date = (last_date + timedelta(weeks=i))
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('%d/%m/%Y'))
+                        else:
+                            future_dates.append(next_date.strftime('%m/%d/%Y'))
+                    else:  # daily
+                        next_date = (last_date + timedelta(days=i))
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('%d/%m/%Y'))
+                        else:
+                            future_dates.append(next_date.strftime('%m/%d/%Y'))
+                except (TypeError, AttributeError):
+                    continue
+            
+            # Add actual data
+            for date, value in ts.items():
+                chart_data['actuals'].append({
+                    'date': date.strftime('%Y-%m-%d'),
+                    'value': round(float(value), decimal_places),
+                    'item': str(item_id)
+                })
+            
+            # Add forecast data
+            for date_str, value in zip(future_dates, forecast_values):
+                chart_data['forecasts'].append({
+                    'date': date_str,
+                    'value': round(float(value), decimal_places),
+                    'item': str(item_id),
+                    'model': model_name
+                })
+            
+            chart_data['items'].append(str(item_id))
+        
+        if not chart_data['actuals'] and not chart_data['forecasts']:
+            return jsonify({'error': 'No forecast data could be generated'}), 400
+        
+        return jsonify(chart_data)
+        
+    except Exception as e:
+        logger.error(f"Forecast data error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+@app.route('/api/download-forecast', methods=['POST'])
+def download_forecast():
+    """Generate and return forecast file for download"""
+    try:
+        data = request.get_json()
+        logger.info(f"Download request data keys: {list(data.keys()) if data else 'None'}")
+        
+        # Validate input
+        is_valid, error_msg = validate_input_data(data)
+        if not is_valid:
+            logger.error(f"Validation failed: {error_msg}")
+            return jsonify({'error': error_msg}), 400
+        
+        csv_text = data.get('csv', '')
+        time_unit = data.get('timeUnit', 'monthly')
+        period_count = int(data.get('periods', 1))
+        export_format = data.get('exportFormat', 'csv').lower()
+        date_format = data.get('dateFormat', 'EUR')
+        decimal_places = int(data.get('decimalPlaces', 0))
+        
+        logger.info(f"Processing download: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}")
+        
+        # Parse CSV safely
+        df = parse_csv_safely(csv_text)
+        if df is None:
+            logger.error("CSV parsing failed")
+            return jsonify({'error': 'CSV format not recognized or file too large'}), 400
+        
+        # Identify columns robustly
+        date_col, item_col, qty_col, missing = identify_columns_robust(df)
+        if missing:
+            return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
+        
+        # Auto-detect input date format
+        sample_dates = df[date_col].head(10).astype(str).tolist()
+        dd_mm_yyyy_pattern = False
+        day_values = []
+        month_values = []
+        
+        for date_str in sample_dates:
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    try:
+                        day = int(parts[0])
+                        month = int(parts[1])
+                        year = int(parts[2])
+                        day_values.append(day)
+                        month_values.append(month)
+                    except ValueError:
+                        continue
+        
+        if day_values and month_values:
+            unique_days = set(day_values)
+            unique_months = set(month_values)
+            has_day_over_12 = any(d > 12 for d in unique_days)
+            has_month_over_12 = any(m > 12 for m in unique_months)
+            day_always_one = unique_days == {1}
+            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
+            
+            if has_day_over_12 or has_month_over_12:
+                dd_mm_yyyy_pattern = True
+            elif day_always_one and month_varies_1_to_12:
+                dd_mm_yyyy_pattern = True
+        
+        # Parse dates
+        try:
+            if dd_mm_yyyy_pattern:
+                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+                if valid_dates == 0:
+                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+            else:
+                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+            
+            if valid_dates == 0:
+                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
+                for fmt in date_formats:
+                    try:
+                        df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
+                        valid_dates = df[date_col].notna().sum()
+                        if valid_dates > 0:
+                            break
+                    except Exception:
+                        continue
+        except Exception as e:
+            return jsonify({'error': f'Could not parse date column: {e}'}), 400
+        
+        df = df.dropna(subset=[date_col, qty_col, item_col])
+        df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
+        df = df.dropna(subset=[qty_col])
+        
+        if df.empty:
+            return jsonify({'error': 'No valid data after processing'}), 400
+        
+        # Create periods
+        if time_unit == 'monthly':
+            df['period'] = df[date_col].dt.to_period('M').dt.to_timestamp()
+        elif time_unit == 'weekly':
+            df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
+        else:  # daily
+            df['period'] = df[date_col]
+        
+        forecasts = []
+        
+        for item_id, group in df.groupby(item_col):
+            ts = group.groupby('period')[qty_col].sum().sort_index()
+            
+            if not isinstance(ts, pd.Series):
+                continue
+            
+            val_result = validate_time_series_data(ts, time_unit)
+            if not val_result['sufficient']:
+                continue
+            
+            forecast_values, model_name, _ = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
+            if forecast_values is None:
+                continue
+            
+            # Generate future dates
+            last_date = ts.index.max()
+            try:
+                if hasattr(last_date, 'item'):
+                    last_date = last_date.item()
+                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
+                    continue
+                last_date = pd.Timestamp(last_date)
+            except (ValueError, TypeError, AttributeError):
+                continue
+            
+            future_dates = []
+            for i in range(1, period_count + 1):
+                try:
+                    if time_unit == 'monthly':
+                        next_date = (last_date + pd.DateOffset(months=i))
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('01/%m/%Y'))
+                        else:
+                            future_dates.append(next_date.strftime('%m/01/%Y'))
+                    elif time_unit == 'weekly':
+                        next_date = (last_date + timedelta(weeks=i))
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('%d/%m/%Y'))
+                        else:
+                            future_dates.append(next_date.strftime('%m/%d/%Y'))
+                    else:  # daily
+                        next_date = (last_date + timedelta(days=i))
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('%d/%m/%Y'))
+                        else:
+                            future_dates.append(next_date.strftime('%m/%d/%Y'))
+                except (TypeError, AttributeError):
+                    continue
+            
+            # Add forecasts to results
+            for date_str, val in zip(future_dates, forecast_values):
+                val = round(float(val), decimal_places)
+                forecasts.append([date_str, item_id, val, model_name])
+        
+        if not forecasts:
+            return jsonify({'error': 'No forecasts could be generated'}), 400
+        
+        # Create result dataframe
+        result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
+        
+        # Return file based on export format
+        if export_format == 'xlsx':
+            try:
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    result_df.to_excel(writer, index=False, float_format=f"%.{decimal_places}f")
+                output.seek(0)
+                
+                response = send_file(
+                    output,
+                    download_name="AI_generated_Forecast.xlsx",
+                    as_attachment=True,
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                return response
+            except ImportError:
+                logger.warning("openpyxl not available, falling back to CSV")
+                output = io.StringIO()
+                result_df.to_csv(output, index=False, float_format=f"%.{decimal_places}f", quoting=csv.QUOTE_MINIMAL)
+                output.seek(0)
+                response = send_file(
+                    io.BytesIO(output.read().encode()),
+                    download_name="AI_generated_Forecast.csv",
+                    as_attachment=True,
+                    mimetype='text/csv'
+                )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                return response
+        else:  # Default to CSV
+            output = io.StringIO()
+            result_df.to_csv(output, index=False, float_format=f"%.{decimal_places}f", quoting=csv.QUOTE_MINIMAL)
+            output.seek(0)
+            response = send_file(
+                io.BytesIO(output.read().encode()),
+                download_name="AI_generated_Forecast.csv",
+                as_attachment=True,
+                mimetype='text/csv'
+            )
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
+            
+    except Exception as e:
+        logger.error(f"Download forecast error: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
+
 @app.route('/api/forecast', methods=['POST'])
 def forecast():
     try:
@@ -303,9 +703,8 @@ def forecast():
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         date_format = data.get('dateFormat', 'EUR')  # Default to EUR
         decimal_places = int(data.get('decimalPlaces', 0))  # Default to 0
-        preview_mode = data.get('preview', False)  # Preview mode for chart display
         
-        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}, preview={preview_mode}")
+        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}")
         logger.info(f"CSV data length: {len(csv_text)} characters")
         
         # Parse CSV safely
@@ -491,7 +890,7 @@ def forecast():
                 continue
             
             # Model selection with diagnostics
-            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count, preview_mode)
+            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
             diagnostics_log.append(f"Item {item_id}: {diag}")
             if forecast_values is None:
                 continue
@@ -551,59 +950,6 @@ def forecast():
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
         
         logger.info(f"Generated {len(forecasts)} forecast entries")
-        
-        # Handle preview mode - return JSON for chart display
-        if preview_mode:
-            try:
-                # Check if we have any forecasts
-                if not forecasts:
-                    return jsonify({'error': 'No forecasts could be generated for preview'}), 400
-                
-                # Get the first item's data for preview (most common case)
-                first_item_forecasts = [f for f in forecasts if f[1] == forecasts[0][1]]
-                
-                if not first_item_forecasts:
-                    return jsonify({'error': 'No forecast data available for preview'}), 400
-                
-                # Get historical data for the same item
-                first_item_id = forecasts[0][1]
-                historical_data = df[df[item_col] == first_item_id].groupby('period')[qty_col].sum().sort_index()
-                
-                # Format historical data
-                historical_formatted = []
-                for date, value in historical_data.items():
-                    if time_unit == 'monthly':
-                        if date_format == 'EUR':
-                            date_str = date.strftime('01/%m/%Y')
-                        else:
-                            date_str = date.strftime('%m/01/%Y')
-                    else:
-                        if date_format == 'EUR':
-                            date_str = date.strftime('%d/%m/%Y')
-                        else:
-                            date_str = date.strftime('%m/%d/%Y')
-                    historical_formatted.append({
-                        'date': date_str,
-                        'quantity': round(float(value), decimal_places)
-                    })
-                
-                # Format forecast data
-                forecast_formatted = []
-                for date_str, item_id, value, model in first_item_forecasts:
-                    forecast_formatted.append({
-                        'date': date_str,
-                        'quantity': round(float(value), decimal_places)
-                    })
-                
-                return jsonify({
-                    'historical': historical_formatted,
-                    'forecast': forecast_formatted,
-                    'item_id': first_item_id,
-                    'model': first_item_forecasts[0][3] if first_item_forecasts else 'Unknown'
-                })
-            except Exception as e:
-                logger.error(f"Preview generation error: {e}")
-                return jsonify({'error': 'Could not generate preview'}), 500
         
         # Create result dataframe
         result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))

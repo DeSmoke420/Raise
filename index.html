@@ -7,6 +7,7 @@
   <title>AI Forecast Intelligence Platform</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -474,8 +475,8 @@
       background: rgb(239 68 68 / 0.05) !important;
     }
 
-    /* Forecast Preview */
-    .forecast-preview {
+    /* Data Preview */
+    .data-preview {
       margin-top: 1rem;
       padding: 1rem;
       background: var(--bg-color);
@@ -484,37 +485,88 @@
       display: none;
     }
 
-    .forecast-preview h4 {
+    .data-preview h4 {
       color: var(--text-primary);
       font-size: 0.9rem;
       font-weight: 600;
       margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
     }
 
-    .chart-container {
-      position: relative;
-      height: 300px;
-      margin: 1rem 0;
-    }
-
-    .preview-info {
-      margin-top: 0.5rem;
-      padding: 0.5rem;
-      background: rgba(99, 102, 241, 0.1);
-      border-radius: var(--radius-sm);
-      border-left: 3px solid var(--primary-color);
-    }
-
-    .preview-info p {
-      color: var(--text-secondary);
+    .data-preview table {
+      width: 100%;
       font-size: 0.8rem;
-      margin: 0;
+      border-collapse: collapse;
+    }
+
+    .data-preview th,
+    .data-preview td {
+      padding: 0.25rem 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-preview th {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .data-preview td {
+      color: var(--text-secondary);
+    }
+
+    /* Chart Container */
+    .chart-container {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--card-bg);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      display: none;
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .chart-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .download-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-download {
+      padding: 0.5rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--bg-color);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+    }
+
+    .btn-download:hover {
+      border-color: var(--primary-color);
+      background: rgb(99 102 241 / 0.05);
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 400px;
+      margin-top: 1rem;
     }
   </style>
 </head>
@@ -559,14 +611,9 @@
             <span>Choose file or drag and drop</span>
           </div>
         </div>
-        <div class="forecast-preview" id="forecastPreview">
-          <h4><i class="fas fa-chart-line"></i> Forecast Preview</h4>
-          <div class="chart-container">
-            <canvas id="forecastChart"></canvas>
-          </div>
-          <div class="preview-info">
-            <p><i class="fas fa-info-circle"></i> This preview shows historical data and forecasted values</p>
-          </div>
+        <div class="data-preview" id="dataPreview">
+          <h4>Data Preview</h4>
+          <div id="previewTable"></div>
         </div>
       </div>
       
@@ -647,6 +694,26 @@
         <i class="fas fa-arrow-left"></i>
         Back to Home
       </button>
+
+      <!-- Chart Container -->
+      <div class="chart-container" id="chartContainer">
+        <div class="chart-header">
+          <h3 class="chart-title">Forecast Preview</h3>
+          <div class="download-buttons">
+            <button class="btn-download" onclick="downloadForecast('xlsx')">
+              <i class="fas fa-file-excel"></i>
+              Excel (.xlsx)
+            </button>
+            <button class="btn-download" onclick="downloadForecast('csv')">
+              <i class="fas fa-file-csv"></i>
+              CSV (.csv)
+            </button>
+          </div>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="forecastChart"></canvas>
+        </div>
+      </div>
     </div>
 
 
@@ -698,19 +765,19 @@
       document.getElementById('periodCount').value = '12';
       document.getElementById('dateFormat').value = 'EUR';
       document.getElementById('decimalPlaces').value = '0';
-      document.getElementById('forecastPreview').style.display = 'none';
+      document.getElementById('dataPreview').style.display = 'none';
+      document.getElementById('chartContainer').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
       
-      // Destroy chart if it exists
-      if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
-        try {
-          window.forecastChart.destroy();
-        } catch (e) {
-          console.warn('Error destroying existing chart:', e);
-        }
+      // Destroy existing chart if it exists
+      if (window.forecastChart) {
+        window.forecastChart.destroy();
+        window.forecastChart = null;
       }
-      window.forecastChart = null;
+      
+      // Clear stored forecast data
+      window.currentForecastData = null;
     }
 
 
@@ -794,185 +861,55 @@
           const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
           
           if (data.length > 0) {
-            // Show loading state
-            document.getElementById('forecastPreview').style.display = 'block';
-            document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);"><i class="fas fa-spinner fa-spin"></i> Generating forecast preview...</div>';
+            const headers = data[0];
+            const preview = data.slice(1, 6); // Show first 5 rows
             
-            // Process data and create forecast preview
-            createForecastPreview(wb, data);
+            let tableHTML = '<table><thead><tr>';
+            headers.forEach(header => {
+              tableHTML += `<th>${header}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+            
+            preview.forEach(row => {
+              tableHTML += '<tr>';
+              row.forEach((cell, index) => {
+                // Check if this might be a date column (first column or contains date-like headers)
+                const header = headers[index] ? headers[index].toLowerCase() : '';
+                const isDateColumn = header.includes('date') || header.includes('time') || header.includes('period') || index === 0;
+                
+                let displayValue = cell || '';
+                
+                // Try to format as date if it's a number and might be a date column
+                if (isDateColumn && typeof cell === 'number' && cell > 1000) {
+                  try {
+                    // Convert Excel serial number to date
+                    const excelDate = new Date((cell - 25569) * 86400 * 1000);
+                    if (!isNaN(excelDate.getTime())) {
+                      displayValue = excelDate.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short'
+                      });
+                    }
+                  } catch (dateError) {
+                    // If date conversion fails, keep original value
+                    console.log('Date conversion failed for:', cell);
+                  }
+                }
+                
+                tableHTML += `<td>${displayValue}</td>`;
+              });
+              tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            
+            document.getElementById('previewTable').innerHTML = tableHTML;
+            document.getElementById('dataPreview').style.display = 'block';
           }
         } catch (error) {
           console.error('Error previewing data:', error);
         }
       };
       reader.readAsBinaryString(file);
-    }
-
-    async function createForecastPreview(wb, data) {
-      try {
-        console.log('Starting preview generation...');
-        
-        // Convert data to CSV for processing
-        const csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ',', RS: '\n', strip: true });
-        console.log('CSV generated, length:', csv.length);
-        
-        // Get current form values
-        const timeUnit = document.getElementById('timeUnit').value;
-        const periods = document.getElementById('periodCount').value.trim();
-        const dateFormat = document.getElementById('dateFormat').value;
-        const decimalPlaces = document.getElementById('decimalPlaces').value;
-        
-        console.log('Form values:', { timeUnit, periods, dateFormat, decimalPlaces });
-        
-        // Send preview request
-        console.log('Sending preview request...');
-        
-        // Create a timeout promise
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
-        });
-        
-        const fetchPromise = fetch('/api/forecast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            csv, 
-            timeUnit, 
-            periods, 
-            exportFormat: 'csv',
-            dateFormat: dateFormat,
-            decimalPlaces: parseInt(decimalPlaces),
-            preview: true
-          })
-        });
-        
-        const res = await Promise.race([fetchPromise, timeoutPromise]);
-        
-        console.log('Response status:', res.status);
-        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
-        
-        if (!res.ok) {
-          const errorData = await res.json().catch(() => ({}));
-          console.error('Preview request failed:', errorData);
-          throw new Error(errorData.error || 'Preview generation failed');
-        }
-        
-        const previewData = await res.json();
-        console.log('Preview data received:', previewData);
-        
-        // Check if we have valid data
-        if (!previewData.historical || !previewData.forecast || 
-            previewData.historical.length === 0 || previewData.forecast.length === 0) {
-          console.error('No valid preview data:', previewData);
-          throw new Error('No forecast data available for preview');
-        }
-        
-        console.log('Displaying chart...');
-        displayForecastChart(previewData);
-        
-      } catch (error) {
-        console.error('Preview error:', error);
-        document.querySelector('.chart-container').innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
-      }
-    }
-
-    function displayForecastChart(data) {
-      const ctx = document.getElementById('forecastChart');
-      
-      // Ensure the canvas is properly set up
-      if (!ctx) {
-        console.error('Canvas element not found');
-        return;
-      }
-      
-      // Destroy existing chart if it exists
-      if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
-        try {
-          window.forecastChart.destroy();
-        } catch (e) {
-          console.warn('Error destroying existing chart:', e);
-        }
-      }
-      window.forecastChart = null;
-      
-      // Prepare chart data
-      const historicalData = data.historical || [];
-      const forecastData = data.forecast || [];
-      
-      if (historicalData.length === 0 && forecastData.length === 0) {
-        document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);"><i class="fas fa-info-circle"></i> No data available for chart</div>';
-        return;
-      }
-      
-      // Restore the canvas element
-      document.querySelector('.chart-container').innerHTML = '<canvas id="forecastChart"></canvas>';
-      const newCtx = document.getElementById('forecastChart');
-      
-      const labels = [...historicalData.map(d => d.date), ...forecastData.map(d => d.date)];
-      const historicalValues = historicalData.map(d => d.quantity);
-      const forecastValues = forecastData.map(d => d.quantity);
-      
-      // Create chart
-      try {
-        window.forecastChart = new Chart(newCtx, {
-          type: 'line',
-          data: {
-            labels: labels,
-            datasets: [
-              {
-                label: 'Historical Data',
-                data: [...historicalValues, ...Array(forecastValues.length).fill(null)],
-                borderColor: 'rgb(99, 102, 241)',
-                backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.1
-              },
-              {
-                label: 'Forecast',
-                data: [...Array(historicalValues.length).fill(null), ...forecastValues],
-                borderColor: 'rgb(16, 185, 129)',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                borderWidth: 2,
-                fill: false,
-                tension: 0.1,
-                borderDash: [5, 5]
-              }
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: 'top',
-              },
-              title: {
-                display: false
-              }
-            },
-            scales: {
-              y: {
-                beginAtZero: true,
-                title: {
-                  display: true,
-                  text: 'Quantity'
-                }
-              },
-              x: {
-                title: {
-                  display: true,
-                  text: 'Time'
-                }
-              }
-            }
-          }
-        });
-        console.log('Chart created successfully');
-      } catch (e) {
-        console.error('Error creating chart:', e);
-        document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> Error creating chart</div>';
-      }
     }
 
     function readFileAsCSV(file) {
@@ -997,7 +934,6 @@
       const file = document.getElementById('historicalFile').files[0];
       const timeUnit = document.getElementById('timeUnit').value;
       const periods = document.getElementById('periodCount').value.trim();
-      const outputFormat = document.getElementById('outputFormat').value;
       const dateFormat = document.getElementById('dateFormat').value;
       const decimalPlaces = document.getElementById('decimalPlaces').value;
 
@@ -1017,56 +953,185 @@
 
       try {
         const csv = await readFileAsCSV(file);
-        console.log('Sending forecast request...');
-        const res = await fetch('/api/forecast', {
+        console.log('Sending forecast data request...');
+        const res = await fetch('/api/forecast-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             csv, 
             timeUnit, 
             periods, 
-            exportFormat: outputFormat,
             dateFormat: dateFormat,
             decimalPlaces: parseInt(decimalPlaces)
           })
         });
         
         console.log('Response status:', res.status);
-        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
         
         if (!res.ok) {
           const errorData = await res.json();
           throw new Error(errorData.error || "Forecast generation failed");
         }
         
-        // Handle single file response
-        const contentType = res.headers.get('content-type');
-        console.log('Content-Type:', contentType);
-        const blob = await res.blob();
-        console.log('Blob size:', blob.size);
+        const forecastData = await res.json();
+        console.log('Forecast data received:', forecastData);
         
-        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-          // Excel file
-          console.log('Downloading Excel file...');
-          downloadBlob(blob, 'AI_generated_Forecast.xlsx');
-          showSuccess('Excel forecast generated successfully! Check your downloads folder or browser downloads.');
-        } else if (contentType && contentType.includes('text/csv')) {
-          // CSV file
-          console.log('Downloading CSV file...');
-          downloadBlob(blob, 'AI_generated_Forecast.csv');
-          showSuccess('CSV forecast generated successfully! Check your downloads folder or browser downloads.');
-        } else {
-          // Fallback
-          console.log('Downloading fallback file...');
-          downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
-          showSuccess('Forecast generated successfully! Check your downloads folder or browser downloads.');
-        }
+        // Display the chart
+        displayForecastChart(forecastData);
+        
+        // Store the data for download
+        window.currentForecastData = {
+          csv: csv,
+          timeUnit: timeUnit,
+          periods: periods,
+          dateFormat: dateFormat,
+          decimalPlaces: parseInt(decimalPlaces)
+        };
+        
+        showSuccess('Forecast generated successfully! Scroll down to view the chart.');
+        
       } catch (e) {
         console.error('Forecast error:', e);
         showError('Error: ' + e.message);
       } finally {
         generateBtn.disabled = false;
         hideModal();
+      }
+    }
+
+    function displayForecastChart(data) {
+      const chartContainer = document.getElementById('chartContainer');
+      const canvas = document.getElementById('forecastChart');
+      
+      // Show the chart container
+      chartContainer.style.display = 'block';
+      
+      // Scroll to chart
+      chartContainer.scrollIntoView({ behavior: 'smooth' });
+      
+      // Destroy existing chart if it exists
+      if (window.forecastChart) {
+        window.forecastChart.destroy();
+      }
+      
+      // Prepare data for Chart.js
+      const datasets = [];
+      
+      // Add actual data
+      if (data.actuals && data.actuals.length > 0) {
+        const actualData = data.actuals.map(item => ({
+          x: new Date(item.date),
+          y: item.value
+        }));
+        
+        datasets.push({
+          label: 'Actual',
+          data: actualData,
+          borderColor: '#6366f1',
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          borderWidth: 2,
+          fill: false,
+          tension: 0.1
+        });
+      }
+      
+      // Add forecast data
+      if (data.forecasts && data.forecasts.length > 0) {
+        const forecastData = data.forecasts.map(item => ({
+          x: new Date(item.date),
+          y: item.value
+        }));
+        
+        datasets.push({
+          label: 'Forecast',
+          data: forecastData,
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16, 185, 129, 0.1)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          fill: false,
+          tension: 0.1
+        });
+      }
+      
+      // Create the chart
+      const ctx = canvas.getContext('2d');
+      window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          datasets: datasets
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            title: {
+              display: true,
+              text: 'Forecast vs Actual Data',
+              font: {
+                size: 16,
+                weight: 'bold'
+              }
+            },
+            legend: {
+              display: true,
+              position: 'top'
+            }
+          },
+          scales: {
+            x: {
+              type: 'time',
+              time: {
+                unit: 'month',
+                displayFormats: {
+                  month: 'MMM YYYY'
+                }
+              },
+              title: {
+                display: true,
+                text: 'Time'
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Quantity'
+              }
+            }
+          }
+        }
+      });
+    }
+
+    async function downloadForecast(format) {
+      if (!window.currentForecastData) {
+        showError('No forecast data available. Please generate a forecast first.');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/download-forecast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...window.currentForecastData,
+            exportFormat: format
+          })
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Download failed");
+        }
+        
+        const blob = await res.blob();
+        const filename = format === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv';
+        downloadBlob(blob, filename);
+        showSuccess(`${format.toUpperCase()} file downloaded successfully!`);
+        
+      } catch (e) {
+        console.error('Download error:', e);
+        showError('Error: ' + e.message);
       }
     }
 
@@ -1169,28 +1234,6 @@
           input.dispatchEvent(new Event('change'));
         }
       });
-    });
-
-    // Add event listeners for form controls to update preview
-    document.addEventListener('DOMContentLoaded', function() {
-      const timeUnitSelect = document.getElementById('timeUnit');
-      const periodCountInput = document.getElementById('periodCount');
-      const dateFormatSelect = document.getElementById('dateFormat');
-      const decimalPlacesSelect = document.getElementById('decimalPlaces');
-      
-      // Update preview when any setting changes
-      function updatePreviewIfNeeded() {
-        const file = document.getElementById('historicalFile').files[0];
-        if (file && document.getElementById('forecastPreview').style.display !== 'none') {
-          // Re-trigger preview generation
-          previewData(document.getElementById('historicalFile'));
-        }
-      }
-      
-      timeUnitSelect.addEventListener('change', updatePreviewIfNeeded);
-      periodCountInput.addEventListener('change', updatePreviewIfNeeded);
-      dateFormatSelect.addEventListener('change', updatePreviewIfNeeded);
-      decimalPlacesSelect.addEventListener('change', updatePreviewIfNeeded);
     });
   </script>
 </body>
