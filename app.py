@@ -41,7 +41,7 @@ COLUMN_SYNONYMS = {
 app = Flask(__name__, static_folder='.', static_url_path='')
 
 # Configure CORS more securely
-CORS(app, origins=['http://localhost:3000', 'http://localhost:5000'], 
+CORS(app, origins=['*'], 
      methods=['GET', 'POST'], 
      allow_headers=['Content-Type'])
 
@@ -344,35 +344,44 @@ def forecast():
                         excel_data = f.read()
                     os.unlink(tmp_file.name)  # Clean up temp file
                 
-                return send_file(
+                response = send_file(
                     io.BytesIO(excel_data),
                     download_name="AI_generated_Forecast.xlsx",
                     as_attachment=True,
                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
                 )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                return response
             except ImportError:
                 logger.warning("openpyxl not available, falling back to CSV")
                 # Fall back to CSV if openpyxl is not available
                 output = io.StringIO()
                 result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
                 output.seek(0)
-                return send_file(
+                response = send_file(
                     io.BytesIO(output.read().encode()),
                     download_name="AI_generated_Forecast.csv",
                     as_attachment=True,
                     mimetype='text/csv'
                 )
+                response.headers['Access-Control-Allow-Origin'] = '*'
+                response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+                return response
         else:  # Default to CSV
             # Export to CSV
             output = io.StringIO()
             result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
             output.seek(0)
-            return send_file(
+            response = send_file(
                 io.BytesIO(output.read().encode()),
                 download_name="AI_generated_Forecast.csv",
                 as_attachment=True,
                 mimetype='text/csv'
             )
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+            return response
     except Exception as e:
         logger.error(f"Forecast error: {e}")
         return jsonify({'error': 'Internal server error'}), 500

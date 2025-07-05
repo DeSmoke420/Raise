@@ -854,18 +854,40 @@
       console.log('Blob type:', blob.type);
       console.log('Blob size:', blob.size);
       
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.style.display = 'none';
-      
-      document.body.appendChild(a);
-      console.log('Triggering download...');
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      console.log('Download triggered for:', filename);
+      try {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.style.display = 'none';
+        a.target = '_blank';
+        
+        document.body.appendChild(a);
+        console.log('Triggering download...');
+        
+        // Try multiple approaches to trigger download
+        a.click();
+        
+        // Fallback: try with a small delay
+        setTimeout(() => {
+          if (document.body.contains(a)) {
+            a.click();
+            document.body.removeChild(a);
+          }
+        }, 100);
+        
+        // Cleanup
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 1000);
+        
+        console.log('Download triggered for:', filename);
+      } catch (error) {
+        console.error('Download error:', error);
+        // Fallback: open in new window
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }
     }
 
     function downloadXLSX(csvText, filename) {
