@@ -412,7 +412,9 @@ def forecast():
 app.debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
 if __name__ == '__main__':
-    # Use environment variable for debug mode
-    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
-    logger.info("Starting Flask application...")
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000)
+    # Only run Flask development server if explicitly requested
+    if os.environ.get('FLASK_DEBUG', 'False').lower() == 'true':
+        logger.info("Starting Flask development server...")
+        app.run(debug=True, host='0.0.0.0', port=5000)
+    else:
+        logger.info("Flask app configured for production (gunicorn)")
