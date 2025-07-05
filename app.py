@@ -214,6 +214,7 @@ def forecast():
         csv_text = data.get('csv', '')
         time_unit = data.get('timeUnit', 'monthly')
         period_count = int(data.get('periods', 1))
+        export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         # Parse CSV safely
         df = parse_csv_safely(csv_text)
         if df is None:
@@ -280,42 +281,33 @@ def forecast():
                 forecasts.append([date_str, item_id, val, model_name])
         if not forecasts:
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
-        # Create output CSV
-        output = io.StringIO()
-        result_df = pd.DataFrame(forecasts, columns=("Date", "Item ID", "Forecast Quantity", "Model"))
-        result_df.to_csv(
-            output,
-            index=False,
-            float_format="%.2f",
-            quoting=csv.QUOTE_MINIMAL
-        )
-        output.seek(0)
-        # Attach diagnostics as a log file
-        log_output = io.StringIO()
-        for line in diagnostics_log:
-            log_output.write(line + '\n')
-        log_output.seek(0)
-        # Return as a zip file if diagnostics exist
-        import zipfile
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            csv_path = os.path.join(tmpdir, 'AI_generated_Forecast.csv')
-            log_path = os.path.join(tmpdir, 'diagnostics.txt')
-            with open(csv_path, 'w', encoding='utf-8') as f:
-                f.write(output.getvalue())
-            with open(log_path, 'w', encoding='utf-8') as f:
-                f.write(log_output.getvalue())
-            zip_path = os.path.join(tmpdir, 'forecast_results.zip')
-            with zipfile.ZipFile(zip_path, 'w') as zf:
-                zf.write(csv_path, arcname='AI_generated_Forecast.csv')
-                zf.write(log_path, arcname='diagnostics.txt')
-            with open(zip_path, 'rb') as f:
-                return send_file(
-                    io.BytesIO(f.read()),
-                    download_name="forecast_results.zip",
-                    as_attachment=True,
-                    mimetype='application/zip'
-                )
+        
+        # Create result dataframe
+        result_df = pd.DataFrame(forecasts, columns=["Date", "Item ID", "Forecast Quantity", "Model"])
+        
+        # Return single file based on export format
+        if export_format == 'xlsx':
+            # Export to Excel
+            output = io.BytesIO()
+            result_df.to_excel(output, index=False, float_format="%.2f", engine='openpyxl')
+            output.seek(0)
+            return send_file(
+                output,
+                download_name="AI_generated_Forecast.xlsx",
+                as_attachment=True,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:  # Default to CSV
+            # Export to CSV
+            output = io.StringIO()
+            result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
+            output.seek(0)
+            return send_file(
+                io.BytesIO(output.read().encode()),
+                download_name="AI_generated_Forecast.csv",
+                as_attachment=True,
+                mimetype='text/csv'
+            )
     except Exception as e:
         logger.error(f"Forecast error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
@@ -328,6 +320,7 @@ def accuracy():
             return jsonify({'error': 'No data provided'}), 400
         actual_csv = data.get('actuals', '')
         forecast_csv = data.get('forecast', '')
+        export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         if not actual_csv or not forecast_csv:
             return jsonify({'error': 'Both actuals and forecast data are required'}), 400
         # Parse CSVs safely
@@ -354,19 +347,34 @@ def accuracy():
             lambda row: calculate_accuracy_safely(row[qty_col], row[forecast_qty_col]), 
             axis=1
         )
-        # Create output CSV
-        output = io.StringIO()
-        merged[[date_col, item_col, 'accuracy']].to_csv(output, index=False)
-        output.seek(0)
-        return send_file(
-            io.BytesIO(output.read().encode()),
-            download_name="Forecast_Accuracy.csv",
-            as_attachment=True,
-            mimetype='text/csv'
-        )
+        
+        # Create output based on format
+        if export_format == 'xlsx':
+            output = io.BytesIO()
+            merged[[date_col, item_col, 'accuracy']].to_excel(output, index=False, engine='openpyxl')
+            output.seek(0)
+            return send_file(
+                output,
+                download_name="Forecast_Accuracy.xlsx",
+                as_attachment=True,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:  # Default to CSV
+            output = io.StringIO()
+            merged[[date_col, item_col, 'accuracy']].to_csv(output, index=False)
+            output.seek(0)
+            return send_file(
+                io.BytesIO(output.read().encode()),
+                download_name="Forecast_Accuracy.csv",
+                as_attachment=True,
+                mimetype='text/csv'
+            )
     except Exception as e:
         logger.error(f"Accuracy calculation error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
+
+# For Vercel deployment
+app.debug = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
 
 if __name__ == '__main__':
     # Use environment variable for debug mode
