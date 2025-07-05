@@ -468,12 +468,26 @@ def forecast():
             for i in range(1, period_count + 1):
                 try:
                     if time_unit == 'monthly':
-                        next_date = (last_date + pd.DateOffset(months=i)).strftime('%Y-%m')  # type: ignore
+                        next_date = (last_date + pd.DateOffset(months=i))  # type: ignore
+                        # Format according to user preference
+                        if date_format == 'EUR':
+                            # EUR format: DD/MM/YYYY (use 1st of month)
+                            future_dates.append(next_date.strftime('01/%m/%Y'))  # type: ignore
+                        else:
+                            # US format: MM/DD/YYYY (use 1st of month)
+                            future_dates.append(next_date.strftime('%m/01/%Y'))  # type: ignore
                     elif time_unit == 'weekly':
-                        next_date = (last_date + timedelta(weeks=i)).strftime('%Y-%m-%d')  # type: ignore
+                        next_date = (last_date + timedelta(weeks=i))  # type: ignore
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('%d/%m/%Y'))  # type: ignore
+                        else:
+                            future_dates.append(next_date.strftime('%m/%d/%Y'))  # type: ignore
                     else:  # daily
-                        next_date = (last_date + timedelta(days=i)).strftime('%Y-%m-%d')  # type: ignore
-                    future_dates.append(next_date)
+                        next_date = (last_date + timedelta(days=i))  # type: ignore
+                        if date_format == 'EUR':
+                            future_dates.append(next_date.strftime('%d/%m/%Y'))  # type: ignore
+                        else:
+                            future_dates.append(next_date.strftime('%m/%d/%Y'))  # type: ignore
                 except (TypeError, AttributeError):
                     # Skip if date arithmetic fails
                     continue
