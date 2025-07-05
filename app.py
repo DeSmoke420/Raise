@@ -271,9 +271,36 @@ def forecast():
             logger.error(f"Missing columns: {missing}")
             return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
         
-        # Process data
-        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+        # Process data with robust date parsing
+        logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
+        logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
+        
+        # Try different date parsing strategies
+        date_parsed = False
+        date_formats = [
+            '%Y-%m-%d', '%Y/%m/%d', '%d/%m/%Y', '%m/%d/%Y',  # Common formats
+            '%Y-%m', '%Y/%m', '%m/%Y', '%Y-%m-%d %H:%M:%S'   # Additional formats
+        ]
+        
+        for fmt in date_formats:
+            try:
+                df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
+                if not df[date_col].isna().all().item():  # If we got some valid dates
+                    logger.info(f"Successfully parsed dates with format: {fmt}")
+                    date_parsed = True
+                    break
+            except Exception:
+                continue
+        
+        # If no specific format worked, try pandas default parsing
+        if not date_parsed:
+            logger.info("Trying pandas default date parsing")
+            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+        
         df = df.dropna(subset=[date_col, qty_col, item_col])
+        logger.info(f"Valid rows after date parsing: {len(df)}")
+        logger.info(f"Sample parsed dates: {df[date_col].head(3).tolist()}")
+        
         try:
             df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
         except Exception:
