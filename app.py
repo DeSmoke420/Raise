@@ -134,7 +134,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             # Use simple moving average as fallback
             window_size = min(3, len(ts) // 2)
             ma_series = ts.rolling(window=window_size).mean()
-            ma_value = ma_series.iloc[-1]
+            # Get the last valid value
+            ma_value = ma_series.dropna().iloc[-1] if not ma_series.dropna().empty else ts.iloc[-1]
             ma_forecast = [ma_value] * period_count
             diagnostics.append(f"Simple MA: window={window_size}")
             if best_forecast is None:
@@ -426,7 +427,11 @@ def forecast():
         logger.info(f"Starting forecast generation for {len(df[item_col].unique())} unique items")
         
         for item_id, group in df.groupby(item_col):
+            # Aggregate by period to ensure consistent monthly data
             ts = group.groupby('period')[qty_col].sum().sort_index()
+            
+            logger.info(f"Item {item_id}: {len(ts)} monthly periods, range: {ts.index.min()} to {ts.index.max()}")
+            logger.info(f"Item {item_id}: Sample monthly totals: {ts.head(3).tolist()}")
             
             # Ensure ts is a Series for type checking
             if not isinstance(ts, pd.Series):
