@@ -335,20 +335,33 @@ def forecast():
         
         # Return single file based on export format
         if export_format == 'xlsx':
-            # Export to Excel using temporary file
-            import tempfile
-            with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
-                result_df.to_excel(tmp_file.name, index=False, float_format="%.2f", engine='openpyxl')
-                with open(tmp_file.name, 'rb') as f:
-                    excel_data = f.read()
-                os.unlink(tmp_file.name)  # Clean up temp file
-            
-            return send_file(
-                io.BytesIO(excel_data),
-                download_name="AI_generated_Forecast.xlsx",
-                as_attachment=True,
-                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
+            try:
+                # Export to Excel using temporary file
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+                    result_df.to_excel(tmp_file.name, index=False, float_format="%.2f", engine='openpyxl')
+                    with open(tmp_file.name, 'rb') as f:
+                        excel_data = f.read()
+                    os.unlink(tmp_file.name)  # Clean up temp file
+                
+                return send_file(
+                    io.BytesIO(excel_data),
+                    download_name="AI_generated_Forecast.xlsx",
+                    as_attachment=True,
+                    mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                )
+            except ImportError:
+                logger.warning("openpyxl not available, falling back to CSV")
+                # Fall back to CSV if openpyxl is not available
+                output = io.StringIO()
+                result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
+                output.seek(0)
+                return send_file(
+                    io.BytesIO(output.read().encode()),
+                    download_name="AI_generated_Forecast.csv",
+                    as_attachment=True,
+                    mimetype='text/csv'
+                )
         else:  # Default to CSV
             # Export to CSV
             output = io.StringIO()
