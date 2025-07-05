@@ -954,6 +954,14 @@
       try {
         const csv = await readFileAsCSV(file);
         console.log('Sending forecast data request...');
+        console.log('Request data:', { 
+          timeUnit, 
+          periods, 
+          dateFormat, 
+          decimalPlaces,
+          csvLength: csv.length 
+        });
+        
         const res = await fetch('/api/forecast-data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -967,14 +975,26 @@
         });
         
         console.log('Response status:', res.status);
+        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
         
         if (!res.ok) {
           const errorData = await res.json();
+          console.error('API Error:', errorData);
           throw new Error(errorData.error || "Forecast generation failed");
         }
         
         const forecastData = await res.json();
         console.log('Forecast data received:', forecastData);
+        console.log('Actuals count:', forecastData.actuals ? forecastData.actuals.length : 0);
+        console.log('Forecasts count:', forecastData.forecasts ? forecastData.forecasts.length : 0);
+        
+        // Check if we have valid data
+        if (!forecastData.actuals || forecastData.actuals.length === 0) {
+          console.warn('No actual data received');
+        }
+        if (!forecastData.forecasts || forecastData.forecasts.length === 0) {
+          console.warn('No forecast data received');
+        }
         
         // Display the chart
         displayForecastChart(forecastData);
@@ -988,6 +1008,8 @@
           decimalPlaces: parseInt(decimalPlaces)
         };
         
+        console.log('Stored forecast data for download:', window.currentForecastData);
+        
         showSuccess('Forecast generated successfully! Scroll down to view the chart.');
         
       } catch (e) {
@@ -1000,6 +1022,8 @@
     }
 
     function displayForecastChart(data) {
+      console.log('Displaying chart with data:', data);
+      
       const chartContainer = document.getElementById('chartContainer');
       const canvas = document.getElementById('forecastChart');
       
@@ -1019,10 +1043,12 @@
       
       // Add actual data
       if (data.actuals && data.actuals.length > 0) {
+        console.log('Processing actuals:', data.actuals);
         const actualData = data.actuals.map(item => ({
           x: new Date(item.date),
           y: item.value
         }));
+        console.log('Processed actual data:', actualData);
         
         datasets.push({
           label: 'Actual',
@@ -1033,14 +1059,18 @@
           fill: false,
           tension: 0.1
         });
+      } else {
+        console.warn('No actual data to display');
       }
       
       // Add forecast data
       if (data.forecasts && data.forecasts.length > 0) {
+        console.log('Processing forecasts:', data.forecasts);
         const forecastData = data.forecasts.map(item => ({
           x: new Date(item.date),
           y: item.value
         }));
+        console.log('Processed forecast data:', forecastData);
         
         datasets.push({
           label: 'Forecast',
@@ -1052,7 +1082,11 @@
           fill: false,
           tension: 0.1
         });
+      } else {
+        console.warn('No forecast data to display');
       }
+      
+      console.log('Final datasets for chart:', datasets);
       
       // Create the chart
       const ctx = canvas.getContext('2d');
@@ -1101,6 +1135,8 @@
           }
         }
       });
+      
+      console.log('Chart created successfully');
     }
 
     async function downloadForecast(format) {

@@ -389,19 +389,29 @@ def forecast_data():
             'items': []
         }
         
+        logger.info(f"Processing {len(df[item_col].unique())} unique items")
+        
         for item_id, group in df.groupby(item_col):
+            logger.info(f"Processing item: {item_id}")
             ts = group.groupby('period')[qty_col].sum().sort_index()
             
             if not isinstance(ts, pd.Series):
+                logger.warning(f"Item {item_id}: Not a pandas Series, skipping")
                 continue
+            
+            logger.info(f"Item {item_id}: Time series length: {len(ts)}")
             
             val_result = validate_time_series_data(ts, time_unit)
             if not val_result['sufficient']:
+                logger.warning(f"Item {item_id}: Insufficient data - {val_result['warnings']}")
                 continue
             
             forecast_values, model_name, _ = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
             if forecast_values is None:
+                logger.warning(f"Item {item_id}: No forecast values generated")
                 continue
+            
+            logger.info(f"Item {item_id}: Generated {len(forecast_values)} forecast values using {model_name}")
             
             # Generate future dates
             last_date = ts.index.max()
@@ -409,9 +419,11 @@ def forecast_data():
                 if hasattr(last_date, 'item'):
                     last_date = last_date.item()
                 if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
+                    logger.warning(f"Item {item_id}: Invalid last date")
                     continue
                 last_date = pd.Timestamp(last_date)
             except (ValueError, TypeError, AttributeError):
+                logger.warning(f"Item {item_id}: Error processing last date")
                 continue
             
             future_dates = []
@@ -419,24 +431,19 @@ def forecast_data():
                 try:
                     if time_unit == 'monthly':
                         next_date = (last_date + pd.DateOffset(months=i))
-                        if date_format == 'EUR':
-                            future_dates.append(next_date.strftime('01/%m/%Y'))
-                        else:
-                            future_dates.append(next_date.strftime('%m/01/%Y'))
+                        # Always return in YYYY-MM-DD format for JavaScript compatibility
+                        future_dates.append(next_date.strftime('%Y-%m-%d'))
                     elif time_unit == 'weekly':
                         next_date = (last_date + timedelta(weeks=i))
-                        if date_format == 'EUR':
-                            future_dates.append(next_date.strftime('%d/%m/%Y'))
-                        else:
-                            future_dates.append(next_date.strftime('%m/%d/%Y'))
+                        future_dates.append(next_date.strftime('%Y-%m-%d'))
                     else:  # daily
                         next_date = (last_date + timedelta(days=i))
-                        if date_format == 'EUR':
-                            future_dates.append(next_date.strftime('%d/%m/%Y'))
-                        else:
-                            future_dates.append(next_date.strftime('%m/%d/%Y'))
+                        future_dates.append(next_date.strftime('%Y-%m-%d'))
                 except (TypeError, AttributeError):
+                    logger.warning(f"Item {item_id}: Error generating future date for period {i}")
                     continue
+            
+            logger.info(f"Item {item_id}: Generated {len(future_dates)} future dates")
             
             # Add actual data
             for date, value in ts.items():
@@ -457,7 +464,10 @@ def forecast_data():
             
             chart_data['items'].append(str(item_id))
         
+        logger.info(f"Final chart data: {len(chart_data['actuals'])} actuals, {len(chart_data['forecasts'])} forecasts")
+        
         if not chart_data['actuals'] and not chart_data['forecasts']:
+            logger.error("No forecast data could be generated")
             return jsonify({'error': 'No forecast data could be generated'}), 400
         
         return jsonify(chart_data)
