@@ -275,22 +275,82 @@ def forecast():
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # Try different date parsing strategies
+        # Smart date format detection
         date_parsed = False
-        date_formats = [
-            '%Y-%m-%d', '%Y/%m/%d', '%d/%m/%Y', '%m/%d/%Y',  # Common formats
-            '%Y-%m', '%Y/%m', '%m/%Y', '%Y-%m-%d %H:%M:%S'   # Additional formats
-        ]
+        sample_dates = df[date_col].head(10).astype(str).tolist()
+        logger.info(f"Sample dates for format detection: {sample_dates}")
         
-        for fmt in date_formats:
+        # Analyze date patterns to determine format
+        def detect_date_format(dates):
+            if not dates:
+                return None
+            
+            # Check for unambiguous formats first
+            for date_str in dates:
+                if '-' in date_str and len(date_str.split('-')[0]) == 4:
+                    return '%Y-%m-%d'  # YYYY-MM-DD
+                if '-' in date_str and len(date_str.split('-')[0]) == 2:
+                    return '%m-%d-%Y'  # MM-DD-YYYY
+            
+            # Check for slash formats
+            for date_str in dates:
+                if '/' in date_str:
+                    parts = date_str.split('/')
+                    if len(parts) == 2:  # MM/YYYY or YYYY/MM
+                        if len(parts[0]) == 4:
+                            return '%Y/%m'  # YYYY/MM
+                        else:
+                            return '%m/%Y'  # MM/YYYY
+                    elif len(parts) == 3:  # DD/MM/YYYY or MM/DD/YYYY
+                        if len(parts[0]) == 4:  # YYYY/MM/DD
+                            return '%Y/%m/%d'
+                        elif int(parts[0]) > 12:  # DD/MM/YYYY (day > 12)
+                            return '%d/%m/%Y'
+                        elif int(parts[1]) > 12:  # MM/DD/YYYY (month > 12)
+                            return '%m/%d/%Y'
+                        else:
+                            # Ambiguous case - try to determine from context
+                            # If we have multiple dates, check if any are clearly DD/MM
+                            for other_date in dates:
+                                if '/' in other_date:
+                                    other_parts = other_date.split('/')
+                                    if len(other_parts) == 3:
+                                        if int(other_parts[0]) > 12:
+                                            return '%d/%m/%Y'
+                                        elif int(other_parts[1]) > 12:
+                                            return '%m/%d/%Y'
+                            # Default to MM/DD/YYYY for ambiguous cases
+                            return '%m/%d/%Y'
+            return None
+        
+        # Try detected format first
+        detected_format = detect_date_format(sample_dates)
+        if detected_format:
+            logger.info(f"Detected date format: {detected_format}")
             try:
-                df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
-                if not df[date_col].isna().all().item():  # If we got some valid dates
-                    logger.info(f"Successfully parsed dates with format: {fmt}")
+                df[date_col] = pd.to_datetime(df[date_col], format=detected_format, errors='coerce')
+                if not df[date_col].isna().all():
+                    logger.info(f"Successfully parsed dates with detected format: {detected_format}")
                     date_parsed = True
-                    break
-            except Exception:
-                continue
+            except Exception as e:
+                logger.warning(f"Detected format failed: {e}")
+        
+        # Fallback to trying common formats
+        if not date_parsed:
+            date_formats = [
+                '%Y-%m-%d', '%Y/%m/%d', '%d/%m/%Y', '%m/%d/%Y',  # Common formats
+                '%Y-%m', '%Y/%m', '%m/%Y', '%Y-%m-%d %H:%M:%S'   # Additional formats
+            ]
+            
+            for fmt in date_formats:
+                try:
+                    df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
+                    if not df[date_col].isna().all():
+                        logger.info(f"Successfully parsed dates with format: {fmt}")
+                        date_parsed = True
+                        break
+                except Exception:
+                    continue
         
         # If no specific format worked, try pandas default parsing
         if not date_parsed:
