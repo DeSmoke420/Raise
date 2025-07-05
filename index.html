@@ -376,6 +376,13 @@
       overflow-y: auto;
     }
 
+    .modal-buttons {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .container {
@@ -616,9 +623,15 @@
   <!-- Modal -->
   <div class="modal" id="modal">
     <div class="modal-content">
-      <div class="spinner"></div>
+      <div class="spinner" id="modalSpinner"></div>
       <p class="modal-text" id="modalText">Processing your request<span id="dots">.</span></p>
       <div class="modal-details" id="modalDetails" style="display: none;"></div>
+      <div class="modal-buttons" id="modalButtons" style="display: none;">
+        <button class="btn btn-back" onclick="hideModal()">
+          <i class="fas fa-arrow-left"></i>
+          Back
+        </button>
+      </div>
     </div>
   </div>
 
@@ -660,21 +673,34 @@
       label.innerHTML = `<i class="fas fa-file-upload"></i><span>${defaultText}</span>`;
     }
 
-    function showModal(msg, details = null) {
+    function showModal(msg, details = null, showButtons = false) {
       document.getElementById('modalText').textContent = msg;
       const detailsDiv = document.getElementById('modalDetails');
+      const buttonsDiv = document.getElementById('modalButtons');
+      const spinner = document.getElementById('modalSpinner');
+      
       if (details) {
         detailsDiv.innerHTML = details;
         detailsDiv.style.display = 'block';
       } else {
         detailsDiv.style.display = 'none';
       }
+      
+      if (showButtons) {
+        buttonsDiv.style.display = 'flex';
+        spinner.style.display = 'none';
+        clearInterval(dotInterval);
+      } else {
+        buttonsDiv.style.display = 'none';
+        spinner.style.display = 'block';
+        let count = 1;
+        dotInterval = setInterval(() => {
+          dots.textContent = '.'.repeat(count);
+          count = count === 3 ? 1 : count + 1;
+        }, 500);
+      }
+      
       modal.style.display = 'flex';
-      let count = 1;
-      dotInterval = setInterval(() => {
-        dots.textContent = '.'.repeat(count);
-        count = count === 3 ? 1 : count + 1;
-      }, 500);
     }
 
     function hideModal() {
@@ -859,7 +885,7 @@
 
 
     function showError(message) {
-      showModal('Error', `<div style="color: var(--error-color); font-weight: 600;">${message}</div>`);
+      showModal('Error', `<div style="color: var(--error-color); font-weight: 600;">${message}</div>`, true);
     }
 
     function showSuccess(message) {
