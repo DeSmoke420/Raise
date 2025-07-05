@@ -239,7 +239,7 @@
 
     .grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
       gap: 1rem;
     }
 
@@ -584,6 +584,33 @@
             <input type="number" id="periodCount" min="1" max="120" placeholder="e.g. 12" value="12">
           </div>
         </div>
+        
+        <div class="field">
+          <label for="dateFormat">
+            <i class="fas fa-globe"></i> Date Format
+          </label>
+          <div class="input-group">
+            <i class="fas fa-calendar-alt"></i>
+            <select id="dateFormat">
+              <option value="EUR">EUR (DD/MM/YYYY)</option>
+              <option value="US">US (MM/DD/YYYY)</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="field">
+          <label for="decimalPlaces">
+            <i class="fas fa-calculator"></i> Decimal Places
+          </label>
+          <div class="input-group">
+            <i class="fas fa-hashtag"></i>
+            <select id="decimalPlaces">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
+          </div>
+        </div>
       </div>
       
       <div class="field">
@@ -659,6 +686,8 @@
     function resetForecastForm() {
       document.getElementById('historicalFile').value = '';
       document.getElementById('periodCount').value = '12';
+      document.getElementById('dateFormat').value = 'EUR';
+      document.getElementById('decimalPlaces').value = '0';
       document.getElementById('dataPreview').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
@@ -701,11 +730,11 @@
         buttonsDiv.style.display = 'none';
         progressContainer.style.display = 'none';
         spinner.style.display = 'block';
-        let count = 1;
-        dotInterval = setInterval(() => {
-          dots.textContent = '.'.repeat(count);
-          count = count === 3 ? 1 : count + 1;
-        }, 500);
+      let count = 1;
+      dotInterval = setInterval(() => {
+        dots.textContent = '.'.repeat(count);
+        count = count === 3 ? 1 : count + 1;
+      }, 500);
       }
       
       modal.style.display = 'flex';
@@ -819,6 +848,8 @@
       const timeUnit = document.getElementById('timeUnit').value;
       const periods = document.getElementById('periodCount').value.trim();
       const outputFormat = document.getElementById('outputFormat').value;
+      const dateFormat = document.getElementById('dateFormat').value;
+      const decimalPlaces = document.getElementById('decimalPlaces').value;
 
       if (!file) {
         showError('Please upload a historical data file');
@@ -840,7 +871,14 @@
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ csv, timeUnit, periods, exportFormat: outputFormat })
+          body: JSON.stringify({ 
+            csv, 
+            timeUnit, 
+            periods, 
+            exportFormat: outputFormat,
+            dateFormat: dateFormat,
+            decimalPlaces: parseInt(decimalPlaces)
+          })
         });
         
         console.log('Response status:', res.status);

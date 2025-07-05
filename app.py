@@ -299,8 +299,10 @@ def forecast():
         time_unit = data.get('timeUnit', 'monthly')
         period_count = int(data.get('periods', 1))
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
+        date_format = data.get('dateFormat', 'EUR')  # Default to EUR
+        decimal_places = int(data.get('decimalPlaces', 0))  # Default to 0
         
-        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}")
+        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}")
         logger.info(f"CSV data length: {len(csv_text)} characters")
         
         # Parse CSV safely
@@ -325,56 +327,9 @@ def forecast():
         # Simple and reliable date parsing
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # Check if dates look like DD/MM/YYYY format
-        sample_dates = df[date_col].head(10).astype(str).tolist()
-        logger.info(f"Analyzing date patterns in: {sample_dates}")
-        dd_mm_yyyy_pattern = False
-        
-        # Enhanced DD/MM/YYYY detection with pattern analysis
-        dd_mm_yyyy_pattern = False
-        day_values = []
-        month_values = []
-        
-        # First pass: collect all day and month values
-        for date_str in sample_dates:
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) == 3:
-                    try:
-                        day = int(parts[0])
-                        month = int(parts[1])
-                        year = int(parts[2])
-                        day_values.append(day)
-                        month_values.append(month)
-                    except ValueError:
-                        continue
-        
-        if day_values and month_values:
-            # Analyze patterns to determine format
-            unique_days = set(day_values)
-            unique_months = set(month_values)
-            
-            logger.info(f"Date pattern analysis: unique_days={unique_days}, unique_months={unique_months}")
-            
-            # Clear DD/MM indicators:
-            # 1. Any day > 12 (obvious DD/MM)
-            # 2. Any month > 12 (obvious DD/MM)
-            # 3. Day always 1 AND months vary from 1-12 (EUR format with day=1)
-            # 4. Days vary 1-12 AND month always 1 (unlikely but possible DD/MM)
-            
-            has_day_over_12 = any(d > 12 for d in unique_days)
-            has_month_over_12 = any(m > 12 for m in unique_months)
-            day_always_one = unique_days == {1}
-            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
-            
-            if has_day_over_12 or has_month_over_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: obvious indicator (day>12 or month>12)")
-            elif day_always_one and month_varies_1_to_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: day always 1, months vary 1-12 (EUR format)")
-            else:
-                logger.info(f"Assuming MM/DD format: day_always_one={day_always_one}, month_varies_1_to_12={month_varies_1_to_12}")
+        # Use user's date format preference
+        logger.info(f"Using user-specified date format: {date_format}")
+        dd_mm_yyyy_pattern = (date_format == 'EUR')
         
         # Try pandas default parsing first (works for most cases)
         try:
@@ -525,7 +480,7 @@ def forecast():
             
             # Add forecasts to results
             for date_str, val in zip(future_dates, forecast_values):
-                val = round(float(val), 2)
+                val = round(float(val), decimal_places)
                 forecasts.append([date_str, item_id, val, model_name])
         
         if not forecasts:
@@ -543,7 +498,7 @@ def forecast():
                 # Export to Excel using BytesIO
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    result_df.to_excel(writer, index=False, float_format="%.2f")
+                    result_df.to_excel(writer, index=False, float_format=f"%.{decimal_places}f")
                 output.seek(0)
                 
                 response = send_file(
@@ -559,7 +514,7 @@ def forecast():
                 logger.warning("openpyxl not available, falling back to CSV")
                 # Fall back to CSV if openpyxl is not available
                 output = io.StringIO()
-                result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
+                result_df.to_csv(output, index=False, float_format=f"%.{decimal_places}f", quoting=csv.QUOTE_MINIMAL)
                 output.seek(0)
                 response = send_file(
                     io.BytesIO(output.read().encode()),
@@ -573,7 +528,7 @@ def forecast():
         else:  # Default to CSV
             # Export to CSV
             output = io.StringIO()
-            result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
+            result_df.to_csv(output, index=False, float_format=f"%.{decimal_places}f", quoting=csv.QUOTE_MINIMAL)
             output.seek(0)
             response = send_file(
                 io.BytesIO(output.read().encode()),
