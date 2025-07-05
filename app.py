@@ -128,9 +128,31 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     best_forecast = None
     best_name = None
     
-    # Holt-Winters
+    # Simple Moving Average (fallback for small datasets)
     try:
-        model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+        if len(ts) >= 3:
+            # Use simple moving average as fallback
+            window_size = min(3, len(ts) // 2)
+            ma_value = ts.rolling(window=window_size).mean().iloc[-1]
+            ma_forecast = [ma_value] * period_count
+            diagnostics.append(f"Simple MA: window={window_size}")
+            if best_forecast is None:
+                best_forecast = ma_forecast
+                best_name = "Simple Moving Average"
+    except Exception as e:
+        diagnostics.append(f"Simple MA failed: {e}")
+    
+    # Holt-Winters (try without seasonality for small datasets)
+    try:
+        if len(ts) >= seasonal_periods * 2:
+            # Full seasonal model
+            model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+        elif len(ts) >= 4:
+            # Non-seasonal model for small datasets
+            model = ExponentialSmoothing(ts, trend='add', seasonal=None)
+        else:
+            raise ValueError("Insufficient data for Holt-Winters")
+            
         fit = model.fit()
         forecast_values = fit.forecast(period_count)
         diagnostics.append(f"Holt-Winters: AIC={fit.aic:.2f}")
@@ -141,17 +163,25 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     except Exception as e:
         diagnostics.append(f"Holt-Winters failed: {e}")
     
-    # Prophet
+    # Prophet (try with different frequency settings)
     try:
         model = Prophet()
         df_prophet = ts.reset_index()
         df_prophet.columns = ['ds', 'y']
         model.fit(df_prophet)
-        freq_map = {'monthly': 'ME', 'weekly': 'W', 'daily': 'D'}
-        freq = freq_map.get(time_unit, 'ME')
+        
+        # Use appropriate frequency based on time unit
+        if time_unit == 'monthly':
+            freq = 'M'  # Monthly frequency
+        elif time_unit == 'weekly':
+            freq = 'W'
+        else:  # daily
+            freq = 'D'
+            
         future = model.make_future_dataframe(periods=period_count, freq=freq)
         forecast_df = model.predict(future)
         forecast_values = forecast_df.tail(period_count)['yhat'].values
+        
         # Prophet doesn't have AIC, so use MSE as a proxy
         y_true = df_prophet['y']
         y_pred = model.predict(df_prophet)['yhat']
@@ -164,10 +194,18 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     except Exception as e:
         diagnostics.append(f"Prophet failed: {e}")
     
-    # ARIMA
+    # ARIMA (try non-seasonal for small datasets)
     if pm is not None:
         try:
-            model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True)
+            if len(ts) >= seasonal_periods * 2:
+                # Seasonal ARIMA
+                model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True)
+            elif len(ts) >= 4:
+                # Non-seasonal ARIMA for small datasets
+                model = pm.auto_arima(ts, seasonal=False, suppress_warnings=True)
+            else:
+                raise ValueError("Insufficient data for ARIMA")
+                
             forecast_values = model.predict(n_periods=period_count)
             diagnostics.append(f"ARIMA: AIC={model.aic():.2f}")
             if model.aic() < best_aic:
@@ -176,6 +214,13 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                 best_name = "ARIMA"
         except Exception as e:
             diagnostics.append(f"ARIMA failed: {e}")
+    
+    # Last resort: use the last value repeated
+    if best_forecast is None and len(ts) > 0:
+        last_value = ts.iloc[-1]
+        best_forecast = [last_value] * period_count
+        best_name = "Last Value"
+        diagnostics.append("Using last value as fallback")
     
     if best_forecast is not None:
         return best_forecast, best_name or '', ' | '.join(diagnostics)
