@@ -329,7 +329,7 @@ def forecast():
             logger.info(f"Detected date format: {detected_format}")
             try:
                 df[date_col] = pd.to_datetime(df[date_col], format=detected_format, errors='coerce')
-                if not df[date_col].isna().all():
+                if not df[date_col].isna().all().item():
                     logger.info(f"Successfully parsed dates with detected format: {detected_format}")
                     date_parsed = True
             except Exception as e:
@@ -345,7 +345,7 @@ def forecast():
             for fmt in date_formats:
                 try:
                     df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
-                    if not df[date_col].isna().all():
+                    if not df[date_col].isna().all().item():
                         logger.info(f"Successfully parsed dates with format: {fmt}")
                         date_parsed = True
                         break
