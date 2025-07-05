@@ -391,78 +391,75 @@ def forecast_data():
         
         logger.info(f"Processing {len(df[item_col].unique())} unique items")
         
-        for item_id, group in df.groupby(item_col):
-            logger.info(f"Processing item: {item_id}")
-            ts = group.groupby('period')[qty_col].sum().sort_index()
-            
-            if not isinstance(ts, pd.Series):
-                logger.warning(f"Item {item_id}: Not a pandas Series, skipping")
-                continue
-            
-            logger.info(f"Item {item_id}: Time series length: {len(ts)}")
-            
-            val_result = validate_time_series_data(ts, time_unit)
-            if not val_result['sufficient']:
-                logger.warning(f"Item {item_id}: Insufficient data - {val_result['warnings']}")
-                continue
-            
-            forecast_values, model_name, _ = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
-            if forecast_values is None:
-                logger.warning(f"Item {item_id}: No forecast values generated")
-                continue
-            
-            logger.info(f"Item {item_id}: Generated {len(forecast_values)} forecast values using {model_name}")
-            
-            # Generate future dates
-            last_date = ts.index.max()
+        # First, aggregate all data by period (month) across all items
+        all_periods_data = df.groupby('period')[qty_col].sum().sort_index()
+        logger.info(f"Aggregated data: {len(all_periods_data)} periods, total quantity: {all_periods_data.sum()}")
+        
+        # Validate the aggregated time series
+        val_result = validate_time_series_data(all_periods_data, time_unit)
+        if not val_result['sufficient']:
+            logger.warning(f"Aggregated data insufficient: {val_result['warnings']}")
+            return jsonify({'error': f'Insufficient data for forecasting: {val_result["warnings"]}'}), 400
+        
+        # Generate forecast for aggregated data
+        forecast_values, model_name, _ = create_forecast_model_with_diagnostics(all_periods_data, time_unit, period_count)
+        if forecast_values is None:
+            logger.error("No forecast values generated for aggregated data")
+            return jsonify({'error': 'Could not generate forecast for the aggregated data'}), 400
+        
+        logger.info(f"Generated {len(forecast_values)} forecast values using {model_name}")
+        
+        # Generate future dates
+        last_date = all_periods_data.index.max()
+        try:
+            if hasattr(last_date, 'item'):
+                last_date = last_date.item()
+            if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
+                logger.error("Invalid last date")
+                return jsonify({'error': 'Invalid date range'}), 400
+            last_date = pd.Timestamp(last_date)
+        except (ValueError, TypeError, AttributeError):
+            logger.error("Error processing last date")
+            return jsonify({'error': 'Error processing date range'}), 400
+        
+        future_dates = []
+        for i in range(1, period_count + 1):
             try:
-                if hasattr(last_date, 'item'):
-                    last_date = last_date.item()
-                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
-                    logger.warning(f"Item {item_id}: Invalid last date")
-                    continue
-                last_date = pd.Timestamp(last_date)
-            except (ValueError, TypeError, AttributeError):
-                logger.warning(f"Item {item_id}: Error processing last date")
+                if time_unit == 'monthly':
+                    next_date = (last_date + pd.DateOffset(months=i))
+                    # Always return in YYYY-MM-DD format for JavaScript compatibility
+                    future_dates.append(next_date.strftime('%Y-%m-%d'))
+                elif time_unit == 'weekly':
+                    next_date = (last_date + timedelta(weeks=i))
+                    future_dates.append(next_date.strftime('%Y-%m-%d'))
+                else:  # daily
+                    next_date = (last_date + timedelta(days=i))
+                    future_dates.append(next_date.strftime('%Y-%m-%d'))
+            except (TypeError, AttributeError):
+                logger.warning(f"Error generating future date for period {i}")
                 continue
-            
-            future_dates = []
-            for i in range(1, period_count + 1):
-                try:
-                    if time_unit == 'monthly':
-                        next_date = (last_date + pd.DateOffset(months=i))
-                        # Always return in YYYY-MM-DD format for JavaScript compatibility
-                        future_dates.append(next_date.strftime('%Y-%m-%d'))
-                    elif time_unit == 'weekly':
-                        next_date = (last_date + timedelta(weeks=i))
-                        future_dates.append(next_date.strftime('%Y-%m-%d'))
-                    else:  # daily
-                        next_date = (last_date + timedelta(days=i))
-                        future_dates.append(next_date.strftime('%Y-%m-%d'))
-                except (TypeError, AttributeError):
-                    logger.warning(f"Item {item_id}: Error generating future date for period {i}")
-                    continue
-            
-            logger.info(f"Item {item_id}: Generated {len(future_dates)} future dates")
-            
-            # Add actual data
-            for date, value in ts.items():
-                chart_data['actuals'].append({
-                    'date': date.strftime('%Y-%m-%d'),
-                    'value': round(float(value), decimal_places),
-                    'item': str(item_id)
-                })
-            
-            # Add forecast data
-            for date_str, value in zip(future_dates, forecast_values):
-                chart_data['forecasts'].append({
-                    'date': date_str,
-                    'value': round(float(value), decimal_places),
-                    'item': str(item_id),
-                    'model': model_name
-                })
-            
-            chart_data['items'].append(str(item_id))
+        
+        logger.info(f"Generated {len(future_dates)} future dates")
+        
+        # Add actual data (aggregated by month)
+        for date, value in all_periods_data.items():
+            chart_data['actuals'].append({
+                'date': date.strftime('%Y-%m-%d'),
+                'value': round(float(value), decimal_places),
+                'item': 'Total'  # Use 'Total' to indicate aggregated data
+            })
+        
+        # Add forecast data
+        for date_str, value in zip(future_dates, forecast_values):
+            chart_data['forecasts'].append({
+                'date': date_str,
+                'value': round(float(value), decimal_places),
+                'item': 'Total',  # Use 'Total' to indicate aggregated data
+                'model': model_name
+            })
+        
+        # Add all unique items to the items list for reference
+        chart_data['items'] = [str(item) for item in df[item_col].unique()]
         
         logger.info(f"Final chart data: {len(chart_data['actuals'])} actuals, {len(chart_data['forecasts'])} forecasts")
         
