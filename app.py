@@ -553,8 +553,15 @@ def forecast():
         # Handle preview mode - return JSON for chart display
         if preview_mode:
             try:
+                # Check if we have any forecasts
+                if not forecasts:
+                    return jsonify({'error': 'No forecasts could be generated for preview'}), 400
+                
                 # Get the first item's data for preview (most common case)
                 first_item_forecasts = [f for f in forecasts if f[1] == forecasts[0][1]]
+                
+                if not first_item_forecasts:
+                    return jsonify({'error': 'No forecast data available for preview'}), 400
                 
                 # Get historical data for the same item
                 first_item_id = forecasts[0][1]

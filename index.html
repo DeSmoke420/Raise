@@ -704,7 +704,11 @@
       
       // Destroy chart if it exists
       if (window.forecastChart) {
-        window.forecastChart.destroy();
+        try {
+          window.forecastChart.destroy();
+        } catch (e) {
+          console.warn('Error destroying existing chart:', e);
+        }
         window.forecastChart = null;
       }
     }
@@ -806,17 +810,29 @@
 
     async function createForecastPreview(wb, data) {
       try {
+        console.log('Starting preview generation...');
+        
         // Convert data to CSV for processing
         const csv = XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]], { FS: ',', RS: '\n', strip: true });
+        console.log('CSV generated, length:', csv.length);
         
         // Get current form values
-      const timeUnit = document.getElementById('timeUnit').value;
-      const periods = document.getElementById('periodCount').value.trim();
+        const timeUnit = document.getElementById('timeUnit').value;
+        const periods = document.getElementById('periodCount').value.trim();
         const dateFormat = document.getElementById('dateFormat').value;
         const decimalPlaces = document.getElementById('decimalPlaces').value;
         
+        console.log('Form values:', { timeUnit, periods, dateFormat, decimalPlaces });
+        
         // Send preview request
-        const res = await fetch('/api/forecast', {
+        console.log('Sending preview request...');
+        
+        // Create a timeout promise
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Request timeout')), 30000); // 30 second timeout
+        });
+        
+        const fetchPromise = fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
@@ -830,16 +846,33 @@
           })
         });
         
+        const res = await Promise.race([fetchPromise, timeoutPromise]);
+        
+        console.log('Response status:', res.status);
+        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+        
         if (!res.ok) {
-          throw new Error('Preview generation failed');
+          const errorData = await res.json().catch(() => ({}));
+          console.error('Preview request failed:', errorData);
+          throw new Error(errorData.error || 'Preview generation failed');
         }
         
         const previewData = await res.json();
+        console.log('Preview data received:', previewData);
+        
+        // Check if we have valid data
+        if (!previewData.historical || !previewData.forecast || 
+            previewData.historical.length === 0 || previewData.forecast.length === 0) {
+          console.error('No valid preview data:', previewData);
+          throw new Error('No forecast data available for preview');
+        }
+        
+        console.log('Displaying chart...');
         displayForecastChart(previewData);
         
       } catch (error) {
         console.error('Preview error:', error);
-        document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> Could not generate preview</div>';
+        document.querySelector('.chart-container').innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> ${error.message}</div>`;
       }
     }
 
@@ -848,72 +881,87 @@
       
       // Destroy existing chart if it exists
       if (window.forecastChart) {
-        window.forecastChart.destroy();
+        try {
+          window.forecastChart.destroy();
+        } catch (e) {
+          console.warn('Error destroying existing chart:', e);
+        }
+        window.forecastChart = null;
       }
       
       // Prepare chart data
       const historicalData = data.historical || [];
       const forecastData = data.forecast || [];
       
+      if (historicalData.length === 0 && forecastData.length === 0) {
+        document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--text-secondary);"><i class="fas fa-info-circle"></i> No data available for chart</div>';
+        return;
+      }
+      
       const labels = [...historicalData.map(d => d.date), ...forecastData.map(d => d.date)];
       const historicalValues = historicalData.map(d => d.quantity);
       const forecastValues = forecastData.map(d => d.quantity);
       
       // Create chart
-      window.forecastChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: labels,
-          datasets: [
-            {
-              label: 'Historical Data',
-              data: [...historicalValues, ...Array(forecastValues.length).fill(null)],
-              borderColor: 'rgb(99, 102, 241)',
-              backgroundColor: 'rgba(99, 102, 241, 0.1)',
-              borderWidth: 2,
-              fill: false,
-              tension: 0.1
-            },
-            {
-              label: 'Forecast',
-              data: [...Array(historicalValues.length).fill(null), ...forecastValues],
-              borderColor: 'rgb(16, 185, 129)',
-              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              borderWidth: 2,
-              fill: false,
-              tension: 0.1,
-              borderDash: [5, 5]
-            }
-          ]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            legend: {
-              position: 'top',
-            },
-            title: {
-              display: false
-            }
+      try {
+        window.forecastChart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Historical Data',
+                data: [...historicalValues, ...Array(forecastValues.length).fill(null)],
+                borderColor: 'rgb(99, 102, 241)',
+                backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1
+              },
+              {
+                label: 'Forecast',
+                data: [...Array(historicalValues.length).fill(null), ...forecastValues],
+                borderColor: 'rgb(16, 185, 129)',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 2,
+                fill: false,
+                tension: 0.1,
+                borderDash: [5, 5]
+              }
+            ]
           },
-          scales: {
-            y: {
-              beginAtZero: true,
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'top',
+              },
               title: {
-                display: true,
-                text: 'Quantity'
+                display: false
               }
             },
-            x: {
-              title: {
-                display: true,
-                text: 'Time'
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Quantity'
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Time'
+                }
               }
             }
           }
-        }
-      });
+        });
+      } catch (e) {
+        console.error('Error creating chart:', e);
+        document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> Error creating chart</div>';
+      }
     }
 
     function readFileAsCSV(file) {
