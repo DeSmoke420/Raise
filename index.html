@@ -796,16 +796,21 @@
           throw new Error(errorData.error || "Forecast generation failed");
         }
         
-        // Check if response is a ZIP file
+        // Handle single file response
         const contentType = res.headers.get('content-type');
-        if (contentType && contentType.includes('application/zip')) {
-          const blob = await res.blob();
-          downloadBlob(blob, 'forecast_results.zip');
-          showSuccess('Forecast generated successfully! Check the diagnostics file for model details.');
+        const blob = await res.blob();
+        
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+          // Excel file
+          downloadBlob(blob, 'AI_generated_Forecast.xlsx');
+          showSuccess('Excel forecast generated successfully!');
+        } else if (contentType && contentType.includes('text/csv')) {
+          // CSV file
+          downloadBlob(blob, 'AI_generated_Forecast.csv');
+          showSuccess('CSV forecast generated successfully!');
         } else {
-          const text = await res.text();
-          const filename = outputFormat === 'xlsx' ? 'AI_Forecast.xlsx' : 'AI_Forecast.csv';
-          outputFormat === 'xlsx' ? downloadXLSX(text, filename) : downloadCSV(text, filename);
+          // Fallback
+          downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
           showSuccess('Forecast generated successfully!');
         }
       } catch (e) {

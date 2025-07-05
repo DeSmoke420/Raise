@@ -285,44 +285,29 @@ def forecast():
         # Create result dataframe
         result_df = pd.DataFrame(forecasts, columns=("Date", "Item ID", "Forecast Quantity", "Model"))
         
-        # Create diagnostics log
-        log_output = io.StringIO()
-        for line in diagnostics_log:
-            log_output.write(line + '\n')
-        log_output.seek(0)
-        
-        # Return as a zip file with format-specific export
-        import zipfile
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Determine file extension and name
-            if export_format == 'xlsx':
-                forecast_filename = 'AI_generated_Forecast.xlsx'
-                forecast_path = os.path.join(tmpdir, forecast_filename)
-                # Export to Excel
-                result_df.to_excel(forecast_path, index=False, float_format="%.2f", engine='openpyxl')
-            else:  # Default to CSV
-                forecast_filename = 'AI_generated_Forecast.csv'
-                forecast_path = os.path.join(tmpdir, forecast_filename)
-                # Export to CSV
-                result_df.to_csv(forecast_path, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
-            
-            log_path = os.path.join(tmpdir, 'diagnostics.txt')
-            with open(log_path, 'w', encoding='utf-8') as f:
-                f.write(log_output.getvalue())
-            
-            zip_path = os.path.join(tmpdir, 'forecast_results.zip')
-            with zipfile.ZipFile(zip_path, 'w') as zf:
-                zf.write(forecast_path, arcname=forecast_filename)
-                zf.write(log_path, arcname='diagnostics.txt')
-            
-            with open(zip_path, 'rb') as f:
-                return send_file(
-                    io.BytesIO(f.read()),
-                    download_name="forecast_results.zip",
-                    as_attachment=True,
-                    mimetype='application/zip'
-                )
+        # Return single file based on export format
+        if export_format == 'xlsx':
+            # Export to Excel
+            output = io.BytesIO()
+            result_df.to_excel(output, index=False, float_format="%.2f", engine='openpyxl')
+            output.seek(0)
+            return send_file(
+                output,
+                download_name="AI_generated_Forecast.xlsx",
+                as_attachment=True,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:  # Default to CSV
+            # Export to CSV
+            output = io.StringIO()
+            result_df.to_csv(output, index=False, float_format="%.2f", quoting=csv.QUOTE_MINIMAL)
+            output.seek(0)
+            return send_file(
+                io.BytesIO(output.read().encode()),
+                download_name="AI_generated_Forecast.csv",
+                as_attachment=True,
+                mimetype='text/csv'
+            )
     except Exception as e:
         logger.error(f"Forecast error: {e}")
         return jsonify({'error': 'Internal server error'}), 500
