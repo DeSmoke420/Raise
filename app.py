@@ -119,7 +119,7 @@ def validate_time_series_data(ts: pd.Series, time_unit: str) -> Dict[str, Any]:
             result['warnings'].append(f"Detected {outliers} outlier(s) in the data.")
     return result
 
-def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int) -> Tuple[Optional[List[float]], str, str]:
+def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int, preview_mode: bool = False) -> Tuple[Optional[List[float]], str, str]:
     """Try all models, select the best one, and return diagnostics."""
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
     diagnostics = []
@@ -165,39 +165,41 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     except Exception as e:
         diagnostics.append(f"Holt-Winters failed: {e}")
     
-    # Prophet (try with different frequency settings)
-    try:
-        model = Prophet()
-        df_prophet = ts.reset_index()
-        df_prophet.columns = ['ds', 'y']
-        model.fit(df_prophet)
-        
-        # Use appropriate frequency based on time unit
-        if time_unit == 'monthly':
-            freq = 'M'  # Monthly frequency
-        elif time_unit == 'weekly':
-            freq = 'W'
-        else:  # daily
-            freq = 'D'
+    # Skip Prophet for preview mode (too slow)
+    if not preview_mode:
+        # Prophet (try with different frequency settings)
+        try:
+            model = Prophet()
+            df_prophet = ts.reset_index()
+            df_prophet.columns = ['ds', 'y']
+            model.fit(df_prophet)
             
-        future = model.make_future_dataframe(periods=period_count, freq=freq)
-        forecast_df = model.predict(future)
-        forecast_values = forecast_df.tail(period_count)['yhat'].values
-        
-        # Prophet doesn't have AIC, so use MSE as a proxy
-        y_true = df_prophet['y']
-        y_pred = model.predict(df_prophet)['yhat']
-        mse = ((y_true - y_pred) ** 2).mean()
-        diagnostics.append(f"Prophet: MSE={mse:.2f}")
-        if mse < best_aic:  # Use MSE as a proxy for AIC
-            best_aic = mse
-            best_forecast = forecast_values.tolist()
-            best_name = "Prophet"
-    except Exception as e:
-        diagnostics.append(f"Prophet failed: {e}")
+            # Use appropriate frequency based on time unit
+            if time_unit == 'monthly':
+                freq = 'M'  # Monthly frequency
+            elif time_unit == 'weekly':
+                freq = 'W'
+            else:  # daily
+                freq = 'D'
+                
+            future = model.make_future_dataframe(periods=period_count, freq=freq)
+            forecast_df = model.predict(future)
+            forecast_values = forecast_df.tail(period_count)['yhat'].values
+            
+            # Prophet doesn't have AIC, so use MSE as a proxy
+            y_true = df_prophet['y']
+            y_pred = model.predict(df_prophet)['yhat']
+            mse = ((y_true - y_pred) ** 2).mean()
+            diagnostics.append(f"Prophet: MSE={mse:.2f}")
+            if mse < best_aic:  # Use MSE as a proxy for AIC
+                best_aic = mse
+                best_forecast = forecast_values.tolist()
+                best_name = "Prophet"
+        except Exception as e:
+            diagnostics.append(f"Prophet failed: {e}")
     
     # ARIMA (try non-seasonal for small datasets)
-    if pm is not None:
+    if pm is not None and not preview_mode:  # Skip ARIMA for preview too
         try:
             if len(ts) >= seasonal_periods * 2:
                 # Seasonal ARIMA
@@ -489,7 +491,7 @@ def forecast():
                 continue
             
             # Model selection with diagnostics
-            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
+            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count, preview_mode)
             diagnostics_log.append(f"Item {item_id}: {diag}")
             if forecast_values is None:
                 continue

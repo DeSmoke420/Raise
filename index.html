@@ -703,14 +703,14 @@
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
       
       // Destroy chart if it exists
-      if (window.forecastChart) {
+      if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
         try {
           window.forecastChart.destroy();
         } catch (e) {
           console.warn('Error destroying existing chart:', e);
         }
-        window.forecastChart = null;
       }
+      window.forecastChart = null;
     }
 
 
@@ -879,15 +879,21 @@
     function displayForecastChart(data) {
       const ctx = document.getElementById('forecastChart');
       
+      // Ensure the canvas is properly set up
+      if (!ctx) {
+        console.error('Canvas element not found');
+        return;
+      }
+      
       // Destroy existing chart if it exists
-      if (window.forecastChart) {
+      if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
         try {
           window.forecastChart.destroy();
         } catch (e) {
           console.warn('Error destroying existing chart:', e);
         }
-        window.forecastChart = null;
       }
+      window.forecastChart = null;
       
       // Prepare chart data
       const historicalData = data.historical || [];
@@ -898,13 +904,17 @@
         return;
       }
       
+      // Restore the canvas element
+      document.querySelector('.chart-container').innerHTML = '<canvas id="forecastChart"></canvas>';
+      const newCtx = document.getElementById('forecastChart');
+      
       const labels = [...historicalData.map(d => d.date), ...forecastData.map(d => d.date)];
       const historicalValues = historicalData.map(d => d.quantity);
       const forecastValues = forecastData.map(d => d.quantity);
       
       // Create chart
       try {
-        window.forecastChart = new Chart(ctx, {
+        window.forecastChart = new Chart(newCtx, {
           type: 'line',
           data: {
             labels: labels,
@@ -958,6 +968,7 @@
             }
           }
         });
+        console.log('Chart created successfully');
       } catch (e) {
         console.error('Error creating chart:', e);
         document.querySelector('.chart-container').innerHTML = '<div style="text-align: center; padding: 2rem; color: var(--error-color);"><i class="fas fa-exclamation-triangle"></i> Error creating chart</div>';
