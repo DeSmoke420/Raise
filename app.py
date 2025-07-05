@@ -427,11 +427,21 @@ def forecast():
         logger.info(f"Starting forecast generation for {len(df[item_col].unique())} unique items")
         
         for item_id, group in df.groupby(item_col):
+            # Show raw data before aggregation
+            logger.info(f"Item {item_id}: Raw data points per month:")
+            monthly_counts = group.groupby('period').size()
+            logger.info(f"Item {item_id}: Data points per month: {monthly_counts.to_dict()}")
+            
             # Aggregate by period to ensure consistent monthly data
             ts = group.groupby('period')[qty_col].sum().sort_index()
             
             logger.info(f"Item {item_id}: {len(ts)} monthly periods, range: {ts.index.min()} to {ts.index.max()}")
             logger.info(f"Item {item_id}: Sample monthly totals: {ts.head(3).tolist()}")
+            
+            # Show the aggregation details
+            logger.info(f"Item {item_id}: Monthly aggregation details:")
+            for period, period_group in group.groupby('period'):
+                logger.info(f"  {period}: {len(period_group)} data points, sum={period_group[qty_col].sum()}")
             
             # Ensure ts is a Series for type checking
             if not isinstance(ts, pd.Series):
