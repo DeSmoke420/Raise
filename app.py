@@ -1,24 +1,35 @@
 # === app.py ===
 
-from flask import Flask, request, jsonify, send_file, send_from_directory
-import pandas as pd
-import io
-from statsmodels.tsa.holtwinters import ExponentialSmoothing
-from flask_cors import CORS
-from datetime import datetime, timedelta, date
-from prophet import Prophet
-try:
-    import pmdarima as pm
-except ImportError:
-    pm = None
-import csv
 import logging
-from typing import Optional, Tuple, List, Dict, Any
 import os
+from typing import Optional, Tuple, List, Dict, Any
 
-# Configure logging
+# Configure logging first
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+try:
+    from flask import Flask, request, jsonify, send_file, send_from_directory
+    from flask_cors import CORS
+    import pandas as pd
+    import io
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing
+    from datetime import datetime, timedelta, date
+    from prophet import Prophet
+    import csv
+    
+    try:
+        import pmdarima as pm
+    except ImportError:
+        pm = None
+        logger.warning("pmdarima not available, ARIMA forecasting will be disabled")
+        
+    logger.info("All imports successful")
+except Exception as e:
+    logger.error(f"Import error: {e}")
+    raise
+
+
 
 # Configuration constants
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -195,6 +206,10 @@ def validate_input_data(data: dict) -> Tuple[bool, str]:
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
+
+@app.route('/health')
+def health():
+    return jsonify({'status': 'healthy', 'message': 'AI Forecast Intelligence Platform is running'})
 
 @app.route('/api/forecast', methods=['POST'])
 def forecast():
