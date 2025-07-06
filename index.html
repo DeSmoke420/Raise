@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Forecast Intelligence Platform</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -582,6 +583,53 @@
     .data-preview td {
       color: var(--text-secondary);
     }
+    
+    /* Forecast Preview Chart */
+    .forecast-preview {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--bg-color);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-color);
+      display: none;
+    }
+    
+    .forecast-preview h3 {
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 300px;
+      width: 100%;
+    }
+    
+    .chart-summary {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: var(--card-bg);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+    }
+    
+    .chart-summary h4 {
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .chart-summary p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin: 0.25rem 0;
+    }
   </style>
 </head>
 <body>
@@ -708,6 +756,18 @@
         <i class="fas fa-arrow-left"></i>
         Back to Home
       </button>
+      
+      <!-- Forecast Preview Chart -->
+      <div class="forecast-preview" id="forecastPreview">
+        <h3><i class="fas fa-chart-line"></i> Forecast Preview</h3>
+        <div class="chart-container">
+          <canvas id="forecastChart"></canvas>
+        </div>
+        <div class="chart-summary" id="chartSummary">
+          <h4>Summary</h4>
+          <p id="summaryText"></p>
+        </div>
+      </div>
     </div>
 
 
@@ -760,6 +820,7 @@
       document.getElementById('dateFormat').value = 'EUR';
       document.getElementById('decimalPlaces').value = '0';
       document.getElementById('dataPreview').style.display = 'none';
+      document.getElementById('forecastPreview').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
     }
@@ -970,16 +1031,19 @@
           // Excel file
           console.log('Downloading Excel file...');
           downloadBlob(blob, 'AI_generated_Forecast.xlsx');
+          await parseForecastAndCreateChart(blob, 'xlsx');
           showSuccess('Excel forecast generated successfully! Check your downloads folder or browser downloads.');
         } else if (contentType && contentType.includes('text/csv')) {
           // CSV file
           console.log('Downloading CSV file...');
           downloadBlob(blob, 'AI_generated_Forecast.csv');
+          await parseForecastAndCreateChart(blob, 'csv');
           showSuccess('CSV forecast generated successfully! Check your downloads folder or browser downloads.');
         } else {
           // Fallback
           console.log('Downloading fallback file...');
           downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
+          await parseForecastAndCreateChart(blob, outputFormat);
           showSuccess('Forecast generated successfully! Check your downloads folder or browser downloads.');
         }
       } catch (e) {
@@ -1030,6 +1094,179 @@
       }, 2000);
       
       console.log('Download triggered for:', filename);
+    }
+    
+    // Parse forecast data and create chart
+    async function parseForecastAndCreateChart(blob, outputFormat) {
+      try {
+        let forecastData = [];
+        
+        if (outputFormat === 'xlsx') {
+          // Parse Excel file
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          forecastData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        } else {
+          // Parse CSV file
+          const text = await blob.text();
+          const lines = text.split('\n');
+          forecastData = lines.map(line => line.split(',').map(cell => cell.trim()));
+        }
+        
+        // Remove header row and empty rows
+        forecastData = forecastData.filter(row => row.length >= 3 && row[0] !== 'Date');
+        
+        // Aggregate data by date (sum all items for each date)
+        const aggregatedData = {};
+        forecastData.forEach(row => {
+          const date = row[0];
+          const quantity = parseFloat(row[2]) || 0;
+          
+          if (aggregatedData[date]) {
+            aggregatedData[date] += quantity;
+          } else {
+            aggregatedData[date] = quantity;
+          }
+        });
+        
+        // Convert to arrays for chart
+        const dates = Object.keys(aggregatedData).sort();
+        const quantities = dates.map(date => aggregatedData[date]);
+        
+        // Create chart
+        createForecastChart(dates, quantities);
+        
+        // Show summary
+        showForecastSummary(aggregatedData);
+        
+        // Show the preview
+        document.getElementById('forecastPreview').style.display = 'block';
+        
+      } catch (error) {
+        console.error('Error parsing forecast data:', error);
+      }
+    }
+    
+    function createForecastChart(dates, quantities) {
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      
+      // Destroy existing chart if it exists
+      if (window.forecastChart) {
+        window.forecastChart.destroy();
+      }
+      
+      window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+            label: 'Forecast Quantity',
+            data: quantities,
+            borderColor: 'rgb(99, 102, 241)',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgb(99, 102, 241)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: '#fff',
+              bodyColor: '#fff',
+              borderColor: 'rgb(99, 102, 241)',
+              borderWidth: 1,
+              cornerRadius: 8,
+              displayColors: false,
+              callbacks: {
+                title: function(context) {
+                  return 'Date: ' + context[0].label;
+                },
+                label: function(context) {
+                  return 'Forecast: ' + context.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Time Period',
+                color: 'var(--text-secondary)',
+                font: {
+                  size: 12,
+                  weight: '500'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)',
+                drawBorder: false
+              },
+              ticks: {
+                color: 'var(--text-secondary)',
+                maxTicksLimit: 8
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                text: 'Forecast Quantity',
+                color: 'var(--text-secondary)',
+                font: {
+                  size: 12,
+                  weight: '500'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)',
+                drawBorder: false
+              },
+              ticks: {
+                color: 'var(--text-secondary)',
+                callback: function(value) {
+                  return value.toLocaleString();
+                }
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
+    
+    function showForecastSummary(aggregatedData) {
+      const quantities = Object.values(aggregatedData);
+      const total = quantities.reduce((sum, qty) => sum + qty, 0);
+      const average = total / quantities.length;
+      const min = Math.min(...quantities);
+      const max = Math.max(...quantities);
+      const periods = quantities.length;
+      
+      const summaryText = `
+        <strong>Total Forecast:</strong> ${total.toLocaleString()} units<br>
+        <strong>Average per Period:</strong> ${average.toLocaleString(undefined, {maximumFractionDigits: 0})} units<br>
+        <strong>Range:</strong> ${min.toLocaleString()} - ${max.toLocaleString()} units<br>
+        <strong>Forecast Periods:</strong> ${periods} periods
+      `;
+      
+      document.getElementById('summaryText').innerHTML = summaryText;
     }
 
     function downloadXLSX(csvText, filename) {
