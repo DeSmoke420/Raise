@@ -396,6 +396,10 @@ def forecast_data():
         logger.info(f"Aggregated data: {len(all_periods_data)} periods, total quantity: {all_periods_data.sum()}")
         
         # Validate the aggregated time series
+        if not isinstance(all_periods_data, pd.Series):
+            logger.error("Aggregated data is not a pandas Series")
+            return jsonify({'error': 'Data aggregation failed'}), 400
+            
         val_result = validate_time_series_data(all_periods_data, time_unit)
         if not val_result['sufficient']:
             logger.warning(f"Aggregated data insufficient: {val_result['warnings']}")
@@ -412,12 +416,13 @@ def forecast_data():
         # Generate future dates
         last_date = all_periods_data.index.max()
         try:
-            if hasattr(last_date, 'item'):
-                last_date = last_date.item()
-            if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
+            # Convert to pandas Timestamp directly
+            last_date = pd.Timestamp(last_date)
+            
+            # Check if it's a valid date
+            if pd.isna(last_date):
                 logger.error("Invalid last date")
                 return jsonify({'error': 'Invalid date range'}), 400
-            last_date = pd.Timestamp(last_date)
         except (ValueError, TypeError, AttributeError):
             logger.error("Error processing last date")
             return jsonify({'error': 'Error processing date range'}), 400
@@ -443,11 +448,20 @@ def forecast_data():
         
         # Add actual data (aggregated by month)
         for date, value in all_periods_data.items():
-            chart_data['actuals'].append({
-                'date': date.strftime('%Y-%m-%d'),
-                'value': round(float(value), decimal_places),
-                'item': 'Total'  # Use 'Total' to indicate aggregated data
-            })
+            try:
+                # Convert date to string safely
+                date_str = str(date)
+                if hasattr(date, 'strftime'):
+                    date_str = date.strftime('%Y-%m-%d')
+                    
+                chart_data['actuals'].append({
+                    'date': date_str,
+                    'value': round(float(value), decimal_places),
+                    'item': 'Total'  # Use 'Total' to indicate aggregated data
+                })
+            except Exception as e:
+                logger.warning(f"Error processing date {date}: {e}")
+                continue
         
         # Add forecast data
         for date_str, value in zip(future_dates, forecast_values):
@@ -596,11 +610,12 @@ def download_forecast():
             # Generate future dates
             last_date = ts.index.max()
             try:
-                if hasattr(last_date, 'item'):
-                    last_date = last_date.item()
-                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
-                    continue
+                # Convert to pandas Timestamp directly
                 last_date = pd.Timestamp(last_date)
+                
+                # Check if it's a valid date
+                if pd.isna(last_date):
+                    continue
             except (ValueError, TypeError, AttributeError):
                 continue
             
@@ -642,13 +657,16 @@ def download_forecast():
         # Return file based on export format
         if export_format == 'xlsx':
             try:
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    result_df.to_excel(writer, index=False, float_format=f"%.{decimal_places}f")
-                output.seek(0)
+                # Use temporary file approach for better compatibility
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+                    result_df.to_excel(tmp_file.name, index=False, float_format=f"%.{decimal_places}f", engine='openpyxl')
+                    with open(tmp_file.name, 'rb') as f:
+                        excel_data = f.read()
+                    os.unlink(tmp_file.name)  # Clean up temp file
                 
                 response = send_file(
-                    output,
+                    io.BytesIO(excel_data),
                     download_name="AI_generated_Forecast.xlsx",
                     as_attachment=True,
                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -964,14 +982,16 @@ def forecast():
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
-                # Export to Excel using BytesIO
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    result_df.to_excel(writer, index=False, float_format=f"%.{decimal_places}f")
-                output.seek(0)
+                # Use temporary file approach for better compatibility
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+                    result_df.to_excel(tmp_file.name, index=False, float_format=f"%.{decimal_places}f", engine='openpyxl')
+                    with open(tmp_file.name, 'rb') as f:
+                        excel_data = f.read()
+                    os.unlink(tmp_file.name)  # Clean up temp file
                 
                 response = send_file(
-                    output,
+                    io.BytesIO(excel_data),
                     download_name="AI_generated_Forecast.xlsx",
                     as_attachment=True,
                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
