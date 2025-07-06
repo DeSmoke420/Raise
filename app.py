@@ -3,6 +3,7 @@
 import logging
 import os
 import time
+import math
 from typing import Optional, Tuple, List, Dict, Any
 
 # Configure logging first
@@ -271,22 +272,25 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         mse_models = {k: v for k, v in model_scores.items() if k == "Prophet"}
         
         if aic_models and mse_models:
-            # Normalize AIC scores to 0-1 range
-            aic_values = list(aic_models.values())
-            aic_min, aic_max = min(aic_values), max(aic_values)
-            aic_normalized = {k: (v - aic_min) / (aic_max - aic_min) for k, v in aic_models.items()}
+            # Since we only have one model in each category, use a different approach
+            # Convert MSE to a comparable scale with AIC using log transformation
+            aic_avg = sum(aic_models.values()) / len(aic_models)
+            mse_avg = sum(mse_models.values()) / len(mse_models)
             
-            # Normalize MSE scores to 0-1 range  
-            mse_values = list(mse_models.values())
-            mse_min, mse_max = min(mse_values), max(mse_values)
-            mse_normalized = {k: (v - mse_min) / (mse_max - mse_min) for k, v in mse_models.items()}
+            # Use log of MSE to make it more comparable to AIC
+            log_mse_avg = math.log(mse_avg) if mse_avg > 0 else 0
             
-            # Combine and find best
-            all_normalized = {**aic_normalized, **mse_normalized}
-            best_model_name = min(all_normalized.items(), key=lambda x: x[1])[0]
+            logger.info(f"AIC average: {aic_avg:.2f}, MSE average: {mse_avg:.2f}, Log(MSE): {log_mse_avg:.2f}")
             
-            logger.info(f"Normalized scores: {all_normalized}")
-            logger.info(f"Best model after normalization: {best_model_name}")
+            # Compare AIC vs log(MSE) - both should be lower for better models
+            if aic_avg < log_mse_avg:
+                best_model_name = list(aic_models.keys())[0]  # Use the AIC model
+                logger.info(f"Selecting AIC model ({best_model_name}) over MSE model")
+            else:
+                best_model_name = list(mse_models.keys())[0]  # Use the MSE model
+                logger.info(f"Selecting MSE model ({best_model_name}) over AIC model")
+            
+            logger.info(f"Best model after comparison: {best_model_name}")
             
             # Update best model if different
             if best_model_name != best_name:
