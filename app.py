@@ -2,6 +2,7 @@
 
 import logging
 import os
+import time
 from typing import Optional, Tuple, List, Dict, Any
 
 # Configure logging first
@@ -121,12 +122,16 @@ def validate_time_series_data(ts: pd.Series, time_unit: str) -> Dict[str, Any]:
 
 def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int) -> Tuple[Optional[List[float]], str, str]:
     """Try all models, select the best one, and return diagnostics."""
+    start_time = time.time()
+    logger.info(f"Starting model selection for time series with {len(ts)} points")
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
     diagnostics = []
     best_model = None
     best_aic = float('inf')
     best_forecast = None
     best_name = None
+    
+
     
     # Simple Moving Average (fallback for small datasets)
     try:
@@ -167,9 +172,12 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     
     # Prophet (try with different frequency settings)
     try:
+        prophet_start = time.time()
+        logger.info(f"Trying Prophet model...")
         model = Prophet()
         df_prophet = ts.reset_index()
         df_prophet.columns = ['ds', 'y']
+        logger.info(f"Fitting Prophet model with {len(df_prophet)} data points...")
         model.fit(df_prophet)
         
         # Use appropriate frequency based on time unit
@@ -188,7 +196,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         y_true = df_prophet['y']
         y_pred = model.predict(df_prophet)['yhat']
         mse = ((y_true - y_pred) ** 2).mean()
-        diagnostics.append(f"Prophet: MSE={mse:.2f}")
+        prophet_time = time.time() - prophet_start
+        diagnostics.append(f"Prophet: MSE={mse:.2f} (took {prophet_time:.2f}s)")
         if mse < best_aic:  # Use MSE as a proxy for AIC
             best_aic = mse
             best_forecast = forecast_values.tolist()
@@ -199,17 +208,22 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     # ARIMA (try non-seasonal for small datasets)
     if pm is not None:
         try:
+            arima_start = time.time()
+            logger.info(f"Trying ARIMA model...")
             if len(ts) >= seasonal_periods * 2:
                 # Seasonal ARIMA
-                model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True)
+                logger.info(f"Fitting seasonal ARIMA with {len(ts)} points...")
+                model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True, max_p=2, max_q=2, max_d=1)
             elif len(ts) >= 4:
                 # Non-seasonal ARIMA for small datasets
-                model = pm.auto_arima(ts, seasonal=False, suppress_warnings=True)
+                logger.info(f"Fitting non-seasonal ARIMA with {len(ts)} points...")
+                model = pm.auto_arima(ts, seasonal=False, suppress_warnings=True, max_p=2, max_q=2, max_d=1)
             else:
                 raise ValueError("Insufficient data for ARIMA")
                 
             forecast_values = model.predict(n_periods=period_count)
-            diagnostics.append(f"ARIMA: AIC={model.aic():.2f}")
+            arima_time = time.time() - arima_start
+            diagnostics.append(f"ARIMA: AIC={model.aic():.2f} (took {arima_time:.2f}s)")
             if model.aic() < best_aic:
                 best_aic = model.aic()
                 best_forecast = forecast_values.tolist()
@@ -224,8 +238,11 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         best_name = "Last Value"
         diagnostics.append("Using last value as fallback")
     
+    elapsed_time = time.time() - start_time
     if best_forecast is not None:
+        logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_name}")
         return best_forecast, best_name or '', ' | '.join(diagnostics)
+    logger.warning(f"Model selection failed after {elapsed_time:.2f}s. No models succeeded.")
     return None, '', ' | '.join(diagnostics)
 
 def validate_input_data(data: dict) -> Tuple[bool, str]:
@@ -458,9 +475,12 @@ def forecast():
         forecasts = []
         diagnostics_log = []
         
-        logger.info(f"Starting forecast generation for {len(df[item_col].unique())} unique items")
+        unique_items = df[item_col].unique()
+        logger.info(f"Starting forecast generation for {len(unique_items)} unique items")
         
-        for item_id, group in df.groupby(item_col):
+        for i, item_id in enumerate(unique_items):
+            logger.info(f"Processing item {i+1}/{len(unique_items)}: {item_id}")
+            group = df[df[item_col] == item_id]
             # Show raw data before aggregation
             logger.info(f"Item {item_id}: Raw data points per month:")
             monthly_counts = group.groupby('period').size()
@@ -555,14 +575,16 @@ def forecast():
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
-                # Export to Excel using BytesIO
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                    result_df.to_excel(writer, index=False, float_format=f"%.{decimal_places}f")
-                output.seek(0)
+                # Use temporary file approach for better compatibility
+                import tempfile
+                with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
+                    result_df.to_excel(tmp_file.name, index=False, float_format=f"%.{decimal_places}f", engine='openpyxl')
+                    with open(tmp_file.name, 'rb') as f:
+                        excel_data = f.read()
+                    os.unlink(tmp_file.name)  # Clean up temp file
                 
                 response = send_file(
-                    output,
+                    io.BytesIO(excel_data),
                     download_name="AI_generated_Forecast.xlsx",
                     as_attachment=True,
                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
