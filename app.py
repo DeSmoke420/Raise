@@ -283,7 +283,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             
             # Combine and find best
             all_normalized = {**aic_normalized, **mse_normalized}
-            best_model_name = min(all_normalized, key=all_normalized.get)
+            best_model_name = min(all_normalized.items(), key=lambda x: x[1])[0]
             
             logger.info(f"Normalized scores: {all_normalized}")
             logger.info(f"Best model after normalization: {best_model_name}")
@@ -301,7 +301,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                     model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
                     fit = model.fit()
                     best_forecast = fit.forecast(period_count).tolist()
-                elif best_model_name == "ARIMA":
+                elif best_model_name == "ARIMA" and pm is not None:
                     # Re-run ARIMA
                     if len(ts) >= seasonal_periods * 2:
                         model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True, 
