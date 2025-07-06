@@ -238,6 +238,19 @@
       border-color: var(--primary-color);
       box-shadow: 0 0 0 3px rgb(99 102 241 / 0.1);
     }
+    
+    /* Ensure select dropdown text doesn't overlap with icons */
+    select {
+      text-indent: 0;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6,9 12,15 18,9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      background-size: 1em;
+      padding-right: 2.5rem;
+    }
 
     .grid {
       display: grid;
@@ -447,6 +460,16 @@
       /* Prevent any potential overlap with absolute positioned elements */
       .input-group i {
         z-index: 2;
+      }
+      
+      /* Fix input field icon spacing on mobile */
+      input[type="file"], select, input[type="number"] {
+        padding-left: 3rem;
+      }
+      
+      .input-group i {
+        left: 1.25rem;
+        font-size: 0.9rem;
       }
     }
 
