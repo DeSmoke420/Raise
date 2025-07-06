@@ -1242,13 +1242,18 @@
         document.getElementById('forecastPreview').style.display = 'block';
         document.getElementById('downloadOptions').style.display = 'block';
         
-        // Scroll to the forecast preview
+        // Smooth scroll to the forecast preview with offset
         setTimeout(() => {
-          document.getElementById('forecastPreview').scrollIntoView({ 
-            behavior: 'smooth', 
-            block: 'start' 
+          const previewElement = document.getElementById('forecastPreview');
+          const offset = 50; // Add some space above the preview
+          const elementPosition = previewElement.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - offset;
+          
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
           });
-        }, 100);
+        }, 300);
         
       } catch (error) {
         console.error('Error parsing forecast data:', error);
