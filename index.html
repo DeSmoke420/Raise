@@ -630,6 +630,41 @@
       font-size: 0.85rem;
       margin: 0.25rem 0;
     }
+    
+    .download-options {
+      margin-top: 2rem;
+      padding: 1.5rem;
+      background: var(--bg-color);
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border-color);
+    }
+    
+    .download-options h4 {
+      margin-bottom: 1rem;
+      color: var(--text-primary);
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+    
+    .download-buttons {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .download-buttons .btn {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    @media (max-width: 768px) {
+      .download-buttons {
+        flex-direction: column;
+      }
+      .download-buttons .btn {
+        min-width: auto;
+      }
+    }
     .site-logo {
       position: absolute;
       top: 24px;
@@ -640,12 +675,12 @@
       text-decoration: none;
     }
     .site-logo img {
-      width: 56px;
-      height: 56px;
-      border-radius: 16px;
+      width: 80px;
+      height: 80px;
+      border-radius: 20px;
       box-shadow: 0 2px 8px rgba(99,102,241,0.10);
       background: #fff;
-      padding: 6px;
+      padding: 8px;
       transition: box-shadow 0.2s;
     }
     .site-logo:hover img {
@@ -657,9 +692,9 @@
         left: 10px;
       }
       .site-logo img {
-        width: 40px;
-        height: 40px;
-        padding: 3px;
+        width: 60px;
+        height: 60px;
+        padding: 5px;
       }
     }
   </style>
@@ -767,18 +802,7 @@
         </div>
       </div>
       
-      <div class="field">
-        <label for="outputFormat">
-          <i class="fas fa-download"></i> Output Format
-        </label>
-        <div class="input-group">
-          <i class="fas fa-file"></i>
-          <select id="outputFormat">
-            <option value="xlsx">Excel (.xlsx)</option>
-            <option value="csv">Comma Separated Values (.csv)</option>
-          </select>
-        </div>
-      </div>
+
       
 
       
@@ -801,6 +825,19 @@
         <div class="chart-summary" id="chartSummary">
           <h4>Summary</h4>
           <p id="summaryText"></p>
+        </div>
+        <div class="download-options" id="downloadOptions" style="display: none;">
+          <h4><i class="fas fa-download"></i> Download Forecast</h4>
+          <div class="download-buttons">
+            <button class="btn btn-primary" onclick="downloadForecast('xlsx')">
+              <i class="fas fa-file-excel"></i>
+              Download Excel (.xlsx)
+            </button>
+            <button class="btn btn-secondary" onclick="downloadForecast('csv')">
+              <i class="fas fa-file-csv"></i>
+              Download CSV (.csv)
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -856,8 +893,11 @@
       document.getElementById('decimalPlaces').value = '0';
       document.getElementById('dataPreview').style.display = 'none';
       document.getElementById('forecastPreview').style.display = 'none';
+      document.getElementById('downloadOptions').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
+      // Clear stored forecast settings
+      window.forecastSettings = null;
     }
 
 
@@ -1014,7 +1054,6 @@
       const file = document.getElementById('historicalFile').files[0];
       const timeUnit = document.getElementById('timeUnit').value;
       const periods = document.getElementById('periodCount').value.trim();
-      const outputFormat = document.getElementById('outputFormat').value;
       const dateFormat = document.getElementById('dateFormat').value;
       const decimalPlaces = document.getElementById('decimalPlaces').value;
 
@@ -1035,6 +1074,16 @@
       try {
         const csv = await readFileAsCSV(file);
         console.log('Sending forecast request...');
+        
+        // Store current settings for later download
+        window.forecastSettings = {
+          csv,
+          timeUnit,
+          periods,
+          dateFormat,
+          decimalPlaces: parseInt(decimalPlaces)
+        };
+        
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1042,7 +1091,7 @@
             csv, 
             timeUnit, 
             periods, 
-            exportFormat: outputFormat,
+            exportFormat: 'csv', // Always get CSV for preview
             dateFormat: dateFormat,
             decimalPlaces: parseInt(decimalPlaces)
           })
@@ -1056,31 +1105,16 @@
           throw new Error(errorData.error || "Forecast generation failed");
         }
         
-        // Handle single file response
+        // Handle response for preview
         const contentType = res.headers.get('content-type');
         console.log('Content-Type:', contentType);
         const blob = await res.blob();
         console.log('Blob size:', blob.size);
         
-        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
-          // Excel file
-          console.log('Downloading Excel file...');
-          downloadBlob(blob, 'AI_generated_Forecast.xlsx');
-          await parseForecastAndCreateChart(blob, 'xlsx');
-          showSuccess('Excel forecast generated successfully! Check your downloads folder or browser downloads.');
-        } else if (contentType && contentType.includes('text/csv')) {
-          // CSV file
-          console.log('Downloading CSV file...');
-          downloadBlob(blob, 'AI_generated_Forecast.csv');
-          await parseForecastAndCreateChart(blob, 'csv');
-          showSuccess('CSV forecast generated successfully! Check your downloads folder or browser downloads.');
-        } else {
-          // Fallback
-          console.log('Downloading fallback file...');
-          downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
-          await parseForecastAndCreateChart(blob, outputFormat);
-          showSuccess('Forecast generated successfully! Check your downloads folder or browser downloads.');
-        }
+        // Parse and show preview
+        await parseForecastAndCreateChart(blob, 'csv');
+        showSuccess('Forecast generated successfully! Preview is now available.');
+        
       } catch (e) {
         console.error('Forecast error:', e);
         showError('Error: ' + e.message);
@@ -1176,8 +1210,9 @@
         // Show summary
         showForecastSummary(aggregatedData);
         
-        // Show the preview
+        // Show the preview and download options
         document.getElementById('forecastPreview').style.display = 'block';
+        document.getElementById('downloadOptions').style.display = 'block';
         
       } catch (error) {
         console.error('Error parsing forecast data:', error);
@@ -1300,6 +1335,47 @@
       `;
       
       document.getElementById('summaryText').innerHTML = summaryText;
+    }
+
+    async function downloadForecast(format) {
+      if (!window.forecastSettings) {
+        showError('No forecast data available. Please generate a forecast first.');
+        return;
+      }
+
+      const downloadBtn = event.target;
+      const originalText = downloadBtn.innerHTML;
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+
+      try {
+        const res = await fetch('/api/forecast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            ...window.forecastSettings,
+            exportFormat: format
+          })
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Download generation failed");
+        }
+        
+        const blob = await res.blob();
+        const filename = format === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv';
+        
+        downloadBlob(blob, filename);
+        showSuccess(`${format.toUpperCase()} forecast downloaded successfully!`);
+        
+      } catch (e) {
+        console.error('Download error:', e);
+        showError('Error: ' + e.message);
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = originalText;
+      }
     }
 
     function downloadXLSX(csvText, filename) {
