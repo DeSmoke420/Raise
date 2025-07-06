@@ -555,16 +555,14 @@ def forecast():
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
-                # Use temporary file approach for better compatibility
-                import tempfile
-                with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
-                    result_df.to_excel(tmp_file.name, index=False, float_format=f"%.{decimal_places}f", engine='openpyxl')
-                    with open(tmp_file.name, 'rb') as f:
-                        excel_data = f.read()
-                    os.unlink(tmp_file.name)  # Clean up temp file
+                # Export to Excel using BytesIO
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    result_df.to_excel(writer, index=False, float_format=f"%.{decimal_places}f")
+                output.seek(0)
                 
                 response = send_file(
-                    io.BytesIO(excel_data),
+                    output,
                     download_name="AI_generated_Forecast.xlsx",
                     as_attachment=True,
                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

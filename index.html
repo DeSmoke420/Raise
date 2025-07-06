@@ -6,8 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Forecast Intelligence Platform</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -513,61 +511,6 @@
     .data-preview td {
       color: var(--text-secondary);
     }
-
-    /* Chart Container */
-    .chart-container {
-      margin-top: 2rem;
-      padding: 1.5rem;
-      background: var(--card-bg);
-      border-radius: var(--radius-lg);
-      border: 1px solid var(--border-color);
-      display: none;
-    }
-
-    .chart-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-
-    .chart-title {
-      font-size: 1.2rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .download-buttons {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .btn-download {
-      padding: 0.5rem 1rem;
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-md);
-      background: var(--bg-color);
-      color: var(--text-primary);
-      font-size: 0.9rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-decoration: none;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .btn-download:hover {
-      border-color: var(--primary-color);
-      background: rgb(99 102 241 / 0.05);
-    }
-
-    .chart-wrapper {
-      position: relative;
-      height: 400px;
-      margin-top: 1rem;
-    }
   </style>
 </head>
 <body>
@@ -694,26 +637,6 @@
         <i class="fas fa-arrow-left"></i>
         Back to Home
       </button>
-
-      <!-- Chart Container -->
-      <div class="chart-container" id="chartContainer">
-        <div class="chart-header">
-          <h3 class="chart-title">Forecast Preview</h3>
-          <div class="download-buttons">
-            <button class="btn-download" onclick="downloadForecast('xlsx')">
-              <i class="fas fa-file-excel"></i>
-              Excel (.xlsx)
-            </button>
-            <button class="btn-download" onclick="downloadForecast('csv')">
-              <i class="fas fa-file-csv"></i>
-              CSV (.csv)
-            </button>
-          </div>
-        </div>
-        <div class="chart-wrapper">
-          <canvas id="forecastChart"></canvas>
-        </div>
-      </div>
     </div>
 
 
@@ -766,18 +689,8 @@
       document.getElementById('dateFormat').value = 'EUR';
       document.getElementById('decimalPlaces').value = '0';
       document.getElementById('dataPreview').style.display = 'none';
-      document.getElementById('chartContainer').style.display = 'none';
       document.getElementById('generateBtn').disabled = false;
       updateFileLabel('historicalFile', 'Choose file or drag and drop');
-      
-      // Destroy existing chart if it exists
-      if (window.forecastChart) {
-        window.forecastChart.destroy();
-        window.forecastChart = null;
-      }
-      
-      // Clear stored forecast data
-      window.currentForecastData = null;
     }
 
 
@@ -934,6 +847,7 @@
       const file = document.getElementById('historicalFile').files[0];
       const timeUnit = document.getElementById('timeUnit').value;
       const periods = document.getElementById('periodCount').value.trim();
+      const outputFormat = document.getElementById('outputFormat').value;
       const dateFormat = document.getElementById('dateFormat').value;
       const decimalPlaces = document.getElementById('decimalPlaces').value;
 
@@ -953,22 +867,15 @@
 
       try {
         const csv = await readFileAsCSV(file);
-        console.log('Sending forecast data request...');
-        console.log('Request data:', { 
-          timeUnit, 
-          periods, 
-          dateFormat, 
-          decimalPlaces,
-          csvLength: csv.length 
-        });
-        
-        const res = await fetch('/api/forecast-data', {
+        console.log('Sending forecast request...');
+        const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             csv, 
             timeUnit, 
             periods, 
+            exportFormat: outputFormat,
             dateFormat: dateFormat,
             decimalPlaces: parseInt(decimalPlaces)
           })
@@ -979,195 +886,37 @@
         
         if (!res.ok) {
           const errorData = await res.json();
-          console.error('API Error:', errorData);
           throw new Error(errorData.error || "Forecast generation failed");
         }
         
-        const forecastData = await res.json();
-        console.log('Forecast data received:', forecastData);
-        console.log('Actuals count:', forecastData.actuals ? forecastData.actuals.length : 0);
-        console.log('Forecasts count:', forecastData.forecasts ? forecastData.forecasts.length : 0);
+        // Handle single file response
+        const contentType = res.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+        const blob = await res.blob();
+        console.log('Blob size:', blob.size);
         
-        // Check if we have valid data
-        if (!forecastData.actuals || forecastData.actuals.length === 0) {
-          console.warn('No actual data received');
+        if (contentType && contentType.includes('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+          // Excel file
+          console.log('Downloading Excel file...');
+          downloadBlob(blob, 'AI_generated_Forecast.xlsx');
+          showSuccess('Excel forecast generated successfully! Check your downloads folder or browser downloads.');
+        } else if (contentType && contentType.includes('text/csv')) {
+          // CSV file
+          console.log('Downloading CSV file...');
+          downloadBlob(blob, 'AI_generated_Forecast.csv');
+          showSuccess('CSV forecast generated successfully! Check your downloads folder or browser downloads.');
+        } else {
+          // Fallback
+          console.log('Downloading fallback file...');
+          downloadBlob(blob, outputFormat === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv');
+          showSuccess('Forecast generated successfully! Check your downloads folder or browser downloads.');
         }
-        if (!forecastData.forecasts || forecastData.forecasts.length === 0) {
-          console.warn('No forecast data received');
-        }
-        
-        // Display the chart
-        displayForecastChart(forecastData);
-        
-        // Store the data for download
-        window.currentForecastData = {
-          csv: csv,
-          timeUnit: timeUnit,
-          periods: periods,
-          dateFormat: dateFormat,
-          decimalPlaces: parseInt(decimalPlaces)
-        };
-        
-        console.log('Stored forecast data for download:', window.currentForecastData);
-        
-        showSuccess('Forecast generated successfully! Scroll down to view the chart.');
-        
       } catch (e) {
         console.error('Forecast error:', e);
         showError('Error: ' + e.message);
       } finally {
         generateBtn.disabled = false;
         hideModal();
-      }
-    }
-
-    function displayForecastChart(data) {
-      console.log('Displaying chart with data:', data);
-      
-      const chartContainer = document.getElementById('chartContainer');
-      const canvas = document.getElementById('forecastChart');
-      
-      // Show the chart container
-      chartContainer.style.display = 'block';
-      
-      // Scroll to chart
-      chartContainer.scrollIntoView({ behavior: 'smooth' });
-      
-      // Destroy existing chart if it exists
-      if (window.forecastChart) {
-        window.forecastChart.destroy();
-      }
-      
-      // Prepare data for Chart.js
-      const datasets = [];
-      
-      // Add actual data
-      if (data.actuals && data.actuals.length > 0) {
-        console.log('Processing actuals:', data.actuals);
-        const actualData = data.actuals.map(item => ({
-          x: new Date(item.date),
-          y: item.value
-        }));
-        console.log('Processed actual data:', actualData);
-        
-        datasets.push({
-          label: 'Actual',
-          data: actualData,
-          borderColor: '#6366f1',
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
-          borderWidth: 2,
-          fill: false,
-          tension: 0.1
-        });
-      } else {
-        console.warn('No actual data to display');
-      }
-      
-      // Add forecast data
-      if (data.forecasts && data.forecasts.length > 0) {
-        console.log('Processing forecasts:', data.forecasts);
-        const forecastData = data.forecasts.map(item => ({
-          x: new Date(item.date),
-          y: item.value
-        }));
-        console.log('Processed forecast data:', forecastData);
-        
-        datasets.push({
-          label: 'Forecast',
-          data: forecastData,
-          borderColor: '#10b981',
-          backgroundColor: 'rgba(16, 185, 129, 0.1)',
-          borderWidth: 2,
-          borderDash: [5, 5],
-          fill: false,
-          tension: 0.1
-        });
-      } else {
-        console.warn('No forecast data to display');
-      }
-      
-      console.log('Final datasets for chart:', datasets);
-      
-      // Create the chart
-      const ctx = canvas.getContext('2d');
-      window.forecastChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          datasets: datasets
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: {
-            title: {
-              display: true,
-              text: 'Forecast vs Actual Data',
-              font: {
-                size: 16,
-                weight: 'bold'
-              }
-            },
-            legend: {
-              display: true,
-              position: 'top'
-            }
-          },
-          scales: {
-            x: {
-              type: 'time',
-              time: {
-                unit: 'month',
-                displayFormats: {
-                  month: 'MMM YYYY'
-                }
-              },
-              title: {
-                display: true,
-                text: 'Time'
-              }
-            },
-            y: {
-              title: {
-                display: true,
-                text: 'Quantity'
-              }
-            }
-          }
-        }
-      });
-      
-      console.log('Chart created successfully');
-    }
-
-    async function downloadForecast(format) {
-      if (!window.currentForecastData) {
-        showError('No forecast data available. Please generate a forecast first.');
-        return;
-      }
-      
-      try {
-        const res = await fetch('/api/download-forecast', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...window.currentForecastData,
-            exportFormat: format
-          })
-        });
-        
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.error || "Download failed");
-        }
-        
-        const blob = await res.blob();
-        const filename = format === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv';
-        downloadBlob(blob, filename);
-        showSuccess(`${format.toUpperCase()} file downloaded successfully!`);
-        
-      } catch (e) {
-        console.error('Download error:', e);
-        showError('Error: ' + e.message);
       }
     }
 
