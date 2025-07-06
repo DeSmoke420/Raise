@@ -1242,18 +1242,37 @@
         document.getElementById('forecastPreview').style.display = 'block';
         document.getElementById('downloadOptions').style.display = 'block';
         
-        // Smooth scroll to the forecast preview with offset
+        // Enhanced smooth scroll to the forecast preview with iPhone-style animation
         setTimeout(() => {
           const previewElement = document.getElementById('forecastPreview');
-          const offset = 50; // Add some space above the preview
+          const offset = 80; // More space above the preview
           const elementPosition = previewElement.getBoundingClientRect().top;
           const offsetPosition = elementPosition + window.pageYOffset - offset;
           
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          });
-        }, 300);
+          // Use a more pronounced smooth scroll
+          const startPosition = window.pageYOffset;
+          const distance = offsetPosition - startPosition;
+          const duration = 1200; // Longer duration for more visible animation
+          let start = null;
+          
+          function animation(currentTime) {
+            if (start === null) start = currentTime;
+            const timeElapsed = currentTime - start;
+            const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+            window.scrollTo(0, run);
+            if (timeElapsed < duration) requestAnimationFrame(animation);
+          }
+          
+          // Easing function for smooth iPhone-style animation
+          function easeInOutCubic(t, b, c, d) {
+            t /= d / 2;
+            if (t < 1) return c / 2 * t * t * t + b;
+            t -= 2;
+            return c / 2 * (t * t * t + 2) + b;
+          }
+          
+          requestAnimationFrame(animation);
+        }, 500);
         
       } catch (error) {
         console.error('Error parsing forecast data:', error);
