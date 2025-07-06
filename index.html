@@ -654,7 +654,10 @@
     
     .download-buttons .btn {
       flex: 1;
-      min-width: 200px;
+      min-width: 160px;
+      max-width: 220px;
+      font-size: 0.9rem;
+      padding: 0.75rem 1rem;
     }
     
     @media (max-width: 768px) {
@@ -663,6 +666,9 @@
       }
       .download-buttons .btn {
         min-width: auto;
+        max-width: none;
+        font-size: 0.85rem;
+        padding: 0.7rem 0.9rem;
       }
     }
     .site-logo {
@@ -1213,6 +1219,14 @@
         // Show the preview and download options
         document.getElementById('forecastPreview').style.display = 'block';
         document.getElementById('downloadOptions').style.display = 'block';
+        
+        // Scroll to the forecast preview
+        setTimeout(() => {
+          document.getElementById('forecastPreview').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+          });
+        }, 100);
         
       } catch (error) {
         console.error('Error parsing forecast data:', error);
