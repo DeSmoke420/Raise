@@ -207,6 +207,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         diagnostics.append(f"Prophet failed: {e}")
     
     # ARIMA (try non-seasonal for small datasets)
+    logger.info(f"pmdarima available: {pm is not None}")
     if pm is not None:
         try:
             arima_start = time.time()
@@ -216,6 +217,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             if len(ts) > 100:
                 logger.info(f"Skipping ARIMA for large dataset ({len(ts)} points)")
                 raise ValueError("Dataset too large for ARIMA")
+            
+            logger.info(f"ARIMA dataset size: {len(ts)} points, seasonal periods: {seasonal_periods}")
             if len(ts) >= seasonal_periods * 2:
                 # Seasonal ARIMA - limit parameter search for speed
                 logger.info(f"Fitting seasonal ARIMA with {len(ts)} points...")
@@ -254,6 +257,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                 best_forecast = forecast_values.tolist()
                 best_name = "ARIMA"
         except Exception as e:
+            logger.error(f"ARIMA failed with error: {e}")
             diagnostics.append(f"ARIMA failed: {e}")
     
     # Last resort: use the last value repeated
