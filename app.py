@@ -227,8 +227,12 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                     seasonal=True, 
                     m=seasonal_periods, 
                     suppress_warnings=True, 
-                    max_p=1, max_q=1, max_d=1,  # Reduced from 2,2,1
-                    max_P=1, max_Q=1, max_D=1,  # Reduced seasonal parameters
+                    start_p=0, max_p=1,  # Fixed: start_p must be <= max_p
+                    start_q=0, max_q=1,  # Fixed: start_q must be <= max_q
+                    max_d=1,
+                    start_P=0, max_P=1,  # Fixed: start_P must be <= max_P
+                    start_Q=0, max_Q=1,  # Fixed: start_Q must be <= max_Q
+                    max_D=1,
                     stepwise=True,  # Use stepwise search (faster)
                     n_jobs=1,  # Single thread to avoid conflicts
                     random_state=42  # For reproducibility
@@ -240,7 +244,9 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                     ts, 
                     seasonal=False, 
                     suppress_warnings=True, 
-                    max_p=1, max_q=1, max_d=1,  # Reduced from 2,2,1
+                    start_p=0, max_p=1,  # Fixed: start_p must be <= max_p
+                    start_q=0, max_q=1,  # Fixed: start_q must be <= max_q
+                    max_d=1,
                     stepwise=True,  # Use stepwise search (faster)
                     n_jobs=1,  # Single thread to avoid conflicts
                     random_state=42  # For reproducibility
