@@ -210,14 +210,37 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         try:
             arima_start = time.time()
             logger.info(f"Trying ARIMA model...")
+            
+            # Skip ARIMA if dataset is too large (will be too slow)
+            if len(ts) > 100:
+                logger.info(f"Skipping ARIMA for large dataset ({len(ts)} points)")
+                raise ValueError("Dataset too large for ARIMA")
             if len(ts) >= seasonal_periods * 2:
-                # Seasonal ARIMA
+                # Seasonal ARIMA - limit parameter search for speed
                 logger.info(f"Fitting seasonal ARIMA with {len(ts)} points...")
-                model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True, max_p=2, max_q=2, max_d=1)
+                model = pm.auto_arima(
+                    ts, 
+                    seasonal=True, 
+                    m=seasonal_periods, 
+                    suppress_warnings=True, 
+                    max_p=1, max_q=1, max_d=1,  # Reduced from 2,2,1
+                    max_P=1, max_Q=1, max_D=1,  # Reduced seasonal parameters
+                    stepwise=True,  # Use stepwise search (faster)
+                    n_jobs=1,  # Single thread to avoid conflicts
+                    random_state=42  # For reproducibility
+                )
             elif len(ts) >= 4:
                 # Non-seasonal ARIMA for small datasets
                 logger.info(f"Fitting non-seasonal ARIMA with {len(ts)} points...")
-                model = pm.auto_arima(ts, seasonal=False, suppress_warnings=True, max_p=2, max_q=2, max_d=1)
+                model = pm.auto_arima(
+                    ts, 
+                    seasonal=False, 
+                    suppress_warnings=True, 
+                    max_p=1, max_q=1, max_d=1,  # Reduced from 2,2,1
+                    stepwise=True,  # Use stepwise search (faster)
+                    n_jobs=1,  # Single thread to avoid conflicts
+                    random_state=42  # For reproducibility
+                )
             else:
                 raise ValueError("Insufficient data for ARIMA")
                 
