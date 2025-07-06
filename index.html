@@ -80,6 +80,8 @@
     .header {
       text-align: center;
       margin-bottom: 2.5rem;
+      position: relative;
+      z-index: 1;
     }
 
     .logo {
@@ -399,6 +401,52 @@
       
       h1 {
         font-size: 1.75rem;
+      }
+      
+      /* Mobile-specific header adjustments */
+      .header {
+        margin-bottom: 2rem;
+      }
+      
+      .logo {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 1rem;
+      }
+      
+      .logo i {
+        font-size: 1.5rem;
+      }
+      
+      /* Ensure proper spacing between header and form fields */
+      .header + .info-box,
+      .header + .field {
+        margin-top: 1rem;
+      }
+      
+      /* Adjust input group positioning for mobile */
+      .input-group {
+        margin-bottom: 0.5rem;
+      }
+      
+      /* Ensure select dropdowns don't get cut off */
+      select {
+        max-height: 200px;
+      }
+      
+      /* Additional mobile spacing fixes */
+      .field {
+        margin-bottom: 1.25rem;
+      }
+      
+      /* Ensure form elements have proper spacing from header */
+      #forecastPage .header {
+        margin-bottom: 1.5rem;
+      }
+      
+      /* Prevent any potential overlap with absolute positioned elements */
+      .input-group i {
+        z-index: 2;
       }
     }
 
