@@ -1206,8 +1206,30 @@
           }
         });
         
-        // Convert to arrays for chart
-        const dates = Object.keys(aggregatedData).sort();
+        // Convert to arrays for chart with proper date sorting
+        const dates = Object.keys(aggregatedData).sort((a, b) => {
+          // Parse dates in DD/MM/YYYY or MM/DD/YYYY format
+          const parseDate = (dateStr) => {
+            const parts = dateStr.split('/');
+            if (parts.length === 3) {
+              // Check if it's DD/MM/YYYY (EUR) or MM/DD/YYYY (US) format
+              const day = parseInt(parts[0]);
+              const month = parseInt(parts[1]);
+              const year = parseInt(parts[2]);
+              
+              // If day > 12, it's likely DD/MM/YYYY format
+              if (day > 12) {
+                return new Date(year, month - 1, day);
+              } else {
+                // Assume MM/DD/YYYY format
+                return new Date(year, month - 1, day);
+              }
+            }
+            return new Date(dateStr);
+          };
+          
+          return parseDate(a) - parseDate(b);
+        });
         const quantities = dates.map(date => aggregatedData[date]);
         
         // Create chart
