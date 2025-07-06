@@ -1012,7 +1012,7 @@
       console.log('Blob type:', blob.type);
       console.log('Blob size:', blob.size);
       
-      // Method 1: Direct download with proper MIME type
+      // Single download method to prevent duplicate popups
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
@@ -1024,21 +1024,12 @@
       link.click();
       document.body.removeChild(link);
       
-      // Method 2: If Method 1 fails, try opening in new window
-      setTimeout(() => {
-        try {
-          window.open(url, '_blank');
-        } catch (e) {
-          console.error('Window open failed:', e);
-        }
-      }, 500);
-      
       // Cleanup
       setTimeout(() => {
-      URL.revokeObjectURL(url);
+        URL.revokeObjectURL(url);
       }, 2000);
       
-      console.log('Download methods triggered for:', filename);
+      console.log('Download triggered for:', filename);
     }
 
     function downloadXLSX(csvText, filename) {
