@@ -127,9 +127,10 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
     diagnostics = []
     best_model = None
-    best_aic = float('inf')
+    best_score = float('inf')
     best_forecast = None
     best_name = None
+    model_scores = {}  # Store scores for fair comparison
     
 
     
@@ -163,8 +164,9 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         fit = model.fit()
         forecast_values = fit.forecast(period_count)
         diagnostics.append(f"Holt-Winters: AIC={fit.aic:.2f}")
-        if fit.aic < best_aic:
-            best_aic = fit.aic
+        model_scores["Holt-Winters"] = fit.aic
+        if fit.aic < best_score:
+            best_score = fit.aic
             best_forecast = forecast_values.tolist()
             best_name = "Holt-Winters"
     except Exception as e:
@@ -198,10 +200,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         mse = ((y_true - y_pred) ** 2).mean()
         prophet_time = time.time() - prophet_start
         diagnostics.append(f"Prophet: MSE={mse:.2f} (took {prophet_time:.2f}s)")
-        if mse < best_aic:  # Use MSE as a proxy for AIC
-            best_aic = mse
-            best_forecast = forecast_values.tolist()
-            best_name = "Prophet"
+        model_scores["Prophet"] = mse
+        # Don't compare MSE directly with AIC - will handle separately
     except Exception as e:
         diagnostics.append(f"Prophet failed: {e}")
     
@@ -247,8 +247,9 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
             forecast_values = model.predict(n_periods=period_count)
             arima_time = time.time() - arima_start
             diagnostics.append(f"ARIMA: AIC={model.aic():.2f} (took {arima_time:.2f}s)")
-            if model.aic() < best_aic:
-                best_aic = model.aic()
+            model_scores["ARIMA"] = model.aic()
+            if model.aic() < best_score:
+                best_score = model.aic()
                 best_forecast = forecast_values.tolist()
                 best_name = "ARIMA"
         except Exception as e:
@@ -260,6 +261,56 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         best_forecast = [last_value] * period_count
         best_name = "Last Value"
         diagnostics.append("Using last value as fallback")
+    
+    # Fair model comparison - normalize scores for fair comparison
+    if len(model_scores) > 1:
+        logger.info(f"Model scores before comparison: {model_scores}")
+        
+        # If we have both AIC and MSE models, use a fair comparison
+        aic_models = {k: v for k, v in model_scores.items() if k in ["Holt-Winters", "ARIMA"]}
+        mse_models = {k: v for k, v in model_scores.items() if k == "Prophet"}
+        
+        if aic_models and mse_models:
+            # Normalize AIC scores to 0-1 range
+            aic_values = list(aic_models.values())
+            aic_min, aic_max = min(aic_values), max(aic_values)
+            aic_normalized = {k: (v - aic_min) / (aic_max - aic_min) for k, v in aic_models.items()}
+            
+            # Normalize MSE scores to 0-1 range  
+            mse_values = list(mse_models.values())
+            mse_min, mse_max = min(mse_values), max(mse_values)
+            mse_normalized = {k: (v - mse_min) / (mse_max - mse_min) for k, v in mse_models.items()}
+            
+            # Combine and find best
+            all_normalized = {**aic_normalized, **mse_normalized}
+            best_model_name = min(all_normalized, key=all_normalized.get)
+            
+            logger.info(f"Normalized scores: {all_normalized}")
+            logger.info(f"Best model after normalization: {best_model_name}")
+            
+            # Update best model if different
+            if best_model_name != best_name:
+                logger.info(f"Model selection changed from {best_name} to {best_model_name}")
+                best_name = best_model_name
+                # Re-run the best model to get its forecast
+                if best_model_name == "Prophet":
+                    # Prophet was already run, use its forecast
+                    pass  # Keep existing Prophet forecast
+                elif best_model_name == "Holt-Winters":
+                    # Re-run Holt-Winters
+                    model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+                    fit = model.fit()
+                    best_forecast = fit.forecast(period_count).tolist()
+                elif best_model_name == "ARIMA":
+                    # Re-run ARIMA
+                    if len(ts) >= seasonal_periods * 2:
+                        model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True, 
+                                            max_p=1, max_q=1, max_d=1, max_P=1, max_Q=1, max_D=1, 
+                                            stepwise=True, n_jobs=1, random_state=42)
+                    else:
+                        model = pm.auto_arima(ts, seasonal=False, suppress_warnings=True, 
+                                            max_p=1, max_q=1, max_d=1, stepwise=True, n_jobs=1, random_state=42)
+                    best_forecast = model.predict(n_periods=period_count).tolist()
     
     elapsed_time = time.time() - start_time
     if best_forecast is not None:
