@@ -630,9 +630,44 @@
       font-size: 0.85rem;
       margin: 0.25rem 0;
     }
+    .site-logo {
+      position: absolute;
+      top: 24px;
+      left: 24px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      text-decoration: none;
+    }
+    .site-logo img {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(99,102,241,0.10);
+      background: #fff;
+      padding: 6px;
+      transition: box-shadow 0.2s;
+    }
+    .site-logo:hover img {
+      box-shadow: 0 4px 16px rgba(99,102,241,0.18);
+    }
+    @media (max-width: 768px) {
+      .site-logo {
+        top: 10px;
+        left: 10px;
+      }
+      .site-logo img {
+        width: 40px;
+        height: 40px;
+        padding: 3px;
+      }
+    }
   </style>
 </head>
 <body>
+  <a href="/" class="site-logo">
+    <img src="static/logo.png" alt="r4ise logo" />
+  </a>
   <div class="container">
     <!-- Home Page -->
     <div class="card fade-in" id="homePage">
@@ -1151,12 +1186,10 @@
     
     function createForecastChart(dates, quantities) {
       const ctx = document.getElementById('forecastChart').getContext('2d');
-      
-      // Destroy existing chart if it exists
-      if (window.forecastChart) {
+      // Destroy existing chart if it exists and is a Chart.js instance
+      if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
         window.forecastChart.destroy();
       }
-      
       window.forecastChart = new Chart(ctx, {
         type: 'line',
         data: {
