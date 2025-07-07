@@ -208,21 +208,12 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     
     # ARIMA (try non-seasonal for small datasets)
     logger.info(f"pmdarima available: {pm is not None}")
+    import concurrent.futures
+    ARIMA_TIMEOUT = 10  # seconds
     if pm is not None:
-        try:
-            arima_start = time.time()
-            logger.info(f"Trying ARIMA model...")
-            
-            # Skip ARIMA if dataset is too large (will be too slow)
-            if len(ts) > 100:
-                logger.info(f"Skipping ARIMA for large dataset ({len(ts)} points)")
-                raise ValueError("Dataset too large for ARIMA")
-            
-            logger.info(f"ARIMA dataset size: {len(ts)} points, seasonal periods: {seasonal_periods}")
-            if len(ts) >= seasonal_periods * 2:
-                # Seasonal ARIMA - limit parameter search for speed
-                logger.info(f"Fitting seasonal ARIMA with {len(ts)} points...")
-                model = pm.auto_arima(
+        def fit_arima(ts, seasonal, seasonal_periods, period_count):
+            if seasonal:
+                model = pm.auto_arima(  # type: ignore
                     ts, 
                     seasonal=True, 
                     m=seasonal_periods, 
@@ -237,10 +228,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                     n_jobs=1,  # Single thread to avoid conflicts
                     random_state=42  # For reproducibility
                 )
-            elif len(ts) >= 4:
-                # Non-seasonal ARIMA for small datasets
-                logger.info(f"Fitting non-seasonal ARIMA with {len(ts)} points...")
-                model = pm.auto_arima(
+            else:
+                model = pm.auto_arima(  # type: ignore
                     ts, 
                     seasonal=False, 
                     suppress_warnings=True, 
@@ -251,20 +240,44 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
                     n_jobs=1,  # Single thread to avoid conflicts
                     random_state=42  # For reproducibility
                 )
-            else:
-                raise ValueError("Insufficient data for ARIMA")
-                
             forecast_values = model.predict(n_periods=period_count)
-            arima_time = time.time() - arima_start
-            diagnostics.append(f"ARIMA: AIC={model.aic():.2f} (took {arima_time:.2f}s)")
-            model_scores["ARIMA"] = model.aic()
-            if model.aic() < best_score:
-                best_score = model.aic()
-                best_forecast = forecast_values.tolist()
-                best_name = "ARIMA"
+            return model, forecast_values
+
+        try:
+            arima_start = time.time()
+            logger.info(f"Trying ARIMA model...")
+            # Skip ARIMA if dataset is too large (will be too slow)
+            if len(ts) > 100:
+                logger.info(f"Skipping ARIMA for large dataset ({len(ts)} points)")
+                raise ValueError("Dataset too large for ARIMA")
+            logger.info(f"ARIMA dataset size: {len(ts)} points, seasonal periods: {seasonal_periods}")
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                if len(ts) >= seasonal_periods * 2:
+                    future = executor.submit(fit_arima, ts, True, seasonal_periods, period_count)
+                elif len(ts) >= 4:
+                    future = executor.submit(fit_arima, ts, False, seasonal_periods, period_count)
+                else:
+                    raise ValueError("Insufficient data for ARIMA")
+                try:
+                    model, forecast_values = future.result(timeout=ARIMA_TIMEOUT)
+                    arima_time = time.time() - arima_start
+                    diagnostics.append(f"ARIMA: AIC={model.aic():.2f} (took {arima_time:.2f}s)")
+                    model_scores["ARIMA"] = model.aic()
+                    if model.aic() < best_score:
+                        best_score = model.aic()
+                        best_forecast = forecast_values.tolist()
+                        best_name = "ARIMA"
+                except concurrent.futures.TimeoutError:
+                    logger.error(f"ARIMA fitting timed out after {ARIMA_TIMEOUT} seconds.")
+                    diagnostics.append(f"ARIMA skipped: fitting timed out after {ARIMA_TIMEOUT} seconds.")
+                except Exception as e:
+                    logger.error(f"ARIMA failed with error: {e}")
+                    diagnostics.append(f"ARIMA failed: {e}")
         except Exception as e:
             logger.error(f"ARIMA failed with error: {e}")
             diagnostics.append(f"ARIMA failed: {e}")
+    else:
+        diagnostics.append("ARIMA not available (pmdarima not installed).")
     
     # Last resort: use the last value repeated
     if best_forecast is None and len(ts) > 0:
