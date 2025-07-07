@@ -526,7 +526,7 @@ def forecast():
             else:
                 # If pandas default failed, try specific formats
                 logger.info("Pandas default failed, trying specific formats")
-                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
+                date_formats = ['%m/%d/%y', '%m/%d/%Y', '%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
                 
                 for fmt in date_formats:
                     try:
