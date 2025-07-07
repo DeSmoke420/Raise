@@ -448,58 +448,33 @@ def forecast():
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # Simple and reliable date parsing
-        logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
-        
-        # Auto-detect input date format (don't use user preference for input parsing)
-        logger.info(f"Auto-detecting input date format (user output preference: {date_format})")
-        
-        # Check if dates look like DD/MM/YYYY format
-        sample_dates = df[date_col].head(10).astype(str).tolist()
-        logger.info(f"Analyzing date patterns in: {sample_dates}")
-        dd_mm_yyyy_pattern = False
-        day_values = []
-        month_values = []
-        
-        # First pass: collect all day and month values
-        for date_str in sample_dates:
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) == 3:
-                    try:
-                        day = int(parts[0])
-                        month = int(parts[1])
-                        year = int(parts[2])
-                        day_values.append(day)
-                        month_values.append(month)
-                    except ValueError:
-                        continue
-        
-        if day_values and month_values:
-            # Analyze patterns to determine format
-            unique_days = set(day_values)
-            unique_months = set(month_values)
-            
-            logger.info(f"Date pattern analysis: unique_days={unique_days}, unique_months={unique_months}")
-            
-            # Clear DD/MM indicators:
-            # 1. Any day > 12 (obvious DD/MM)
-            # 2. Any month > 12 (obvious DD/MM)
-            # 3. Day always 1 AND months vary from 1-12 (EUR format with day=1)
-            
-            has_day_over_12 = any(d > 12 for d in unique_days)
-            has_month_over_12 = any(m > 12 for m in unique_months)
-            day_always_one = unique_days == {1}
-            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
-            
-            if has_day_over_12 or has_month_over_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: obvious indicator (day>12 or month>12)")
-            elif day_always_one and month_varies_1_to_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: day always 1, months vary 1-12 (EUR format)")
-            else:
-                logger.info(f"Assuming MM/DD format: day_always_one={day_always_one}, month_varies_1_to_12={month_varies_1_to_12}")
+        # --- Robust date format auto-detection ---
+        sample_dates = df[date_col].dropna().astype(str).head(20).tolist()
+        candidate_formats = [
+            '%m/%d/%y', '%m/%d/%Y',  # US
+            '%d/%m/%y', '%d/%m/%Y',  # EUR
+            '%Y-%m-%d', '%Y/%m/%d',  # ISO
+            '%m/%Y',                 # Month/Year
+        ]
+        best_format = None
+        best_count = 0
+        for fmt in candidate_formats:
+            count = 0
+            for date_str in sample_dates:
+                try:
+                    pd.to_datetime(date_str, format=fmt)
+                    count += 1
+                except Exception:
+                    continue
+            if count > best_count:
+                best_count = count
+                best_format = fmt
+        if best_format and best_count >= max(2, int(0.6 * len(sample_dates))):
+            logger.info(f"Auto-detected date format: {best_format} ({best_count}/{len(sample_dates)} valid)")
+            df[date_col] = pd.to_datetime(df[date_col], format=best_format, errors='coerce')
+        else:
+            logger.info("Falling back to pandas default date parsing.")
+            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
         
         # Try pandas default parsing first (works for most cases)
         try:
