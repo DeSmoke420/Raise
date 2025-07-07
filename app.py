@@ -568,19 +568,37 @@ def forecast():
         if df.empty:
             return jsonify({'error': 'No valid data after processing'}), 400
         
-        # Create periods based on time unit
+        # Create periods based on time unit with proper resampling
         logger.info(f"Creating periods for time_unit: {time_unit}")
         logger.info(f"Date range: {df[date_col].min()} to {df[date_col].max()}")
         
+        # First, set the date column as index for proper resampling
+        df_temp = df.copy()
+        df_temp = df_temp.set_index(date_col)
+        
+        # Resample the entire dataset to the requested time unit
         if time_unit == 'monthly':
-            # Convert to monthly periods - this works for both MM/YYYY and DD/MM/YYYY
-            df['period'] = df[date_col].dt.to_period('M').dt.to_timestamp()
-            logger.info(f"Monthly periods created. Unique periods: {df['period'].nunique()}")
-            logger.info(f"Sample periods: {df['period'].head(5).tolist()}")
+            df_resampled = df_temp.resample('M').sum()
+            logger.info(f"Resampled to monthly. Unique periods: {len(df_resampled)}")
         elif time_unit == 'weekly':
-            df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
+            df_resampled = df_temp.resample('W').sum()
+            logger.info(f"Resampled to weekly. Unique periods: {len(df_resampled)}")
         else:  # daily
-            df['period'] = df[date_col]
+            df_resampled = df_temp.resample('D').sum()
+            logger.info(f"Resampled to daily. Unique periods: {len(df_resampled)}")
+        
+        # Reset index to get the date back as a column
+        df_resampled = df_resampled.reset_index()
+        df_resampled = df_resampled.rename(columns={date_col: 'period'})
+        
+        # Fill NaN values with 0 for missing periods
+        df_resampled = df_resampled.fillna(0)
+        
+        logger.info(f"Resampled data shape: {df_resampled.shape}")
+        logger.info(f"Sample resampled periods: {df_resampled['period'].head(5).tolist()}")
+        
+        # Use the resampled dataframe
+        df = df_resampled
 
         forecasts = []
         diagnostics_log = []
@@ -605,17 +623,17 @@ def forecast():
             logger.info(f"Processing item {i+1}/{len(unique_items)}: {item_id}")
             group = df[df[item_col] == item_id]
             # Show raw data before aggregation
-            logger.info(f"Item {item_id}: Raw data points per month:")
-            monthly_counts = group.groupby('period').size()
-            logger.info(f"Item {item_id}: Data points per month: {monthly_counts.to_dict()}")
-            # Aggregate by period to ensure consistent monthly data
-            ts = group.groupby('period')[qty_col].sum().sort_index()
+            logger.info(f"Item {item_id}: Raw data points per {time_unit}:")
+            period_counts = group.groupby('period').size()
+            logger.info(f"Item {item_id}: Data points per {time_unit}: {period_counts.to_dict()}")
+            # Create time series from resampled data
+            ts = group.set_index('period')[qty_col].sort_index()
             # Reindex to global period range, fill missing with 0
             ts = ts.reindex(all_periods, fill_value=0)
-            logger.info(f"Item {item_id}: {len(ts)} monthly periods, range: {ts.index.min()} to {ts.index.max()}")
-            logger.info(f"Item {item_id}: Sample monthly totals: {ts.head(3).tolist()}")
+            logger.info(f"Item {item_id}: {len(ts)} {time_unit} periods, range: {ts.index.min()} to {ts.index.max()}")
+            logger.info(f"Item {item_id}: Sample {time_unit} totals: {ts.head(3).tolist()}")
             # Show the aggregation details
-            logger.info(f"Item {item_id}: Monthly aggregation details:")
+            logger.info(f"Item {item_id}: {time_unit.capitalize()} aggregation details:")
             for period, period_group in group.groupby('period'):
                 logger.info(f"  {period}: {len(period_group)} data points, sum={period_group[qty_col].sum()}")
             # Ensure ts is a Series for type checking
