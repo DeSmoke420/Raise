@@ -448,17 +448,54 @@ def forecast():
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # --- Robust date format auto-detection ---
+        # --- Robust date format auto-detection with US/EUR distinction ---
         sample_dates = df[date_col].dropna().astype(str).head(20).tolist()
-        candidate_formats = [
-            '%m/%d/%y', '%m/%d/%Y',  # US
-            '%d/%m/%y', '%d/%m/%Y',  # EUR
-            '%Y-%m-%d', '%Y/%m/%d',  # ISO
-            '%m/%Y',                 # Month/Year
-        ]
+        
+        # First, try to determine if it's US or EUR format by checking for unambiguous dates
+        us_count = 0
+        eur_count = 0
+        
+        for date_str in sample_dates:
+            parts = date_str.split('/')
+            if len(parts) == 3:
+                try:
+                    first_part = int(parts[0])
+                    second_part = int(parts[1])
+                    
+                    # If first part > 12, it's likely EUR format (day > 12)
+                    if first_part > 12:
+                        eur_count += 1
+                    # If second part > 12, it's likely US format (month > 12)
+                    elif second_part > 12:
+                        us_count += 1
+                    # If both <= 12, we can't determine from this date
+                except ValueError:
+                    continue
+        
+        logger.info(f"Format analysis: US indicators: {us_count}, EUR indicators: {eur_count}")
+        
+        # Determine the most likely format
+        if us_count > eur_count:
+            primary_formats = ['%m/%d/%y', '%m/%d/%Y']  # US first
+            secondary_formats = ['%d/%m/%y', '%d/%m/%Y']  # EUR second
+            detected_format = "US"
+        elif eur_count > us_count:
+            primary_formats = ['%d/%m/%y', '%d/%m/%Y']  # EUR first
+            secondary_formats = ['%m/%d/%y', '%m/%d/%Y']  # US second
+            detected_format = "EUR"
+        else:
+            # If unclear, try both with US first (original behavior)
+            primary_formats = ['%m/%d/%y', '%m/%d/%Y', '%d/%m/%y', '%d/%m/%Y']
+            secondary_formats = []
+            detected_format = "Auto"
+        
+        # Add other formats
+        all_formats = primary_formats + secondary_formats + ['%Y-%m-%d', '%Y/%m/%d', '%m/%Y']
+        
         best_format = None
         best_count = 0
-        for fmt in candidate_formats:
+        
+        for fmt in all_formats:
             count = 0
             for date_str in sample_dates:
                 try:
@@ -469,8 +506,9 @@ def forecast():
             if count > best_count:
                 best_count = count
                 best_format = fmt
+        
         if best_format and best_count >= max(2, int(0.6 * len(sample_dates))):
-            logger.info(f"Auto-detected date format: {best_format} ({best_count}/{len(sample_dates)} valid)")
+            logger.info(f"Auto-detected date format: {best_format} ({detected_format} style, {best_count}/{len(sample_dates)} valid)")
             df[date_col] = pd.to_datetime(df[date_col], format=best_format, errors='coerce')
         else:
             logger.info("Falling back to pandas default date parsing.")
