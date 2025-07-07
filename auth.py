@@ -3,10 +3,10 @@ import json
 import logging
 from functools import wraps
 from typing import Optional, Dict, Any
-import firebase_admin
-from firebase_admin import credentials, auth
+import firebase_admin  # type: ignore
+from firebase_admin import credentials, auth  # type: ignore
 from flask import request, jsonify, g
-import jwt
+import jwt  # type: ignore
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ def require_auth(f):
                 return f(*args, **kwargs)
         
         # Check for Firebase ID token in request body or headers
-        id_token = request.json.get('idToken') if request.is_json else None
+        id_token = request.json.get('idToken') if request.is_json and request.json else None
         if not id_token:
             id_token = request.headers.get('X-Firebase-ID-Token')
         
@@ -132,7 +132,7 @@ def optional_auth(f):
                 g.current_user = user
         
         # Check for Firebase ID token in request body or headers
-        id_token = request.json.get('idToken') if request.is_json else None
+        id_token = request.json.get('idToken') if request.is_json and request.json else None
         if not id_token:
             id_token = request.headers.get('X-Firebase-ID-Token')
         

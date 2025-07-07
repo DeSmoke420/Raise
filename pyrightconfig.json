@@ -1,0 +1,24 @@
+{
+  "pythonPath": "C:\\Users\\pmiga\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+  "venvPath": ".",
+  "venv": "venv",
+  "extraPaths": [
+    "."
+  ],
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": false,
+  "pythonVersion": "3.11",
+  "include": [
+    "*.py",
+    "auth.py",
+    "app.py",
+    "test_auth.py"
+  ],
+  "exclude": [
+    "venv",
+    "__pycache__",
+    "*.pyc"
+  ]
+} 
