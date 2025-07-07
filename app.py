@@ -121,7 +121,7 @@ def validate_time_series_data(ts: pd.Series, time_unit: str) -> Dict[str, Any]:
             result['warnings'].append(f"Detected {outliers} outlier(s) in the data.")
     return result
 
-def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int) -> Tuple[Optional[List[float]], str, str]:
+def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int, skip_arima: bool = False) -> Tuple[Optional[List[float]], str, str]:
     """Try all models, select the best one, and return diagnostics."""
     start_time = time.time()
     logger.info(f"Starting model selection for time series with {len(ts)} points")
@@ -210,7 +210,7 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
     logger.info(f"pmdarima available: {pm is not None}")
     import concurrent.futures
     ARIMA_TIMEOUT = 10  # seconds
-    if pm is not None:
+    if pm is not None and not skip_arima:
         def fit_arima(ts, seasonal, seasonal_periods, period_count):
             if seasonal:
                 model = pm.auto_arima(  # type: ignore
@@ -276,6 +276,8 @@ def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period
         except Exception as e:
             logger.error(f"ARIMA failed with error: {e}")
             diagnostics.append(f"ARIMA failed: {e}")
+    elif skip_arima:
+        diagnostics.append("ARIMA skipped for performance (too many items or rows).")
     else:
         diagnostics.append("ARIMA not available (pmdarima not installed).")
     
@@ -575,10 +577,17 @@ def forecast():
         
         forecasts = []
         diagnostics_log = []
-        
+
         unique_items = df[item_col].unique()
         logger.info(f"Starting forecast generation for {len(unique_items)} unique items")
-        
+
+        # --- Skip ARIMA logic ---
+        skip_arima = False
+        if len(df) > 1000 or len(unique_items) > 10:
+            skip_arima = True
+            logger.info(f"Skipping ARIMA for performance: {len(unique_items)} items, {len(df)} rows")
+        # --- End skip ARIMA logic ---
+
         for i, item_id in enumerate(unique_items):
             logger.info(f"Processing item {i+1}/{len(unique_items)}: {item_id}")
             group = df[df[item_col] == item_id]
@@ -609,7 +618,7 @@ def forecast():
                 continue
             
             # Model selection with diagnostics
-            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count)
+            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count, skip_arima=skip_arima)
             diagnostics_log.append(f"Item {item_id}: {diag}")
             if forecast_values is None:
                 continue
