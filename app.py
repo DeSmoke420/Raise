@@ -423,9 +423,9 @@ def forecast():
         export_format = data.get('exportFormat', 'csv').lower()  # Default to CSV
         date_format = data.get('dateFormat', 'EUR')  # Default to EUR
         decimal_places = int(data.get('decimalPlaces', 0))  # Default to 0
-        replace_negative = data.get('replaceNegative', True)  # Default to True
+        allow_negative = data.get('allowNegative', False)  # Default to False
         
-        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}, replace_negative={replace_negative}")
+        logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}, allow_negative={allow_negative}")
         logger.info(f"CSV data length: {len(csv_text)} characters")
         
         # Parse CSV safely
@@ -676,8 +676,8 @@ def forecast():
             for date_str, val in zip(future_dates, forecast_values):
                 val = round(float(val), decimal_places)
                 
-                # Replace negative values with 0 if requested
-                if replace_negative and val < 0:
+                # Replace negative values with 0 if not allowed
+                if not allow_negative and val < 0:
                     logger.info(f"Item {item_id}: Replacing negative forecast value {val} with 0")
                     val = 0
                 
