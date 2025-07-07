@@ -476,45 +476,7 @@ def forecast():
             logger.info("Falling back to pandas default date parsing.")
             df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
         
-        # Try pandas default parsing first (works for most cases)
-        try:
-            if dd_mm_yyyy_pattern:
-                # For DD/MM/YYYY, try specific format first
-                logger.info("Trying DD/MM/YYYY format first")
-                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
-                valid_dates = df[date_col].notna().sum()
-                logger.info(f"DD/MM/YYYY parsing: {valid_dates} valid dates out of {len(df)}")
-                
-                if valid_dates == 0:
-                    # If DD/MM/YYYY failed, try pandas default
-                    logger.info("DD/MM/YYYY failed, trying pandas default")
-                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                    valid_dates = df[date_col].notna().sum()
-            else:
-                # For other formats, try pandas default first
-                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                valid_dates = df[date_col].notna().sum()
-                logger.info(f"Pandas default parsing: {valid_dates} valid dates out of {len(df)}")
-            
-            if valid_dates > 0:
-                logger.info("Date parsing successful")
-            else:
-                # If pandas default failed, try specific formats
-                logger.info("Pandas default failed, trying specific formats")
-                date_formats = ['%m/%d/%y', '%m/%d/%Y', '%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
-                
-                for fmt in date_formats:
-                    try:
-                        df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
-                        valid_dates = df[date_col].notna().sum()
-                        if valid_dates > 0:
-                            logger.info(f"Successfully parsed dates with format: {fmt} ({valid_dates} valid dates)")
-                            break
-                    except Exception:
-                        continue
-        except Exception as e:
-            logger.error(f"Date parsing error: {e}")
-            return jsonify({'error': f'Could not parse date column: {e}'}), 400
+        # (Obsolete date parsing block removed; handled by robust auto-detection above)
         
         df = df.dropna(subset=[date_col, qty_col, item_col])
         logger.info(f"Valid rows after date parsing: {len(df)}")
