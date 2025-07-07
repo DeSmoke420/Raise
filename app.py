@@ -448,73 +448,98 @@ def forecast():
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # --- Robust date format auto-detection with US/EUR distinction ---
-        sample_dates = df[date_col].dropna().astype(str).head(20).tolist()
+        # Simple and reliable date parsing
+        logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # First, try to determine if it's US or EUR format by checking for unambiguous dates
-        us_count = 0
-        eur_count = 0
+        # Auto-detect input date format (don't use user preference for input parsing)
+        logger.info(f"Auto-detecting input date format (user output preference: {date_format})")
         
+        # Check if dates look like DD/MM/YYYY format
+        sample_dates = df[date_col].head(10).astype(str).tolist()
+        logger.info(f"Analyzing date patterns in: {sample_dates}")
+        dd_mm_yyyy_pattern = False
+        day_values = []
+        month_values = []
+        
+        # First pass: collect all day and month values
         for date_str in sample_dates:
-            parts = date_str.split('/')
-            if len(parts) == 3:
-                try:
-                    first_part = int(parts[0])
-                    second_part = int(parts[1])
-                    
-                    # If first part > 12, it's likely EUR format (day > 12)
-                    if first_part > 12:
-                        eur_count += 1
-                    # If second part > 12, it's likely US format (month > 12)
-                    elif second_part > 12:
-                        us_count += 1
-                    # If both <= 12, we can't determine from this date
-                except ValueError:
-                    continue
+            if '/' in date_str:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    try:
+                        day = int(parts[0])
+                        month = int(parts[1])
+                        year = int(parts[2])
+                        day_values.append(day)
+                        month_values.append(month)
+                    except ValueError:
+                        continue
         
-        logger.info(f"Format analysis: US indicators: {us_count}, EUR indicators: {eur_count}")
+        if day_values and month_values:
+            # Analyze patterns to determine format
+            unique_days = set(day_values)
+            unique_months = set(month_values)
+            
+            logger.info(f"Date pattern analysis: unique_days={unique_days}, unique_months={unique_months}")
+            
+            # Clear DD/MM indicators:
+            # 1. Any day > 12 (obvious DD/MM)
+            # 2. Any month > 12 (obvious DD/MM)
+            # 3. Day always 1 AND months vary from 1-12 (EUR format with day=1)
+            
+            has_day_over_12 = any(d > 12 for d in unique_days)
+            has_month_over_12 = any(m > 12 for m in unique_months)
+            day_always_one = unique_days == {1}
+            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
+            
+            if has_day_over_12 or has_month_over_12:
+                dd_mm_yyyy_pattern = True
+                logger.info(f"Detected DD/MM/YYYY: obvious indicator (day>12 or month>12)")
+            elif day_always_one and month_varies_1_to_12:
+                dd_mm_yyyy_pattern = True
+                logger.info(f"Detected DD/MM/YYYY: day always 1, months vary 1-12 (EUR format)")
+            else:
+                logger.info(f"Assuming MM/DD format: day_always_one={day_always_one}, month_varies_1_to_12={month_varies_1_to_12}")
         
-        # Determine the most likely format
-        if us_count > eur_count:
-            primary_formats = ['%m/%d/%y', '%m/%d/%Y']  # US first
-            secondary_formats = ['%d/%m/%y', '%d/%m/%Y']  # EUR second
-            detected_format = "US"
-        elif eur_count > us_count:
-            primary_formats = ['%d/%m/%y', '%d/%m/%Y']  # EUR first
-            secondary_formats = ['%m/%d/%y', '%m/%d/%Y']  # US second
-            detected_format = "EUR"
-        else:
-            # If unclear, try both with US first (original behavior)
-            primary_formats = ['%m/%d/%y', '%m/%d/%Y', '%d/%m/%y', '%d/%m/%Y']
-            secondary_formats = []
-            detected_format = "Auto"
-        
-        # Add other formats
-        all_formats = primary_formats + secondary_formats + ['%Y-%m-%d', '%Y/%m/%d', '%m/%Y']
-        
-        best_format = None
-        best_count = 0
-        
-        for fmt in all_formats:
-            count = 0
-            for date_str in sample_dates:
-                try:
-                    pd.to_datetime(date_str, format=fmt)
-                    count += 1
-                except Exception:
-                    continue
-            if count > best_count:
-                best_count = count
-                best_format = fmt
-        
-        if best_format and best_count >= max(2, int(0.6 * len(sample_dates))):
-            logger.info(f"Auto-detected date format: {best_format} ({detected_format} style, {best_count}/{len(sample_dates)} valid)")
-            df[date_col] = pd.to_datetime(df[date_col], format=best_format, errors='coerce')
-        else:
-            logger.info("Falling back to pandas default date parsing.")
-            df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-        
-        # (Obsolete date parsing block removed; handled by robust auto-detection above)
+        # Try pandas default parsing first (works for most cases)
+        try:
+            if dd_mm_yyyy_pattern:
+                # For DD/MM/YYYY, try specific format first
+                logger.info("Trying DD/MM/YYYY format first")
+                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+                logger.info(f"DD/MM/YYYY parsing: {valid_dates} valid dates out of {len(df)}")
+                
+                if valid_dates == 0:
+                    # If DD/MM/YYYY failed, try pandas default
+                    logger.info("DD/MM/YYYY failed, trying pandas default")
+                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                    valid_dates = df[date_col].notna().sum()
+            else:
+                # For other formats, try pandas default first
+                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+                valid_dates = df[date_col].notna().sum()
+                logger.info(f"Pandas default parsing: {valid_dates} valid dates out of {len(df)}")
+            
+            if valid_dates > 0:
+                logger.info("Date parsing successful")
+            else:
+                # If pandas default failed, try specific formats
+                logger.info("Pandas default failed, trying specific formats")
+                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
+                
+                for fmt in date_formats:
+                    try:
+                        df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
+                        valid_dates = df[date_col].notna().sum()
+                        if valid_dates > 0:
+                            logger.info(f"Successfully parsed dates with format: {fmt} ({valid_dates} valid dates)")
+                            break
+                    except Exception:
+                        continue
+        except Exception as e:
+            logger.error(f"Date parsing error: {e}")
+            return jsonify({'error': f'Could not parse date column: {e}'}), 400
         
         df = df.dropna(subset=[date_col, qty_col, item_col])
         logger.info(f"Valid rows after date parsing: {len(df)}")
