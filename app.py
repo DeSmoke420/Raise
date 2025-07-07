@@ -439,6 +439,8 @@ def forecast():
         if missing:
             logger.error(f"Missing columns: {missing}")
             return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
+        # Ensure item_col is always string to prevent Excel misinterpretation
+        df[item_col] = df[item_col].astype(str)
         
         # Process data with robust date parsing
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
@@ -681,6 +683,10 @@ def forecast():
         
         # Create result dataframe
         result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
+        # Ensure Item ID is string before export
+        result_df["Item ID"] = result_df["Item ID"].astype(str)
+        # Always round Forecast Quantity to 2 decimals for preview
+        result_df["Forecast Quantity"] = result_df["Forecast Quantity"].astype(float).round(2)
         
         # Return single file based on export format
         if export_format == 'xlsx':
