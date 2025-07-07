@@ -4,6 +4,8 @@ import logging
 import os
 import time
 import math
+import pandas as pd
+import io
 from typing import Optional, Tuple, List, Dict, Any
 
 # Configure logging first
@@ -593,7 +595,7 @@ def forecast():
         # --- End skip ARIMA logic ---
 
         # Determine the global date range (all periods across all items)
-        all_periods = df['period'].sort_values().unique()
+        all_periods = pd.Series(df['period'].unique()).sort_values().to_list()
         global_min_period = df['period'].min()
         global_max_period = df['period'].max()
         logger.info(f"Global period range: {global_min_period} to {global_max_period}, total periods: {len(all_periods)}")
