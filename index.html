@@ -259,6 +259,42 @@
       grid-template-columns: 1fr 1fr;
       gap: 1rem;
     }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.875rem 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      background: var(--card-bg);
+      transition: all 0.2s ease;
+    }
+    
+    .checkbox-group:focus-within {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgb(99 102 241 / 0.1);
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: none;
+      box-shadow: none;
+      accent-color: var(--primary-color);
+      transform: scale(1.2);
+    }
+    
+    .checkbox-label {
+      margin: 0;
+      font-weight: 400;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      cursor: pointer;
+      flex: 1;
+    }
 
     .hidden {
       display: none !important;
@@ -823,6 +859,18 @@
             </select>
           </div>
         </div>
+        
+        <div class="field">
+          <label for="replaceNegative">
+            <i class="fas fa-shield-alt"></i> Replace Negative Values
+          </label>
+          <div class="checkbox-group">
+            <input type="checkbox" id="replaceNegative" checked>
+            <label for="replaceNegative" class="checkbox-label">
+              Replace negative forecast values with 0 (recommended for sales/inventory)
+            </label>
+          </div>
+        </div>
       </div>
       
 
@@ -914,6 +962,7 @@
       document.getElementById('periodCount').value = '12';
       document.getElementById('dateFormat').value = 'EUR';
       document.getElementById('decimalPlaces').value = '0';
+      document.getElementById('replaceNegative').checked = true;
       document.getElementById('dataPreview').style.display = 'none';
       document.getElementById('forecastPreview').style.display = 'none';
       document.getElementById('downloadOptions').style.display = 'none';
@@ -1082,6 +1131,7 @@
       const periods = document.getElementById('periodCount').value.trim();
       const dateFormat = document.getElementById('dateFormat').value;
       const decimalPlaces = document.getElementById('decimalPlaces').value;
+      const replaceNegative = document.getElementById('replaceNegative').checked;
 
       if (!file) {
         showError('Please upload a historical data file');
@@ -1107,7 +1157,8 @@
           timeUnit,
           periods,
           dateFormat,
-          decimalPlaces: parseInt(decimalPlaces)
+          decimalPlaces: parseInt(decimalPlaces),
+          replaceNegative: replaceNegative
         };
         
         const res = await fetch('/api/forecast', {
@@ -1119,7 +1170,8 @@
             periods, 
             exportFormat: 'csv', // Always get CSV for preview
             dateFormat: dateFormat,
-            decimalPlaces: parseInt(decimalPlaces)
+            decimalPlaces: parseInt(decimalPlaces),
+            replaceNegative: replaceNegative
           })
         });
         
