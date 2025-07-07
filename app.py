@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from flask import Flask, request, jsonify, send_file, send_from_directory
+    from flask import Flask, request, jsonify, send_file, send_from_directory, g
     from flask_cors import CORS
     import pandas as pd
     import io
@@ -32,6 +32,22 @@ try:
 except Exception as e:
     logger.error(f"Import error: {e}")
     raise
+
+# Import authentication module
+try:
+    from auth import (
+        initialize_firebase, 
+        require_auth, 
+        optional_auth, 
+        get_current_user, 
+        create_user_session,
+        verify_firebase_token
+    )
+    AUTH_AVAILABLE = True
+    logger.info("Authentication module imported successfully")
+except ImportError as e:
+    logger.warning(f"Authentication module not available: {e}")
+    AUTH_AVAILABLE = False
 
 
 
@@ -55,10 +71,14 @@ COLUMN_SYNONYMS = {
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
+# Initialize Firebase if available
+if AUTH_AVAILABLE:
+    initialize_firebase()
+
 # Configure CORS more securely
 CORS(app, origins=['*'], 
      methods=['GET', 'POST'], 
-     allow_headers=['Content-Type'])
+     allow_headers=['Content-Type', 'Authorization', 'X-Firebase-ID-Token'])
 
 def find_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     """Find a column in df matching any of the candidate names (case-insensitive, strip spaces)."""
@@ -372,6 +392,88 @@ def validate_input_data(data: dict) -> Tuple[bool, str]:
 
 
 
+# Authentication routes
+@app.route('/api/auth/login', methods=['POST'])
+def login():
+    """Handle Firebase authentication login."""
+    if not AUTH_AVAILABLE:
+        return jsonify({'error': 'Authentication not available'}), 503
+    
+    try:
+        data = request.get_json()
+        id_token = data.get('idToken')
+        
+        if not id_token:
+            return jsonify({'error': 'ID token required'}), 400
+        
+        # Verify Firebase token
+        user_info = verify_firebase_token(id_token)
+        if not user_info:
+            return jsonify({'error': 'Invalid ID token'}), 401
+        
+        # Create user session
+        session = create_user_session(user_info)
+        
+        logger.info(f"User logged in: {user_info['email']} (ID: {user_info['user_id']})")
+        
+        return jsonify({
+            'success': True,
+            'user': user_info,
+            'token': session['token'],
+            'expires_in': session['expires_in']
+        })
+        
+    except Exception as e:
+        logger.error(f"Login error: {e}")
+        return jsonify({'error': 'Authentication failed'}), 500
+
+@app.route('/api/auth/verify', methods=['POST'])
+def verify_token():
+    """Verify JWT token and return user info."""
+    if not AUTH_AVAILABLE:
+        return jsonify({'error': 'Authentication not available'}), 503
+    
+    try:
+        data = request.get_json()
+        token = data.get('token')
+        
+        if not token:
+            return jsonify({'error': 'Token required'}), 400
+        
+        from auth import get_user_from_token
+        user_info = get_user_from_token(token)
+        
+        if not user_info:
+            return jsonify({'error': 'Invalid token'}), 401
+        
+        return jsonify({
+            'success': True,
+            'user': user_info
+        })
+        
+    except Exception as e:
+        logger.error(f"Token verification error: {e}")
+        return jsonify({'error': 'Token verification failed'}), 500
+
+@app.route('/api/auth/user', methods=['GET'])
+@optional_auth
+def get_user():
+    """Get current user information."""
+    if not AUTH_AVAILABLE:
+        return jsonify({'error': 'Authentication not available'}), 503
+    
+    current_user = get_current_user()
+    if current_user:
+        return jsonify({
+            'authenticated': True,
+            'user': current_user
+        })
+    else:
+        return jsonify({
+            'authenticated': False,
+            'user': None
+        })
+
 @app.route('/')
 def index():
     # Always return 200 for health check - Railway might be checking root path
@@ -402,9 +504,18 @@ def api_health():
     return jsonify({'status': 'healthy'})
 
 @app.route('/api/forecast', methods=['POST'])
+@optional_auth
 def forecast():
     try:
         logger.info("Forecast request received")
+        
+        # Get user information if authenticated
+        current_user = get_current_user()
+        user_id = current_user['user_id'] if current_user else 'anonymous'
+        user_email = current_user['email'] if current_user else 'anonymous'
+        
+        logger.info(f"Forecast request from user: {user_email} (ID: {user_id})")
+        
         if request.content_type != 'application/json':
             logger.error(f"Unsupported content type: {request.content_type}")
             return jsonify({'error': 'Unsupported content type'}), 400
