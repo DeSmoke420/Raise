@@ -439,7 +439,7 @@ def forecast():
         if missing:
             logger.error(f"Missing columns: {missing}")
             return jsonify({'error': f'Missing required columns: {", ".join(missing)}'}), 400
-        # Ensure item_col is always string to prevent Excel misinterpretation
+        # Ensure item_col is always string to prevent Excel/pandas misinterpretation in any preview
         df[item_col] = df[item_col].astype(str)
         
         # Process data with robust date parsing
@@ -547,6 +547,8 @@ def forecast():
         
         try:
             df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
+            # Always round actuals to 2 decimals for preview
+            df[qty_col] = df[qty_col].round(2)
         except Exception:
             return jsonify({'error': f'Could not convert {qty_col} to numeric.'}), 400
         
@@ -685,8 +687,6 @@ def forecast():
         result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
         # Ensure Item ID is string before export
         result_df["Item ID"] = result_df["Item ID"].astype(str)
-        # Always round Forecast Quantity to 2 decimals for preview
-        result_df["Forecast Quantity"] = result_df["Forecast Quantity"].astype(float).round(2)
         
         # Return single file based on export format
         if export_format == 'xlsx':
