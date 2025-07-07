@@ -660,6 +660,22 @@
       padding: 0.75rem 1rem;
     }
     
+    /* Download buttons: both grey by default, purple on hover */
+    .download-buttons .btn {
+      background: var(--bg-color);
+      color: var(--text-primary);
+      border: 2px solid var(--border-color);
+      box-shadow: var(--shadow-md);
+      transition: background 0.2s, color 0.2s, transform 0.15s, box-shadow 0.2s, border-color 0.2s;
+    }
+    .download-buttons .btn:hover {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-dark);
+    }
+    
     @media (max-width: 768px) {
       .download-buttons {
         flex-direction: column;
