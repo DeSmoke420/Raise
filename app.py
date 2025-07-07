@@ -578,7 +578,7 @@ def forecast():
             df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
         else:  # daily
             df['period'] = df[date_col]
-        
+
         forecasts = []
         diagnostics_log = []
 
@@ -592,6 +592,12 @@ def forecast():
             logger.info(f"Skipping ARIMA for performance: {len(unique_items)} items, {len(df)} rows")
         # --- End skip ARIMA logic ---
 
+        # Determine the global date range (all periods across all items)
+        all_periods = df['period'].sort_values().unique()
+        global_min_period = df['period'].min()
+        global_max_period = df['period'].max()
+        logger.info(f"Global period range: {global_min_period} to {global_max_period}, total periods: {len(all_periods)}")
+
         for i, item_id in enumerate(unique_items):
             logger.info(f"Processing item {i+1}/{len(unique_items)}: {item_id}")
             group = df[df[item_col] == item_id]
@@ -599,51 +605,43 @@ def forecast():
             logger.info(f"Item {item_id}: Raw data points per month:")
             monthly_counts = group.groupby('period').size()
             logger.info(f"Item {item_id}: Data points per month: {monthly_counts.to_dict()}")
-            
             # Aggregate by period to ensure consistent monthly data
             ts = group.groupby('period')[qty_col].sum().sort_index()
-            
+            # Reindex to global period range, fill missing with 0
+            ts = ts.reindex(all_periods, fill_value=0)
             logger.info(f"Item {item_id}: {len(ts)} monthly periods, range: {ts.index.min()} to {ts.index.max()}")
             logger.info(f"Item {item_id}: Sample monthly totals: {ts.head(3).tolist()}")
-            
             # Show the aggregation details
             logger.info(f"Item {item_id}: Monthly aggregation details:")
             for period, period_group in group.groupby('period'):
                 logger.info(f"  {period}: {len(period_group)} data points, sum={period_group[qty_col].sum()}")
-            
             # Ensure ts is a Series for type checking
             if not isinstance(ts, pd.Series):
                 continue
-            
             # Data validation
             val_result = validate_time_series_data(ts, time_unit)
             if not val_result['sufficient']:
                 diagnostics_log.append(f"Item {item_id}: {val_result['warnings']}")
                 continue
-            
             # Model selection with diagnostics
             forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count, skip_arima=skip_arima)
             diagnostics_log.append(f"Item {item_id}: {diag}")
             if forecast_values is None:
                 continue
-            
             # Generate future dates
-            last_date = ts.index.max()
+            last_date = all_periods[-1]  # Use global last period for all items
             # Type checking for last_date - handle pandas scalar properly
             try:
                 # Convert to scalar if it's a pandas object
                 if hasattr(last_date, 'item'):  # type: ignore
                     last_date = last_date.item()  # type: ignore
-                
                 # Check if it's a valid date - handle pandas scalar properly
                 if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):  # type: ignore
                     continue
-                
                 # Convert to pandas Timestamp for consistent handling
                 last_date = pd.Timestamp(last_date)  # type: ignore
             except (ValueError, TypeError, AttributeError):
                 continue
-            
             future_dates = []
             for i in range(1, period_count + 1):
                 try:
@@ -671,7 +669,6 @@ def forecast():
                 except (TypeError, AttributeError):
                     # Skip if date arithmetic fails
                     continue
-            
             # Add forecasts to results
             for date_str, val in zip(future_dates, forecast_values):
                 val = round(float(val), decimal_places)
