@@ -1146,6 +1146,20 @@
         const csv = await readFileAsCSV(file);
         console.log('Sending forecast request...');
         
+        // Read file content for Excel format detection
+        let fileContent = null;
+        if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
+          const reader = new FileReader();
+          fileContent = await new Promise((resolve, reject) => {
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = e => reject(e);
+            reader.readAsArrayBuffer(file);
+          });
+          // Convert to base64 for transmission
+          const bytes = new Uint8Array(fileContent);
+          fileContent = btoa(String.fromCharCode(...bytes));
+        }
+        
         // Store current settings for later download
         window.forecastSettings = {
           csv,
@@ -1156,18 +1170,25 @@
           allowNegative: allowNegative
         };
         
+        const requestBody = { 
+          csv, 
+          timeUnit, 
+          periods, 
+          exportFormat: 'csv', // Always get CSV for preview
+          dateFormat: dateFormat,
+          decimalPlaces: parseInt(decimalPlaces),
+          allowNegative: allowNegative
+        };
+        
+        // Add file content for Excel format detection if available
+        if (fileContent) {
+          requestBody.file_content = fileContent;
+        }
+        
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            csv, 
-            timeUnit, 
-            periods, 
-            exportFormat: 'csv', // Always get CSV for preview
-            dateFormat: dateFormat,
-            decimalPlaces: parseInt(decimalPlaces),
-            allowNegative: allowNegative
-          })
+          body: JSON.stringify(requestBody)
         });
         
         console.log('Response status:', res.status);

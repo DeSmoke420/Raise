@@ -33,7 +33,14 @@ except Exception as e:
     logger.error(f"Import error: {e}")
     raise
 
-
+# Add openpyxl import for Excel format detection
+try:
+    from openpyxl import load_workbook
+    from openpyxl.utils import get_column_letter
+    EXCEL_SUPPORT = True
+except ImportError:
+    EXCEL_SUPPORT = False
+    logger.warning("openpyxl not available for Excel format detection")
 
 # Configuration constants
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
@@ -59,6 +66,80 @@ app = Flask(__name__, static_folder='.', static_url_path='')
 CORS(app, origins=['*'], 
      methods=['GET', 'POST'], 
      allow_headers=['Content-Type'])
+
+def detect_excel_date_format(file_content: bytes) -> Optional[str]:
+    """
+    Detect Excel date format from file metadata.
+    Returns format string like '%m/%d/%Y' or '%d/%m/%Y' or None if not detected.
+    """
+    if not EXCEL_SUPPORT:
+        return None
+    
+    try:
+        # Load workbook from bytes
+        wb = load_workbook(io.BytesIO(file_content), data_only=True)
+        ws = wb.active
+        
+        # Look for date column by checking first few rows
+        date_col_idx = None
+        for col in range(1, min(10, ws.max_column + 1)):  # Check first 10 columns
+            col_letter = get_column_letter(col)
+            cell_value = ws[f'{col_letter}1'].value
+            
+            if cell_value and isinstance(cell_value, str):
+                header_lower = str(cell_value).lower().strip()
+                if any(date_term in header_lower for date_term in ['date', 'time', 'period', 'day']):
+                    date_col_idx = col
+                    break
+        
+        if date_col_idx is None:
+            return None
+        
+        col_letter = get_column_letter(date_col_idx)
+        
+        # Check cell formatting for date format
+        for row in range(2, min(10, ws.max_row + 1)):  # Check first 10 data rows
+            cell = ws[f'{col_letter}{row}']
+            
+            # Check if cell has date formatting
+            if cell.number_format:
+                fmt = cell.number_format.lower()
+                logger.info(f"Found Excel date format: {fmt}")
+                
+                # Map Excel formats to Python formats
+                format_mapping = {
+                    'm/d/yyyy': '%m/%d/%Y',
+                    'mm/dd/yyyy': '%m/%d/%Y',
+                    'd/m/yyyy': '%d/%m/%Y',
+                    'dd/mm/yyyy': '%d/%m/%Y',
+                    'yyyy-mm-dd': '%Y-%m-%d',
+                    'mm-dd-yyyy': '%m-%d-%Y',
+                    'dd-mm-yyyy': '%d-%m-%Y',
+                    'm/yyyy': '%m/%Y',
+                    'mm/yyyy': '%m/%Y',
+                    'yyyy/mm/dd': '%Y/%m/%d',
+                    'dd/mm/yy': '%d/%m/%y',
+                    'mm/dd/yy': '%m/%d/%y'
+                }
+                
+                # Try exact match first
+                if fmt in format_mapping:
+                    detected_format = format_mapping[fmt]
+                    logger.info(f"Detected date format: {detected_format}")
+                    return detected_format
+                
+                # Try partial matches
+                for excel_fmt, python_fmt in format_mapping.items():
+                    if excel_fmt in fmt:
+                        detected_format = python_fmt
+                        logger.info(f"Detected date format (partial match): {detected_format}")
+                        return detected_format
+        
+        return None
+        
+    except Exception as e:
+        logger.warning(f"Error detecting Excel date format: {e}")
+        return None
 
 def find_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     """Find a column in df matching any of the candidate names (case-insensitive, strip spaces)."""
@@ -449,75 +530,91 @@ def forecast():
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # Simple and reliable date parsing
-        logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
+        # Enhanced date parsing with Excel format detection
+        logger.info(f"Enhanced date parsing with Excel format detection")
         
-        # Auto-detect input date format (don't use user preference for input parsing)
-        logger.info(f"Auto-detecting input date format (user output preference: {date_format})")
+        # Try to detect Excel date format from the original file
+        detected_format = None
+        if EXCEL_SUPPORT and 'file_content' in data:
+            try:
+                import base64
+                file_content = base64.b64decode(data['file_content'])
+                detected_format = detect_excel_date_format(file_content)
+                if detected_format:
+                    logger.info(f"Excel format detection successful: {detected_format}")
+                else:
+                    logger.info("Excel format detection failed, falling back to pattern analysis")
+            except Exception as e:
+                logger.warning(f"Excel format detection error: {e}")
         
-        # Check if dates look like DD/MM/YYYY format
-        sample_dates = df[date_col].head(10).astype(str).tolist()
-        logger.info(f"Analyzing date patterns in: {sample_dates}")
-        dd_mm_yyyy_pattern = False
-        day_values = []
-        month_values = []
-        
-        # First pass: collect all day and month values
-        for date_str in sample_dates:
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) == 3:
-                    try:
-                        day = int(parts[0])
-                        month = int(parts[1])
-                        year = int(parts[2])
-                        day_values.append(day)
-                        month_values.append(month)
-                    except ValueError:
-                        continue
-        
-        if day_values and month_values:
-            # Analyze patterns to determine format
-            unique_days = set(day_values)
-            unique_months = set(month_values)
+        # If Excel format detection failed, use pattern analysis as fallback
+        if not detected_format:
+            logger.info("Using pattern analysis for date format detection")
             
-            logger.info(f"Date pattern analysis: unique_days={unique_days}, unique_months={unique_months}")
+            # Check if dates look like DD/MM/YYYY format
+            sample_dates = df[date_col].head(10).astype(str).tolist()
+            logger.info(f"Analyzing date patterns in: {sample_dates}")
+            dd_mm_yyyy_pattern = False
+            day_values = []
+            month_values = []
             
-            # Clear DD/MM indicators:
-            # 1. Any day > 12 (obvious DD/MM)
-            # 2. Any month > 12 (obvious DD/MM)
-            # 3. Day always 1 AND months vary from 1-12 (EUR format with day=1)
+            # First pass: collect all day and month values
+            for date_str in sample_dates:
+                if '/' in date_str:
+                    parts = date_str.split('/')
+                    if len(parts) == 3:
+                        try:
+                            day = int(parts[0])
+                            month = int(parts[1])
+                            year = int(parts[2])
+                            day_values.append(day)
+                            month_values.append(month)
+                        except ValueError:
+                            continue
             
-            has_day_over_12 = any(d > 12 for d in unique_days)
-            has_month_over_12 = any(m > 12 for m in unique_months)
-            day_always_one = unique_days == {1}
-            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
-            
-            if has_day_over_12 or has_month_over_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: obvious indicator (day>12 or month>12)")
-            elif day_always_one and month_varies_1_to_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: day always 1, months vary 1-12 (EUR format)")
-            else:
-                logger.info(f"Assuming MM/DD format: day_always_one={day_always_one}, month_varies_1_to_12={month_varies_1_to_12}")
+            if day_values and month_values:
+                # Analyze patterns to determine format
+                unique_days = set(day_values)
+                unique_months = set(month_values)
+                
+                logger.info(f"Date pattern analysis: unique_days={unique_days}, unique_months={unique_months}")
+                
+                # Clear DD/MM indicators:
+                # 1. Any day > 12 (obvious DD/MM)
+                # 2. Any month > 12 (obvious DD/MM)
+                # 3. Day always 1 AND months vary from 1-12 (EUR format with day=1)
+                
+                has_day_over_12 = any(d > 12 for d in unique_days)
+                has_month_over_12 = any(m > 12 for m in unique_months)
+                day_always_one = unique_days == {1}
+                month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
+                
+                if has_day_over_12 or has_month_over_12:
+                    detected_format = '%d/%m/%Y'
+                    logger.info(f"Detected DD/MM/YYYY: obvious indicator (day>12 or month>12)")
+                elif day_always_one and month_varies_1_to_12:
+                    detected_format = '%d/%m/%Y'
+                    logger.info(f"Detected DD/MM/YYYY: day always 1, months vary 1-12 (EUR format)")
+                else:
+                    detected_format = '%m/%d/%Y'
+                    logger.info(f"Assuming MM/DD format: day_always_one={day_always_one}, month_varies_1_to_12={month_varies_1_to_12}")
         
-        # Try pandas default parsing first (works for most cases)
+        # Parse dates using detected format or fallback methods
         try:
-            if dd_mm_yyyy_pattern:
-                # For DD/MM/YYYY, try specific format first
-                logger.info("Trying DD/MM/YYYY format first")
-                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
+            if detected_format:
+                # Use detected format first
+                logger.info(f"Trying detected format: {detected_format}")
+                df[date_col] = pd.to_datetime(df[date_col], format=detected_format, errors='coerce')
                 valid_dates = df[date_col].notna().sum()
-                logger.info(f"DD/MM/YYYY parsing: {valid_dates} valid dates out of {len(df)}")
+                logger.info(f"Detected format parsing: {valid_dates} valid dates out of {len(df)}")
                 
                 if valid_dates == 0:
-                    # If DD/MM/YYYY failed, try pandas default
-                    logger.info("DD/MM/YYYY failed, trying pandas default")
+                    # If detected format failed, try pandas default
+                    logger.info("Detected format failed, trying pandas default")
                     df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
                     valid_dates = df[date_col].notna().sum()
             else:
-                # For other formats, try pandas default first
+                # No format detected, try pandas default first
                 df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
                 valid_dates = df[date_col].notna().sum()
                 logger.info(f"Pandas default parsing: {valid_dates} valid dates out of {len(df)}")
@@ -527,7 +624,7 @@ def forecast():
             else:
                 # If pandas default failed, try specific formats
                 logger.info("Pandas default failed, trying specific formats")
-                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
+                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d', '%m/%d/%Y']
                 
                 for fmt in date_formats:
                     try:
