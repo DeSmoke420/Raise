@@ -782,7 +782,7 @@
       
       <div class="info-box">
         <h3><i class="fas fa-info-circle"></i>Data Requirements</h3>
-        <p>Your CSV/Excel file should contain 3 columns with the following headers: <strong>"Date"</strong> (Format: "dd/mm/yyyy", "mm/dd/yyyy", "mm/yyyy"), <strong>"Item ID"</strong> (Format: number or text), and <strong>"Quantity"</strong> (Format: number without thousands separator, decimals can be expressed in the EUR or US format). The system will automatically detect these columns.</p>
+        <p>Your Excel file must contain exactly three columns with the following headers: <strong>"Date"</strong>, <strong>"Item"</strong>, and <strong>"Quantity"</strong>. The <strong>"Date"</strong> column must be in a valid Excel date format such as <em>dd/mm/yyyy, mm/dd/yyyy, or mm/yyyy</em>. The <strong>"Item"</strong> column can be either text or a number. The <strong>"Quantity"</strong> column must contain numeric values only, with or without decimals, and should not include any thousands separators (e.g., write "1000" instead of "1,000"). Both European (e.g., "1000,5") and US (e.g., "1000.5") decimal formats are accepted. The system will automatically detect the order of the columns based on their headers.</p>
       </div>
       
       <div class="field">
@@ -1144,22 +1144,7 @@
 
       try {
         const csv = await readFileAsCSV(file);
-        console.log('CSV data length:', csv.length);
         console.log('Sending forecast request...');
-        
-        // Read file content for Excel format detection
-        let fileContent = null;
-        if (file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls')) {
-          const reader = new FileReader();
-          fileContent = await new Promise((resolve, reject) => {
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = e => reject(e);
-            reader.readAsArrayBuffer(file);
-          });
-          // Convert to base64 for transmission
-          const bytes = new Uint8Array(fileContent);
-          fileContent = btoa(String.fromCharCode(...bytes));
-        }
         
         // Store current settings for later download
         window.forecastSettings = {
@@ -1171,28 +1156,18 @@
           allowNegative: allowNegative
         };
         
-        const requestBody = { 
-          csv, 
-          timeUnit, 
-          periods, 
-          exportFormat: 'csv', // Always get CSV for preview
-          dateFormat: dateFormat,
-          decimalPlaces: parseInt(decimalPlaces),
-          allowNegative: allowNegative
-        };
-        
-        // Add file content for Excel format detection if available
-        if (fileContent) {
-          requestBody.file_content = fileContent;
-        }
-        
-        console.log('Request body keys:', Object.keys(requestBody));
-        console.log('Request body size:', JSON.stringify(requestBody).length);
-        
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(requestBody)
+          body: JSON.stringify({ 
+            csv, 
+            timeUnit, 
+            periods, 
+            exportFormat: 'csv', // Always get CSV for preview
+            dateFormat: dateFormat,
+            decimalPlaces: parseInt(decimalPlaces),
+            allowNegative: allowNegative
+          })
         });
         
         console.log('Response status:', res.status);
