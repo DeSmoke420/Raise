@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from flask import Flask, request, jsonify, send_file, send_from_directory, g
+    from flask import Flask, request, jsonify, send_file, send_from_directory
     from flask_cors import CORS
     import pandas as pd
     import io
@@ -32,22 +32,6 @@ try:
 except Exception as e:
     logger.error(f"Import error: {e}")
     raise
-
-# Import authentication module
-try:
-    from auth import (
-        initialize_firebase, 
-        require_auth, 
-        optional_auth, 
-        get_current_user, 
-        create_user_session,
-        verify_firebase_token
-    )
-    AUTH_AVAILABLE = True
-    logger.info("Authentication module imported successfully")
-except ImportError as e:
-    logger.warning(f"Authentication module not available: {e}")
-    AUTH_AVAILABLE = False
 
 
 
@@ -71,14 +55,10 @@ COLUMN_SYNONYMS = {
 
 app = Flask(__name__, static_folder='.', static_url_path='')
 
-# Initialize Firebase if available
-if AUTH_AVAILABLE:
-    initialize_firebase()
-
 # Configure CORS more securely
 CORS(app, origins=['*'], 
      methods=['GET', 'POST'], 
-     allow_headers=['Content-Type', 'Authorization', 'X-Firebase-ID-Token'])
+     allow_headers=['Content-Type'])
 
 def find_column(df: pd.DataFrame, candidates: List[str]) -> Optional[str]:
     """Find a column in df matching any of the candidate names (case-insensitive, strip spaces)."""
@@ -392,88 +372,6 @@ def validate_input_data(data: dict) -> Tuple[bool, str]:
 
 
 
-# Authentication routes
-@app.route('/api/auth/login', methods=['POST'])
-def login():
-    """Handle Firebase authentication login."""
-    if not AUTH_AVAILABLE:
-        return jsonify({'error': 'Authentication not available'}), 503
-    
-    try:
-        data = request.get_json()
-        id_token = data.get('idToken')
-        
-        if not id_token:
-            return jsonify({'error': 'ID token required'}), 400
-        
-        # Verify Firebase token
-        user_info = verify_firebase_token(id_token)
-        if not user_info:
-            return jsonify({'error': 'Invalid ID token'}), 401
-        
-        # Create user session
-        session = create_user_session(user_info)
-        
-        logger.info(f"User logged in: {user_info['email']} (ID: {user_info['user_id']})")
-        
-        return jsonify({
-            'success': True,
-            'user': user_info,
-            'token': session['token'],
-            'expires_in': session['expires_in']
-        })
-        
-    except Exception as e:
-        logger.error(f"Login error: {e}")
-        return jsonify({'error': 'Authentication failed'}), 500
-
-@app.route('/api/auth/verify', methods=['POST'])
-def verify_token():
-    """Verify JWT token and return user info."""
-    if not AUTH_AVAILABLE:
-        return jsonify({'error': 'Authentication not available'}), 503
-    
-    try:
-        data = request.get_json()
-        token = data.get('token')
-        
-        if not token:
-            return jsonify({'error': 'Token required'}), 400
-        
-        from auth import get_user_from_token
-        user_info = get_user_from_token(token)
-        
-        if not user_info:
-            return jsonify({'error': 'Invalid token'}), 401
-        
-        return jsonify({
-            'success': True,
-            'user': user_info
-        })
-        
-    except Exception as e:
-        logger.error(f"Token verification error: {e}")
-        return jsonify({'error': 'Token verification failed'}), 500
-
-@app.route('/api/auth/user', methods=['GET'])
-@optional_auth
-def get_user():
-    """Get current user information."""
-    if not AUTH_AVAILABLE:
-        return jsonify({'error': 'Authentication not available'}), 503
-    
-    current_user = get_current_user()
-    if current_user:
-        return jsonify({
-            'authenticated': True,
-            'user': current_user
-        })
-    else:
-        return jsonify({
-            'authenticated': False,
-            'user': None
-        })
-
 @app.route('/')
 def index():
     # Always return 200 for health check - Railway might be checking root path
@@ -504,18 +402,9 @@ def api_health():
     return jsonify({'status': 'healthy'})
 
 @app.route('/api/forecast', methods=['POST'])
-@optional_auth
 def forecast():
     try:
         logger.info("Forecast request received")
-        
-        # Get user information if authenticated
-        current_user = get_current_user()
-        user_id = current_user['user_id'] if current_user else 'anonymous'
-        user_email = current_user['email'] if current_user else 'anonymous'
-        
-        logger.info(f"Forecast request from user: {user_email} (ID: {user_id})")
-        
         if request.content_type != 'application/json':
             logger.error(f"Unsupported content type: {request.content_type}")
             return jsonify({'error': 'Unsupported content type'}), 400
@@ -679,37 +568,19 @@ def forecast():
         if df.empty:
             return jsonify({'error': 'No valid data after processing'}), 400
         
-        # Create periods based on time unit with proper resampling
+        # Create periods based on time unit
         logger.info(f"Creating periods for time_unit: {time_unit}")
         logger.info(f"Date range: {df[date_col].min()} to {df[date_col].max()}")
         
-        # First, set the date column as index for proper resampling
-        df_temp = df.copy()
-        df_temp = df_temp.set_index(date_col)
-        
-        # Resample the entire dataset to the requested time unit
         if time_unit == 'monthly':
-            df_resampled = df_temp.resample('M').sum()
-            logger.info(f"Resampled to monthly. Unique periods: {len(df_resampled)}")
+            # Convert to monthly periods - this works for both MM/YYYY and DD/MM/YYYY
+            df['period'] = df[date_col].dt.to_period('M').dt.to_timestamp()
+            logger.info(f"Monthly periods created. Unique periods: {df['period'].nunique()}")
+            logger.info(f"Sample periods: {df['period'].head(5).tolist()}")
         elif time_unit == 'weekly':
-            df_resampled = df_temp.resample('W').sum()
-            logger.info(f"Resampled to weekly. Unique periods: {len(df_resampled)}")
+            df['period'] = df[date_col] - pd.to_timedelta(df[date_col].dt.dayofweek, unit='D')
         else:  # daily
-            df_resampled = df_temp.resample('D').sum()
-            logger.info(f"Resampled to daily. Unique periods: {len(df_resampled)}")
-        
-        # Reset index to get the date back as a column
-        df_resampled = df_resampled.reset_index()
-        df_resampled = df_resampled.rename(columns={date_col: 'period'})
-        
-        # Fill NaN values with 0 for missing periods
-        df_resampled = df_resampled.fillna(0)
-        
-        logger.info(f"Resampled data shape: {df_resampled.shape}")
-        logger.info(f"Sample resampled periods: {df_resampled['period'].head(5).tolist()}")
-        
-        # Use the resampled dataframe
-        df = df_resampled
+            df['period'] = df[date_col]
 
         forecasts = []
         diagnostics_log = []
@@ -734,17 +605,17 @@ def forecast():
             logger.info(f"Processing item {i+1}/{len(unique_items)}: {item_id}")
             group = df[df[item_col] == item_id]
             # Show raw data before aggregation
-            logger.info(f"Item {item_id}: Raw data points per {time_unit}:")
-            period_counts = group.groupby('period').size()
-            logger.info(f"Item {item_id}: Data points per {time_unit}: {period_counts.to_dict()}")
-            # Create time series from resampled data
-            ts = group.set_index('period')[qty_col].sort_index()
+            logger.info(f"Item {item_id}: Raw data points per month:")
+            monthly_counts = group.groupby('period').size()
+            logger.info(f"Item {item_id}: Data points per month: {monthly_counts.to_dict()}")
+            # Aggregate by period to ensure consistent monthly data
+            ts = group.groupby('period')[qty_col].sum().sort_index()
             # Reindex to global period range, fill missing with 0
             ts = ts.reindex(all_periods, fill_value=0)
-            logger.info(f"Item {item_id}: {len(ts)} {time_unit} periods, range: {ts.index.min()} to {ts.index.max()}")
-            logger.info(f"Item {item_id}: Sample {time_unit} totals: {ts.head(3).tolist()}")
+            logger.info(f"Item {item_id}: {len(ts)} monthly periods, range: {ts.index.min()} to {ts.index.max()}")
+            logger.info(f"Item {item_id}: Sample monthly totals: {ts.head(3).tolist()}")
             # Show the aggregation details
-            logger.info(f"Item {item_id}: {time_unit.capitalize()} aggregation details:")
+            logger.info(f"Item {item_id}: Monthly aggregation details:")
             for period, period_group in group.groupby('period'):
                 logger.info(f"  {period}: {len(period_group)} data points, sum={period_group[qty_col].sum()}")
             # Ensure ts is a Series for type checking

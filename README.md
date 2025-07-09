@@ -10,8 +10,6 @@ A powerful, user-friendly web application for generating AI-powered forecasts us
 - **Flexible Data Input**: Supports CSV and Excel files with automatic column detection
 - **Multiple Time Units**: Daily, weekly, and monthly forecasting
 - **Professional Output**: Clean CSV/Excel downloads with model diagnostics
-- **User Authentication**: Firebase Auth with Google login and email/password support
-- **User Tracking**: Each forecast is associated with a unique user ID
 
 ### 🎨 **User Experience**
 - **Modern Web Interface**: Responsive design with gradient backgrounds
@@ -25,8 +23,6 @@ A powerful, user-friendly web application for generating AI-powered forecasts us
 - **Smart Column Detection**: Works with different column naming conventions
 - **Production Ready**: Docker support, deployment guides, and security considerations
 - **Diagnostics**: Detailed model performance information
-- **Secure Authentication**: JWT tokens and Firebase Admin SDK integration
-- **User Management**: Session management and user identification
 
 ## 🚀 Quick Start
 
@@ -49,18 +45,12 @@ A powerful, user-friendly web application for generating AI-powered forecasts us
    pip install -r requirements.txt
    ```
 
-4. **Set up Firebase Authentication** (Optional)
-   ```bash
-   # Follow the setup guide in FIREBASE_SETUP.md
-   # Or run without authentication for testing
-   ```
-
-5. **Run the application**
+4. **Run the application**
    ```bash
    python app.py
    ```
 
-6. **Open your browser**
+5. **Open your browser**
    Navigate to `http://localhost:5000`
 
 ### **Docker Deployment**
@@ -134,10 +124,6 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 ```bash
 FLASK_ENV=production
 FLASK_DEBUG=False
-
-# Authentication (Optional)
-FIREBASE_CONFIG={"type":"service_account",...}
-JWT_SECRET=your-secret-key-here
 ```
 
 ### **Model Parameters**
@@ -186,7 +172,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: Report bugs on GitHub Issues
 - **Documentation**: Check [DEPLOYMENT.md](DEPLOYMENT.md) for deployment help
-- **Authentication Setup**: See [FIREBASE_SETUP.md](FIREBASE_SETUP.md) for detailed instructions
 - **Questions**: Open a GitHub Discussion
 
 ---

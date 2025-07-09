@@ -10,10 +10,6 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-auth-compat.js"></script>
   <style>
     :root {
       --primary-color: #6366f1;
@@ -726,239 +722,12 @@
         padding: 5px;
       }
     }
-    
-    /* Authentication Styles */
-    .auth-container {
-      position: absolute;
-      top: 24px;
-      right: 24px;
-      z-index: 100;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    
-    .auth-btn {
-      background: rgba(255, 255, 255, 0.9);
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 0.75rem 1.5rem;
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      backdrop-filter: blur(10px);
-    }
-    
-    .auth-btn:hover {
-      background: white;
-      border-color: var(--primary-color);
-      transform: translateY(-1px);
-      box-shadow: var(--shadow-md);
-    }
-    
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      background: rgba(255, 255, 255, 0.95);
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: 0.75rem 1rem;
-      backdrop-filter: blur(10px);
-    }
-    
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--primary-color);
-    }
-    
-    .user-details {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
-    
-    .user-name {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      line-height: 1;
-    }
-    
-    .user-email {
-      font-size: 0.75rem;
-      color: var(--text-secondary);
-      line-height: 1;
-    }
-    
-    .logout-btn {
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      cursor: pointer;
-      padding: 0.25rem;
-      border-radius: var(--radius-sm);
-      transition: all 0.2s ease;
-    }
-    
-    .logout-btn:hover {
-      background: var(--bg-color);
-      color: var(--error-color);
-    }
-    
-    .auth-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.5);
-      backdrop-filter: blur(4px);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 2000;
-    }
-    
-    .auth-modal-content {
-      background: var(--card-bg);
-      border-radius: var(--radius-xl);
-      padding: 2.5rem;
-      text-align: center;
-      max-width: 400px;
-      width: 90%;
-      box-shadow: var(--shadow-xl);
-    }
-    
-    .auth-modal h2 {
-      color: var(--text-primary);
-      font-size: 1.5rem;
-      font-weight: 700;
-      margin-bottom: 1rem;
-    }
-    
-    .auth-modal p {
-      color: var(--text-secondary);
-      margin-bottom: 2rem;
-    }
-    
-    .auth-providers {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-    
-    .auth-provider-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      width: 100%;
-      padding: 1rem;
-      border: 2px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      background: var(--card-bg);
-      color: var(--text-primary);
-      font-size: 1rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-    
-    .auth-provider-btn:hover {
-      border-color: var(--primary-color);
-      background: rgb(99 102 241 / 0.05);
-      transform: translateY(-1px);
-    }
-    
-    .auth-provider-btn.google {
-      border-color: #4285f4;
-      color: #4285f4;
-    }
-    
-    .auth-provider-btn.google:hover {
-      background: rgb(66 133 244 / 0.1);
-    }
-    
-    .auth-provider-btn.email {
-      border-color: var(--secondary-color);
-      color: var(--secondary-color);
-    }
-    
-    .auth-provider-btn.email:hover {
-      background: rgb(16 185 129 / 0.1);
-    }
-    
-    .auth-close {
-      position: absolute;
-      top: 1rem;
-      right: 1rem;
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0.5rem;
-      border-radius: var(--radius-sm);
-      transition: all 0.2s ease;
-    }
-    
-    .auth-close:hover {
-      background: var(--bg-color);
-      color: var(--text-primary);
-    }
-    
-    @media (max-width: 768px) {
-      .auth-container {
-        top: 10px;
-        right: 10px;
-      }
-      
-      .auth-btn {
-        padding: 0.5rem 1rem;
-        font-size: 0.8rem;
-      }
-      
-      .user-info {
-        padding: 0.5rem 0.75rem;
-      }
-      
-      .user-avatar {
-        width: 28px;
-        height: 28px;
-      }
-      
-      .user-name {
-        font-size: 0.8rem;
-      }
-      
-      .user-email {
-        font-size: 0.7rem;
-      }
-    }
   </style>
 </head>
 <body>
   <a href="/" class="site-logo">
     <img src="static/logo.png" alt="r4ise logo" />
   </a>
-  
-  <!-- Authentication Container -->
-  <div class="auth-container" id="authContainer">
-    <button class="auth-btn" id="authBtn" onclick="showAuthModal()">
-      <i class="fas fa-sign-in-alt"></i>
-      Sign In
-    </button>
-  </div>
-  
   <div class="container">
     <!-- Home Page -->
     <div class="card fade-in" id="homePage">
@@ -1114,27 +883,6 @@
 
   </div>
 
-  <!-- Authentication Modal -->
-  <div class="auth-modal" id="authModal">
-    <div class="auth-modal-content">
-      <button class="auth-close" onclick="hideAuthModal()">
-        <i class="fas fa-times"></i>
-      </button>
-      <h2>Sign In</h2>
-      <p>Choose your preferred sign-in method to access the AI Forecast Intelligence Platform</p>
-      <div class="auth-providers">
-        <button class="auth-provider-btn google" onclick="signInWithGoogle()">
-          <i class="fab fa-google"></i>
-          Continue with Google
-        </button>
-        <button class="auth-provider-btn email" onclick="signInWithEmail()">
-          <i class="fas fa-envelope"></i>
-          Sign in with Email
-        </button>
-      </div>
-    </div>
-  </div>
-
   <!-- Modal -->
   <div class="modal" id="modal">
     <div class="modal-content">
@@ -1157,143 +905,9 @@
   </div>
 
   <script>
-    // Firebase Configuration
-    const firebaseConfig = {
-      apiKey: "your-api-key",
-      authDomain: "your-project-id.firebaseapp.com",
-      projectId: "your-project-id",
-      storageBucket: "your-project-id.appspot.com",
-      messagingSenderId: "your-sender-id",
-      appId: "your-app-id"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    // Global variables
     const modal = document.getElementById('modal');
     const dots = document.getElementById('dots');
     let dotInterval;
-    let currentUser = null;
-    let authToken = null;
-
-    // Authentication Functions
-    function showAuthModal() {
-      document.getElementById('authModal').style.display = 'flex';
-    }
-
-    function hideAuthModal() {
-      document.getElementById('authModal').style.display = 'none';
-    }
-
-    function signInWithGoogle() {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      auth.signInWithPopup(provider)
-        .then((result) => {
-          handleAuthSuccess(result.user);
-        })
-        .catch((error) => {
-          console.error('Google sign-in error:', error);
-          showError('Google sign-in failed: ' + error.message);
-        });
-    }
-
-    function signInWithEmail() {
-      // For now, redirect to email/password sign-in
-      // You can implement a custom email/password form here
-      showError('Email/password sign-in will be implemented soon. Please use Google sign-in for now.');
-    }
-
-    function handleAuthSuccess(user) {
-      currentUser = user;
-      hideAuthModal();
-      
-      // Get ID token and send to backend
-      user.getIdToken().then((idToken) => {
-        return fetch('/api/auth/login', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ idToken })
-        });
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          authToken = data.token;
-          updateAuthUI();
-          showSuccess('Successfully signed in!');
-        } else {
-          throw new Error(data.error || 'Authentication failed');
-        }
-      })
-      .catch(error => {
-        console.error('Backend auth error:', error);
-        showError('Authentication failed: ' + error.message);
-        // Sign out from Firebase if backend auth failed
-        auth.signOut();
-        currentUser = null;
-      });
-    }
-
-    function signOut() {
-      auth.signOut().then(() => {
-        currentUser = null;
-        authToken = null;
-        updateAuthUI();
-        showSuccess('Successfully signed out!');
-      }).catch((error) => {
-        console.error('Sign out error:', error);
-        showError('Sign out failed: ' + error.message);
-      });
-    }
-
-    function updateAuthUI() {
-      const authContainer = document.getElementById('authContainer');
-      
-      if (currentUser) {
-        authContainer.innerHTML = `
-          <div class="user-info">
-            <img src="${currentUser.photoURL || 'https://via.placeholder.com/32x32/6366f1/ffffff?text=U'}" 
-                 alt="User avatar" class="user-avatar">
-            <div class="user-details">
-              <div class="user-name">${currentUser.displayName || 'User'}</div>
-              <div class="user-email">${currentUser.email}</div>
-            </div>
-            <button class="logout-btn" onclick="signOut()" title="Sign Out">
-              <i class="fas fa-sign-out-alt"></i>
-            </button>
-          </div>
-        `;
-      } else {
-        authContainer.innerHTML = `
-          <button class="auth-btn" onclick="showAuthModal()">
-            <i class="fas fa-sign-in-alt"></i>
-            Sign In
-          </button>
-        `;
-      }
-    }
-
-    // Check authentication state on page load
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        currentUser = user;
-        // Try to get existing token from localStorage
-        const savedToken = localStorage.getItem('authToken');
-        if (savedToken) {
-          authToken = savedToken;
-        }
-        updateAuthUI();
-      } else {
-        currentUser = null;
-        authToken = null;
-        localStorage.removeItem('authToken');
-        updateAuthUI();
-      }
-    });
 
     function showPage(id) {
       document.querySelectorAll('.card').forEach(div => {
@@ -1514,16 +1128,9 @@
           allowNegative: allowNegative
         };
         
-        const headers = { 'Content-Type': 'application/json' };
-        
-        // Add authentication header if user is signed in
-        if (authToken) {
-          headers['Authorization'] = `Bearer ${authToken}`;
-        }
-        
         const res = await fetch('/api/forecast', {
           method: 'POST',
-          headers: headers,
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             csv, 
             timeUnit, 
@@ -1841,16 +1448,9 @@
       downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
 
       try {
-        const headers = { 'Content-Type': 'application/json' };
-        
-        // Add authentication header if user is signed in
-        if (authToken) {
-          headers['Authorization'] = `Bearer ${authToken}`;
-        }
-        
         const res = await fetch('/api/forecast', {
           method: 'POST',
-          headers: headers,
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             ...window.forecastSettings,
             exportFormat: format
