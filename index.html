@@ -179,6 +179,34 @@
       transform: none !important;
     }
 
+    /* Custom spinning animation for download buttons */
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+
+    .spinning {
+      animation: spin 1s linear infinite;
+    }
+
+    .download-loading {
+      position: relative;
+    }
+
+    .download-loading i {
+      animation: spin 1s linear infinite;
+    }
+
+    /* Enhanced loading state for download buttons */
+    .btn:disabled .spinning {
+      animation: spin 1s linear infinite, pulse 2s ease-in-out infinite;
+    }
+
     .field {
       margin-bottom: 1.5rem;
     }
@@ -1445,7 +1473,7 @@
       const downloadBtn = event.target;
       const originalText = downloadBtn.innerHTML;
       downloadBtn.disabled = true;
-      downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+      downloadBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Generating...';
 
       try {
         const res = await fetch('/api/forecast', {
