@@ -1144,6 +1144,7 @@
 
       try {
         const csv = await readFileAsCSV(file);
+        console.log('CSV data length:', csv.length);
         console.log('Sending forecast request...');
         
         // Read file content for Excel format detection
@@ -1184,6 +1185,9 @@
         if (fileContent) {
           requestBody.file_content = fileContent;
         }
+        
+        console.log('Request body keys:', Object.keys(requestBody));
+        console.log('Request body size:', JSON.stringify(requestBody).length);
         
         const res = await fetch('/api/forecast', {
           method: 'POST',

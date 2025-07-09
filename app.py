@@ -482,6 +482,10 @@ def health():
 def api_health():
     return jsonify({'status': 'healthy'})
 
+@app.route('/api/test')
+def test_endpoint():
+    return jsonify({'message': 'Backend is working', 'timestamp': datetime.now().isoformat()})
+
 @app.route('/api/forecast', methods=['POST'])
 def forecast():
     try:
