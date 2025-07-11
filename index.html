@@ -932,6 +932,29 @@
     </div>
   </div>
 
+  <!-- Add after the main modal, before </body> -->
+  <div class="modal" id="authModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <a href="/" class="site-logo" style="position: static; margin-bottom: 1.5rem; display: flex; justify-content: center;">
+        <img src="static/logo.png" alt="r4ise logo" style="width: 60px; height: 60px; border-radius: 16px; box-shadow: 0 2px 8px rgba(99,102,241,0.10); background: #fff; padding: 5px;" />
+      </a>
+      <h2 id="authTitle" style="margin-bottom: 1rem; color: var(--primary-color);">Sign In</h2>
+      <form id="authForm">
+        <div class="field">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+        </div>
+        <div class="field">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+        </div>
+        <div class="field" id="authError" style="color: var(--error-color); font-size: 0.95rem; display: none;"></div>
+        <button type="submit" class="btn btn-primary" id="authSubmitBtn">Sign In</button>
+        <button type="button" class="btn btn-secondary" id="toggleAuthMode" style="margin-top: 0.5rem;">Don't have an account? Register</button>
+      </form>
+    </div>
+  </div>
+
   <script>
     const modal = document.getElementById('modal');
     const dots = document.getElementById('dots');
@@ -1555,6 +1578,101 @@
         }
       });
     });
+
+    // Supabase config
+    const SUPABASE_URL = 'https://iayecqndmobjswtzoldb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // Auth modal logic
+    const authModal = document.getElementById('authModal');
+    const authForm = document.getElementById('authForm');
+    const authTitle = document.getElementById('authTitle');
+    const authError = document.getElementById('authError');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
+    let isSignIn = true;
+
+    function showAuthModal() {
+      authModal.style.display = 'flex';
+      authError.style.display = 'none';
+      authForm.reset();
+      authTitle.textContent = isSignIn ? 'Sign In' : 'Register';
+      authSubmitBtn.textContent = isSignIn ? 'Sign In' : 'Register';
+      toggleAuthModeBtn.textContent = isSignIn ? "Don't have an account? Register" : 'Already have an account? Sign In';
+    }
+    function hideAuthModal() {
+      authModal.style.display = 'none';
+    }
+    toggleAuthModeBtn.onclick = function() {
+      isSignIn = !isSignIn;
+      showAuthModal();
+    };
+    authForm.onsubmit = async function(e) {
+      e.preventDefault();
+      authError.style.display = 'none';
+      authSubmitBtn.disabled = true;
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      try {
+        let result;
+        if (isSignIn) {
+          result = await supabase.auth.signInWithPassword({ email, password });
+        } else {
+          result = await supabase.auth.signUp({ email, password });
+        }
+        if (result.error) throw result.error;
+        hideAuthModal();
+        onAuthStateChanged();
+      } catch (err) {
+        authError.textContent = err.message;
+        authError.style.display = 'block';
+      } finally {
+        authSubmitBtn.disabled = false;
+      }
+    };
+    // Show login modal if not logged in
+    async function onAuthStateChanged() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        showAuthModal();
+        document.getElementById('forecastPage').classList.add('hidden');
+        document.getElementById('homePage').classList.remove('hidden');
+        document.getElementById('logoutBtn')?.remove();
+      } else {
+        hideAuthModal();
+        // Add logout button if not present
+        if (!document.getElementById('logoutBtn')) {
+          const btn = document.createElement('button');
+          btn.className = 'btn btn-back';
+          btn.id = 'logoutBtn';
+          btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+          btn.onclick = async function() {
+            await supabase.auth.signOut();
+            onAuthStateChanged();
+          };
+          document.querySelector('.site-logo').parentElement.appendChild(btn);
+        }
+      }
+    }
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange((_event, _session) => {
+      onAuthStateChanged();
+    });
+    // On page load, check auth
+    window.addEventListener('DOMContentLoaded', onAuthStateChanged);
+
+    // Restrict forecast functionality
+    const origShowPage = showPage;
+    showPage = function(id) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session && id === 'forecastPage') {
+          showAuthModal();
+          return;
+        }
+        origShowPage(id);
+      });
+    };
   </script>
 </body>
 </html>
