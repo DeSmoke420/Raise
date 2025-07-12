@@ -3,7 +3,7 @@ import json
 import logging
 from functools import wraps
 from typing import Optional, Dict, Any
-from supabase import create_client, Client
+from supabase._sync.client import create_client  # type: ignore
 from flask import request, jsonify, g
 import jwt
 from datetime import datetime, timedelta
@@ -15,7 +15,7 @@ SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://iayecqndmobjswtzoldb.supabase.
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q')
 
 # Initialize Supabase client
-def initialize_supabase() -> Optional[Client]:
+def initialize_supabase() -> Optional[Any]: # Changed return type hint to Any as Client is no longer imported
     """Initialize Supabase client."""
     try:
         # Create client with proper configuration

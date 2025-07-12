@@ -952,6 +952,14 @@
         <div class="field" id="authError" style="color: var(--error-color); font-size: 0.95rem; display: none;"></div>
         <button type="submit" class="btn btn-primary" id="authSubmitBtn">Sign In</button>
         <button type="button" class="btn btn-secondary" id="toggleAuthMode" style="margin-top: 0.5rem;">Don't have an account? Register</button>
+        
+        <div style="margin-top: 1rem; text-align: center;">
+          <div style="margin: 1rem 0; color: var(--text-secondary);">or</div>
+          <button type="button" class="btn btn-secondary" id="googleSignInBtn" style="background: white; color: #333; border: 1px solid #ddd;">
+            <i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>
+            Continue with Google
+          </button>
+        </div>
       </form>
     </div>
   </div>
@@ -1603,6 +1611,7 @@
     const authError = document.getElementById('authError');
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
     let isSignIn = true;
 
     function showAuthModal() {
@@ -1641,6 +1650,34 @@
         authError.style.display = 'block';
       } finally {
         authSubmitBtn.disabled = false;
+      }
+    };
+
+    // Google Sign-in functionality
+    googleSignInBtn.onclick = async function() {
+      try {
+        authError.style.display = 'none';
+        googleSignInBtn.disabled = true;
+        googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
+        
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: window.location.origin
+          }
+        });
+        
+        if (error) throw error;
+        
+        // The redirect will happen automatically
+        console.log('Google sign-in initiated:', data);
+        
+      } catch (err) {
+        console.error('Google sign-in error:', err);
+        authError.textContent = err.message || 'Google sign-in failed';
+        authError.style.display = 'block';
+        googleSignInBtn.disabled = false;
+        googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
       }
     };
     // Show login modal if not logged in

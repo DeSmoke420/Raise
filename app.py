@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 try:
-    from flask import Flask, request, jsonify, send_file, send_from_directory
+    from flask import Flask, request, jsonify, send_file, send_from_directory, redirect
     from flask_cors import CORS
     import pandas as pd
     import io
@@ -506,6 +506,13 @@ def get_user():
             'authenticated': False,
             'user': None
         })
+
+@app.route('/api/auth/google/callback')
+def google_callback():
+    """Handle Google OAuth callback - redirect to frontend."""
+    # This route handles the OAuth callback and redirects to the frontend
+    # The actual OAuth flow is handled by Supabase
+    return redirect('/')
 
 @app.route('/')
 def index():

@@ -1,5 +1,5 @@
 {
-  "pythonPath": "C:\\Users\\pmiga\\AppData\\Local\\Programs\\Python\\Python311\\python.exe",
+  "pythonPath": "./venv/Scripts/python.exe",
   "venvPath": ".",
   "venv": "venv",
   "extraPaths": [
