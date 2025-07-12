@@ -2063,6 +2063,11 @@
         
         hideAuthModal();
         onAuthStateChanged();
+        
+        // If we were on the forecast page, stay there and show subscription status
+        if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
+          setTimeout(updateSubscriptionUI, 100);
+        }
       } catch (err) {
         authError.textContent = err.message;
         authError.style.display = 'block';
@@ -2136,16 +2141,21 @@
           console.log('No local auth found, showing auth buttons');
           document.getElementById('authButtons').style.display = 'flex';
           document.getElementById('userInfo').style.display = 'none';
-          document.getElementById('forecastPage').classList.add('hidden');
-          document.getElementById('homePage').classList.remove('hidden');
+          // Only redirect to home if we're not already on a page
+          if (document.getElementById('forecastPage').classList.contains('hidden') && 
+              document.getElementById('homePage').classList.contains('hidden')) {
+            document.getElementById('forecastPage').classList.add('hidden');
+            document.getElementById('homePage').classList.remove('hidden');
+          }
         } else {
           console.log('Local auth found, showing user info');
           document.getElementById('authButtons').style.display = 'none';
           document.getElementById('userInfo').style.display = 'flex';
           document.getElementById('userName').textContent = userEmail;
           hideAuthModal();
+          // Update subscription UI if on forecast page
           if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
-            updateSubscriptionUI();
+            setTimeout(updateSubscriptionUI, 100);
           }
         }
       } catch (err) {
@@ -2334,6 +2344,20 @@
         hideModal();
       }
     }
+    
+    // On page load, check auth and handle payment returns
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Handle payment return first
+      handlePaymentReturn();
+      
+      // Check local authentication
+      onAuthStateChanged();
+      
+      // Also check auth state after a short delay to ensure everything is loaded
+      setTimeout(() => {
+        onAuthStateChanged();
+      }, 500);
+    });
   </script>
 </body>
 </html>
