@@ -887,6 +887,17 @@
       box-shadow: var(--shadow-md);
     }
     
+    .trial-badge {
+      background: linear-gradient(135deg, var(--secondary-color), #059669);
+      color: white;
+      padding: 0.25rem 0.75rem;
+      border-radius: var(--radius-md);
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-top: 0.5rem;
+      display: inline-block;
+    }
+    
     .plan-header h4 {
       color: var(--text-primary);
       font-size: 1.25rem;
@@ -1264,9 +1275,9 @@
             <li><i class="fas fa-check"></i> 1 forecast download</li>
             <li><i class="fas fa-check"></i> Full AI forecasting</li>
             <li><i class="fas fa-check"></i> Excel & CSV export</li>
-            <li><i class="fas fa-check"></i> Lifetime access</li>
+            <li><i class="fas fa-check"></i> Instant access</li>
           </ul>
-          <button class="btn btn-primary" onclick="purchasePlan('prod_SfPATo37WeX5vj')">
+          <button class="btn btn-primary" onclick="purchasePlan('prod_SfV4kXPuZK0qB3')">
             <i class="fas fa-shopping-cart"></i>
             Buy Now
           </button>
@@ -1279,15 +1290,15 @@
             <h4>Monthly Subscription</h4>
             <div class="price">€9.99</div>
             <p class="period">per month</p>
+            <div class="trial-badge">7-day free trial</div>
           </div>
           <ul class="plan-features">
             <li><i class="fas fa-check"></i> 100 forecasts per month</li>
             <li><i class="fas fa-check"></i> Full AI forecasting</li>
             <li><i class="fas fa-check"></i> Excel & CSV export</li>
-            <li><i class="fas fa-check"></i> 7-day free trial</li>
             <li><i class="fas fa-check"></i> Cancel anytime</li>
           </ul>
-          <button class="btn btn-primary" onclick="purchasePlan('prod_SfPBShGIGVANNE')">
+          <button class="btn btn-primary" onclick="purchasePlan('prod_SfV7vjDZodqoQa')">
             <i class="fas fa-shopping-cart"></i>
             Start Free Trial
           </button>
@@ -1306,7 +1317,7 @@
             <li><i class="fas fa-check"></i> Excel & CSV export</li>
             <li><i class="fas fa-check"></i> Lifetime access</li>
           </ul>
-          <button class="btn btn-primary" onclick="purchasePlan('prod_SfPDBMXmHyOsgr')">
+          <button class="btn btn-primary" onclick="purchasePlan('prod_SfV5mUmDQiJVx3')">
             <i class="fas fa-shopping-cart"></i>
             Buy Lifetime
           </button>
@@ -1516,6 +1527,23 @@
     }
 
     async function generateForecast() {
+      const token = localStorage.getItem('auth_token');
+      const userEmail = localStorage.getItem('user_email');
+      
+      // If not authenticated, show payment options
+      if (!token || !userEmail) {
+        showPricingModal();
+        return;
+      }
+      
+      // Check if user has access to generate forecasts
+      const userAccess = await checkUserAccess();
+      if (!userAccess || !userAccess.access.is_active) {
+        showPricingModal();
+        return;
+      }
+      
+      // Proceed with forecast generation
       const file = document.getElementById('historicalFile').files[0];
       const timeUnit = document.getElementById('timeUnit').value;
       const periods = document.getElementById('periodCount').value.trim();
@@ -1533,17 +1561,6 @@
         return;
       }
 
-      // Check if user is authenticated
-      const token = localStorage.getItem('auth_token');
-      const userEmail = localStorage.getItem('user_email');
-      
-      if (!token || !userEmail) {
-        // Show pricing modal for guest users
-        showPricingModal();
-        return;
-      }
-
-      // User is authenticated, proceed with forecast generation
       const generateBtn = document.getElementById('generateBtn');
       generateBtn.disabled = true;
       showModal("Analyzing your data and generating forecasts...", null, false, true);
@@ -2119,7 +2136,8 @@
           console.log('No local auth found, showing auth buttons');
           document.getElementById('authButtons').style.display = 'flex';
           document.getElementById('userInfo').style.display = 'none';
-          // Don't hide forecast page - allow guest access
+          document.getElementById('forecastPage').classList.add('hidden');
+          document.getElementById('homePage').classList.remove('hidden');
         } else {
           console.log('Local auth found, showing user info');
           document.getElementById('authButtons').style.display = 'none';
@@ -2223,8 +2241,9 @@
         const token = localStorage.getItem('auth_token');
         const userEmail = localStorage.getItem('user_email');
         
-        // If user is not logged in, show auth modal first
+        // If not authenticated, show auth modal first
         if (!token || !userEmail) {
+          hidePricingModal();
           showAuthModal();
           return;
         }
@@ -2234,9 +2253,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ product_id: productId, user_email: userEmail })
         });
-        
         const result = await response.json();
-        
         if (result.url) {
           hidePricingModal();
           window.location.href = result.url;
@@ -2251,25 +2268,19 @@
     // Restrict forecast functionality
     const origShowPage = showPage;
     showPage = function(id) {
-      origShowPage(id);
-      // Only update subscription UI if user is authenticated
       if (id === 'forecastPage') {
+        // Allow guests to access forecast page
+        origShowPage(id);
+        // Check if user is authenticated and update UI accordingly
         const token = localStorage.getItem('auth_token');
         const userEmail = localStorage.getItem('user_email');
         if (token && userEmail) {
           setTimeout(updateSubscriptionUI, 100);
         }
+      } else {
+        origShowPage(id);
       }
     };
-    
-    // On page load, check auth and handle payment returns
-    window.addEventListener('DOMContentLoaded', async () => {
-      // Handle payment return first
-      handlePaymentReturn();
-      
-      // Check local authentication
-      onAuthStateChanged();
-    });
 
     // Pricing modal functions
     function showPricingModal() {

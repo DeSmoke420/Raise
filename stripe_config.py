@@ -47,35 +47,6 @@ PRODUCTS = {
         'description': 'Lifetime access with up to 500 forecasts per month',
         'forecasts_allowed': 500,
         'type': 'one_time'
-    },
-    # Direct product ID mappings for frontend
-    'prod_SfPATo37WeX5vj': {
-        'name': 'Single Forecast',
-        'stripe_product_id': 'prod_SfPATo37WeX5vj',
-        'price': 199,  # 1.99 EUR in cents
-        'currency': 'eur',
-        'description': 'Download 1 AI-generated forecast',
-        'forecasts_allowed': 1,
-        'type': 'one_time'
-    },
-    'prod_SfPBShGIGVANNE': {
-        'name': 'Monthly Subscription',
-        'stripe_product_id': 'prod_SfPBShGIGVANNE',
-        'price': 999,  # 9.99 EUR in cents
-        'currency': 'eur',
-        'description': 'Full access with up to 100 forecasts per month',
-        'forecasts_allowed': 100,
-        'type': 'subscription',
-        'interval': 'month'
-    },
-    'prod_SfPDBMXmHyOsgr': {
-        'name': 'Lifetime Access',
-        'stripe_product_id': 'prod_SfPDBMXmHyOsgr',
-        'price': 9999,  # 99.99 EUR in cents
-        'currency': 'eur',
-        'description': 'Lifetime access with up to 500 forecasts per month',
-        'forecasts_allowed': 500,
-        'type': 'one_time'
     }
 }
 
