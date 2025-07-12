@@ -1663,13 +1663,15 @@
         googleSignInBtn.disabled = true;
         googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
         
+        // Try to sign in with OAuth using a popup approach
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
             queryParams: {
               access_type: 'offline',
               prompt: 'consent',
-            }
+            },
+            skipBrowserRedirect: true
           }
         });
         
@@ -1678,10 +1680,37 @@
         console.log('Google sign-in initiated:', data);
         console.log('OAuth URL:', data?.url);
         
-        // If we get a URL, it means we need to redirect
+        // If we get a URL, open it in a popup
         if (data?.url) {
-          console.log('Redirecting to OAuth URL...');
-          window.location.href = data.url;
+          console.log('Opening OAuth URL in popup...');
+          const popup = window.open(data.url, 'google-oauth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+          
+          // Check for session completion
+          const checkSession = setInterval(async () => {
+            try {
+              const { data: { session } } = await supabase.auth.getSession();
+              if (session) {
+                console.log('Session found after OAuth:', session.user.email);
+                clearInterval(checkSession);
+                if (popup) popup.close();
+                hideAuthModal();
+                onAuthStateChanged();
+                googleSignInBtn.disabled = false;
+                googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
+              }
+            } catch (err) {
+              console.error('Session check error:', err);
+            }
+          }, 1000);
+          
+          // Timeout after 5 minutes
+          setTimeout(() => {
+            clearInterval(checkSession);
+            if (popup) popup.close();
+            googleSignInBtn.disabled = false;
+            googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
+          }, 300000);
+          
         } else {
           // Check for session after a short delay
           setTimeout(async () => {
@@ -1691,6 +1720,8 @@
               hideAuthModal();
               onAuthStateChanged();
             }
+            googleSignInBtn.disabled = false;
+            googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
           }, 2000);
         }
         
