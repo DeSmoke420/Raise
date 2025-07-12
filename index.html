@@ -959,12 +959,6 @@
             <i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>
             Continue with Google
           </button>
-          <div style="margin-top: 0.5rem;">
-            <button type="button" class="btn btn-secondary" id="googleSignInBtn2" style="background: #4285f4; color: white; border: 1px solid #4285f4; font-size: 0.9rem;">
-              <i class="fab fa-google" style="margin-right: 0.5rem;"></i>
-              Try Alternative Google Sign-in
-            </button>
-          </div>
         </div>
       </form>
     </div>
@@ -1621,7 +1615,6 @@
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
     const googleSignInBtn = document.getElementById('googleSignInBtn');
-    const googleSignInBtn2 = document.getElementById('googleSignInBtn2');
     let isSignIn = true;
 
     function showAuthModal() {
@@ -1670,16 +1663,17 @@
         googleSignInBtn.disabled = true;
         googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
         
-        // Try to sign in with OAuth using a popup approach
+        console.log('Starting Google OAuth flow...');
+        
+        // Use redirect-based OAuth (more reliable than popup)
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
+            redirectTo: window.location.origin,
             queryParams: {
               access_type: 'offline',
-              prompt: 'consent',
-              state: Date.now().toString() // Cache busting
-            },
-            skipBrowserRedirect: true
+              prompt: 'consent'
+            }
           }
         });
         
@@ -1687,51 +1681,13 @@
         
         console.log('Google sign-in initiated:', data);
         console.log('OAuth URL:', data?.url);
-        console.log('Full OAuth response:', JSON.stringify(data, null, 2));
         
-        // If we get a URL, open it in a popup
+        // If we get a URL, redirect to it
         if (data?.url) {
-          console.log('Opening OAuth URL in popup...');
-          const popup = window.open(data.url, 'google-oauth', 'width=500,height=600,scrollbars=yes,resizable=yes');
-          
-          // Check for session completion
-          const checkSession = setInterval(async () => {
-            try {
-              const { data: { session } } = await supabase.auth.getSession();
-              if (session) {
-                console.log('Session found after OAuth:', session.user.email);
-                clearInterval(checkSession);
-                if (popup) popup.close();
-                hideAuthModal();
-                onAuthStateChanged();
-                googleSignInBtn.disabled = false;
-                googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
-              }
-            } catch (err) {
-              console.error('Session check error:', err);
-            }
-          }, 1000);
-          
-          // Timeout after 5 minutes
-          setTimeout(() => {
-            clearInterval(checkSession);
-            if (popup) popup.close();
-            googleSignInBtn.disabled = false;
-            googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
-          }, 300000);
-          
+          console.log('Redirecting to OAuth URL...');
+          window.location.href = data.url;
         } else {
-          // Check for session after a short delay
-          setTimeout(async () => {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session) {
-              console.log('Session found after OAuth:', session.user.email);
-              hideAuthModal();
-              onAuthStateChanged();
-            }
-            googleSignInBtn.disabled = false;
-            googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
-          }, 2000);
+          throw new Error('No OAuth URL received');
         }
         
       } catch (err) {
@@ -1743,38 +1699,7 @@
       }
     };
 
-    // Alternative Google Sign-in functionality (simpler approach)
-    googleSignInBtn2.onclick = async function() {
-      try {
-        authError.style.display = 'none';
-        googleSignInBtn2.disabled = true;
-        googleSignInBtn2.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
-        
-        console.log('Trying alternative Google sign-in method...');
-        
-        // Use a simpler OAuth approach
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google'
-        });
-        
-        if (error) throw error;
-        
-        console.log('Alternative Google sign-in response:', data);
-        
-        // If we get a URL, redirect to it
-        if (data?.url) {
-          console.log('Redirecting to:', data.url);
-          window.location.href = data.url;
-        }
-        
-      } catch (err) {
-        console.error('Alternative Google sign-in error:', err);
-        authError.textContent = err.message || 'Alternative Google sign-in failed';
-        authError.style.display = 'block';
-        googleSignInBtn2.disabled = false;
-        googleSignInBtn2.innerHTML = '<i class="fab fa-google" style="margin-right: 0.5rem;"></i>Try Alternative Google Sign-in';
-      }
-    };
+
     // Show login modal if not logged in
     async function onAuthStateChanged() {
       try {
