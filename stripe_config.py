@@ -18,10 +18,11 @@ if not stripe.api_key:
 else:
     PAYMENT_ENABLED = True
 
-# Product configurations
+# Product configurations with actual Stripe product IDs
 PRODUCTS = {
     'single_forecast': {
         'name': 'Single Forecast',
+        'stripe_product_id': 'prod_SfPATo37WeX5vj',
         'price': 199,  # 1.99 EUR in cents
         'currency': 'eur',
         'description': 'Download 1 AI-generated forecast',
@@ -30,6 +31,7 @@ PRODUCTS = {
     },
     'monthly_subscription': {
         'name': 'Monthly Subscription',
+        'stripe_product_id': 'prod_SfPBShGIGVANNE',
         'price': 999,  # 9.99 EUR in cents
         'currency': 'eur',
         'description': 'Full access with up to 100 forecasts per month',
@@ -39,6 +41,7 @@ PRODUCTS = {
     },
     'lifetime_access': {
         'name': 'Lifetime Access',
+        'stripe_product_id': 'prod_SfPDBMXmHyOsgr',
         'price': 9999,  # 99.99 EUR in cents
         'currency': 'eur',
         'description': 'Lifetime access with up to 500 forecasts per month',
@@ -86,10 +89,7 @@ class PaymentManager:
                 session_data['line_items'] = [{
                     'price_data': {
                         'currency': product['currency'],
-                        'product_data': {
-                            'name': product['name'],
-                            'description': product['description']
-                        },
+                        'product': product['stripe_product_id'],
                         'unit_amount': product['price'],
                         'recurring': {
                             'interval': product['interval']
@@ -103,10 +103,7 @@ class PaymentManager:
                 session_data['line_items'] = [{
                     'price_data': {
                         'currency': product['currency'],
-                        'product_data': {
-                            'name': product['name'],
-                            'description': product['description']
-                        },
+                        'product': product['stripe_product_id'],
                         'unit_amount': product['price']
                     },
                     'quantity': 1
