@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def test_supabase_import():
     """Test if Supabase client can be imported."""
     try:
-        from supabase import create_client, Client
+        from supabase._sync.client import create_client  # type: ignore
         logger.info("✅ Supabase client imported successfully")
         return True
     except ImportError as e:
