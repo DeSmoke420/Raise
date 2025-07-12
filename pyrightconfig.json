@@ -1,24 +1,15 @@
 {
-  "pythonPath": "./venv/Scripts/python.exe",
-  "venvPath": ".",
-  "venv": "venv",
-  "extraPaths": [
+  "include": [
     "."
   ],
-  "typeCheckingMode": "basic",
-  "useLibraryCodeForTypes": true,
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "venv",
+    ".venv"
+  ],
   "reportMissingImports": "warning",
   "reportMissingTypeStubs": false,
   "pythonVersion": "3.11",
-  "include": [
-    "*.py",
-    "auth.py",
-    "app.py",
-    "test_auth.py"
-  ],
-  "exclude": [
-    "venv",
-    "__pycache__",
-    "*.pyc"
-  ]
+  "typeCheckingMode": "basic"
 } 
