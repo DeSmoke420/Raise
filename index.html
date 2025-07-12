@@ -1666,6 +1666,9 @@
         console.log('Starting Google OAuth flow...');
         
         // Use redirect-based OAuth (more reliable than popup)
+        console.log('Current origin:', window.location.origin);
+        console.log('Current URL:', window.location.href);
+        
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -1684,6 +1687,16 @@
         
         // If we get a URL, redirect to it
         if (data?.url) {
+          console.log('OAuth URL received:', data.url);
+          console.log('About to redirect to:', data.url);
+          
+          // Check if the URL contains localhost
+          if (data.url.includes('localhost')) {
+            console.error('ERROR: OAuth URL contains localhost!');
+            console.error('This means Google Cloud Console still has localhost redirect URIs');
+            throw new Error('OAuth configuration error: URL contains localhost');
+          }
+          
           console.log('Redirecting to OAuth URL...');
           window.location.href = data.url;
         } else {
