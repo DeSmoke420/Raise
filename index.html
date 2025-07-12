@@ -750,6 +750,74 @@
         height: 60px;
         padding: 5px;
       }
+      
+      .auth-header {
+        top: 10px;
+        right: 10px;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .auth-buttons {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .auth-buttons .btn {
+        font-size: 0.8rem;
+        padding: 0.5rem 0.75rem;
+      }
+      
+      .user-info {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+      }
+    }
+    
+    /* Auth Header Styles */
+    .auth-header {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .auth-buttons {
+      display: flex;
+      gap: 0.75rem;
+    }
+    
+    .auth-buttons .btn {
+      font-size: 0.9rem;
+      padding: 0.6rem 1rem;
+      margin: 0;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      backdrop-filter: blur(10px);
+    }
+    
+    .user-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+    
+    .user-info .btn {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.8rem;
+      margin: 0;
     }
   </style>
 </head>
@@ -757,6 +825,27 @@
   <a href="/" class="site-logo">
     <img src="static/logo.png" alt="r4ise logo" />
   </a>
+  
+  <!-- Auth Header -->
+  <div class="auth-header">
+    <div class="auth-buttons" id="authButtons">
+      <button class="btn btn-secondary" onclick="toggleAuthModal()">
+        <i class="fas fa-sign-in-alt"></i>
+        Sign In
+      </button>
+      <button class="btn btn-primary" onclick="toggleAuthModal('signup')">
+        <i class="fas fa-user-plus"></i>
+        Sign Up
+      </button>
+    </div>
+    <div class="user-info" id="userInfo" style="display: none;">
+      <span class="user-name" id="userName"></span>
+      <button class="btn btn-back" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+        Logout
+      </button>
+    </div>
+  </div>
   <div class="container">
     <!-- Home Page -->
     <div class="card fade-in" id="homePage">
@@ -1617,14 +1706,23 @@
     const googleSignInBtn = document.getElementById('googleSignInBtn');
     let isSignIn = true;
 
-    function showAuthModal() {
+    function showAuthModal(mode = 'signin') {
       authModal.style.display = 'flex';
       authError.style.display = 'none';
       authForm.reset();
+      
+      // Set the mode based on parameter
+      isSignIn = mode === 'signin';
+      
       authTitle.textContent = isSignIn ? 'Sign In' : 'Register';
       authSubmitBtn.textContent = isSignIn ? 'Sign In' : 'Register';
       toggleAuthModeBtn.textContent = isSignIn ? "Don't have an account? Register" : 'Already have an account? Sign In';
     }
+    
+    function toggleAuthModal(mode = 'signin') {
+      showAuthModal(mode);
+    }
+    
     function hideAuthModal() {
       authModal.style.display = 'none';
     }
@@ -1725,39 +1823,48 @@
         console.log('Session:', session ? 'Found' : 'Not found');
         
         if (!session) {
-          console.log('No session found, showing auth modal');
-          showAuthModal();
+          console.log('No session found, showing auth buttons');
+          // Show auth buttons, hide user info
+          document.getElementById('authButtons').style.display = 'flex';
+          document.getElementById('userInfo').style.display = 'none';
           document.getElementById('forecastPage').classList.add('hidden');
           document.getElementById('homePage').classList.remove('hidden');
-          document.getElementById('logoutBtn')?.remove();
         } else {
-          console.log('Session found, hiding auth modal');
+          console.log('Session found, showing user info');
+          // Hide auth buttons, show user info
+          document.getElementById('authButtons').style.display = 'none';
+          document.getElementById('userInfo').style.display = 'flex';
+          
+          // Update user name
+          const userName = session.user.email || session.user.user_metadata?.name || 'User';
+          document.getElementById('userName').textContent = userName;
+          
           hideAuthModal();
-          // Add logout button if not present
-          if (!document.getElementById('logoutBtn')) {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-back';
-            btn.id = 'logoutBtn';
-            btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-            btn.onclick = async function() {
-              await supabase.auth.signOut();
-              onAuthStateChanged();
-            };
-            document.querySelector('.site-logo').parentElement.appendChild(btn);
-          }
         }
       } catch (err) {
         console.error('Auth state check error:', err);
-        // Fallback: show auth modal on error
-        showAuthModal();
+        // Fallback: show auth buttons on error
+        document.getElementById('authButtons').style.display = 'flex';
+        document.getElementById('userInfo').style.display = 'none';
       }
     }
+    // Logout function
+    async function logout() {
+      try {
+        await supabase.auth.signOut();
+        onAuthStateChanged();
+      } catch (err) {
+        console.error('Logout error:', err);
+      }
+    }
+    
     // Listen for auth state changes
     if (supabase) {
       supabase.auth.onAuthStateChange((_event, _session) => {
         onAuthStateChanged();
       });
     }
+    
     // On page load, check auth
     window.addEventListener('DOMContentLoaded', async () => {
       if (supabase) {
@@ -1765,46 +1872,37 @@
         const { data: { session }, error } = await supabase.auth.getSession();
         if (session) {
           console.log('Session found on page load:', session.user.email);
-          hideAuthModal();
-          // Add logout button if not present
-          if (!document.getElementById('logoutBtn')) {
-            const btn = document.createElement('button');
-            btn.className = 'btn btn-back';
-            btn.id = 'logoutBtn';
-            btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-            btn.onclick = async function() {
-              await supabase.auth.signOut();
-              onAuthStateChanged();
-            };
-            document.querySelector('.site-logo').parentElement.appendChild(btn);
-          }
+          onAuthStateChanged();
         } else {
           onAuthStateChanged();
         }
       } else {
-        showAuthModal();
+        // Fallback: show auth buttons if Supabase not available
+        document.getElementById('authButtons').style.display = 'flex';
+        document.getElementById('userInfo').style.display = 'none';
       }
     });
 
     // Restrict forecast functionality
     const origShowPage = showPage;
     showPage = function(id) {
-      if (!supabase) {
-        if (id === 'forecastPage') {
+      if (id === 'forecastPage') {
+        // Check if user is authenticated
+        if (supabase) {
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (!session) {
+              showAuthModal();
+              return;
+            }
+            origShowPage(id);
+          });
+        } else {
           showAuthModal();
           return;
         }
+      } else {
         origShowPage(id);
-        return;
       }
-      
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (!session && id === 'forecastPage') {
-          showAuthModal();
-          return;
-        }
-        origShowPage(id);
-      });
     };
   </script>
 </body>
