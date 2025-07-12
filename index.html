@@ -1661,10 +1661,7 @@
         googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
         
         const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo: 'https://raiseproject-production.up.railway.app'
-          }
+          provider: 'google'
         });
         
         if (error) throw error;
@@ -1727,9 +1724,28 @@
       });
     }
     // On page load, check auth
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', async () => {
       if (supabase) {
-        onAuthStateChanged();
+        // Check if we're returning from OAuth
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (session) {
+          console.log('Session found on page load:', session.user.email);
+          hideAuthModal();
+          // Add logout button if not present
+          if (!document.getElementById('logoutBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-back';
+            btn.id = 'logoutBtn';
+            btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+            btn.onclick = async function() {
+              await supabase.auth.signOut();
+              onAuthStateChanged();
+            };
+            document.querySelector('.site-logo').parentElement.appendChild(btn);
+          }
+        } else {
+          onAuthStateChanged();
+        }
       } else {
         showAuthModal();
       }
