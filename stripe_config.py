@@ -3,11 +3,15 @@ import stripe
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 # Initialize Stripe
-stripe.api_key = 'sk_test_51Rk4JLGfh0Kc8OxaVMGTlJOq9gmSEepODyfsD2VmUuHg7SBrjt74vH9Hm0QTooFXbakv2AP0PhjP6AM6GaeOyoXf00xPPNzkmD'
+stripe.api_key = os.environ.get('STRIPE_SECRET_KEY', 'sk_test_51Rk4JLGfh0Kc8OxaVMGTlJOq9gmSEepODyfsD2VmUuHg7SBrjt74vH9Hm0QTooFXbakv2AP0PhjP6AM6GaeOyoXf00xPPNzkmD')
 
 # Product configurations
 PRODUCTS = {
