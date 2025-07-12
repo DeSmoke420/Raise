@@ -951,6 +951,16 @@
       .price {
         font-size: 2rem;
       }
+      
+      #pricingModal .modal-content {
+        max-width: 95%;
+        margin: 1rem;
+        padding: 1.5rem;
+      }
+      
+      #pricingModal .pricing-plans {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
@@ -1015,89 +1025,7 @@
       <div class="payment-required" id="paymentRequired" style="display: none;">
         <div class="info-box warning">
           <h3><i class="fas fa-lock"></i> Subscription Required</h3>
-          <p>You need an active subscription to generate forecasts. Choose a plan below to get started.</p>
-        </div>
-        
-        <!-- Pricing Plans -->
-        <div class="pricing-plans" id="pricingPlans">
-          <h3 style="text-align: center; margin: 2rem 0 1rem; color: var(--text-primary);">Choose Your Plan</h3>
-          
-          <!-- Trial Plan -->
-          <div class="pricing-card trial">
-            <div class="plan-header">
-              <h4>Free Trial</h4>
-              <div class="price">€0</div>
-              <p class="period">1 month or 10 forecasts</p>
-            </div>
-            <ul class="plan-features">
-              <li><i class="fas fa-check"></i> 10 forecast downloads</li>
-              <li><i class="fas fa-check"></i> Full AI forecasting</li>
-              <li><i class="fas fa-check"></i> Excel & CSV export</li>
-              <li><i class="fas fa-check"></i> 30-day access</li>
-            </ul>
-            <button class="btn btn-primary" onclick="activateTrial()">
-              <i class="fas fa-play"></i>
-              Start Free Trial
-            </button>
-          </div>
-          
-          <!-- Single Forecast -->
-          <div class="pricing-card">
-            <div class="plan-header">
-              <h4>Single Forecast</h4>
-              <div class="price">€1.99</div>
-              <p class="period">One-time payment</p>
-            </div>
-            <ul class="plan-features">
-              <li><i class="fas fa-check"></i> 1 forecast download</li>
-              <li><i class="fas fa-check"></i> Full AI forecasting</li>
-              <li><i class="fas fa-check"></i> Excel & CSV export</li>
-              <li><i class="fas fa-check"></i> Lifetime access</li>
-            </ul>
-            <button class="btn btn-primary" onclick="purchasePlan('single_forecast')">
-              <i class="fas fa-shopping-cart"></i>
-              Buy Now
-            </button>
-          </div>
-          
-          <!-- Monthly Subscription -->
-          <div class="pricing-card featured">
-            <div class="plan-badge">Most Popular</div>
-            <div class="plan-header">
-              <h4>Monthly Subscription</h4>
-              <div class="price">€9.99</div>
-              <p class="period">per month</p>
-            </div>
-            <ul class="plan-features">
-              <li><i class="fas fa-check"></i> 100 forecasts per month</li>
-              <li><i class="fas fa-check"></i> Full AI forecasting</li>
-              <li><i class="fas fa-check"></i> Excel & CSV export</li>
-              <li><i class="fas fa-check"></i> Cancel anytime</li>
-            </ul>
-            <button class="btn btn-primary" onclick="purchasePlan('monthly_subscription')">
-              <i class="fas fa-shopping-cart"></i>
-              Subscribe Now
-            </button>
-          </div>
-          
-          <!-- Lifetime Access -->
-          <div class="pricing-card">
-            <div class="plan-header">
-              <h4>Lifetime Access</h4>
-              <div class="price">€99.99</div>
-              <p class="period">One-time payment</p>
-            </div>
-            <ul class="plan-features">
-              <li><i class="fas fa-check"></i> 500 forecasts per month</li>
-              <li><i class="fas fa-check"></i> Full AI forecasting</li>
-              <li><i class="fas fa-check"></i> Excel & CSV export</li>
-              <li><i class="fas fa-check"></i> Lifetime access</li>
-            </ul>
-            <button class="btn btn-primary" onclick="purchasePlan('lifetime_access')">
-              <i class="fas fa-shopping-cart"></i>
-              Buy Lifetime
-            </button>
-          </div>
+          <p>You need an active subscription to generate forecasts. <button class="btn btn-primary" onclick="showPricingModal()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;">Choose a Plan</button></p>
         </div>
       </div>
       
@@ -1282,7 +1210,7 @@
                   <path fill="#4285F4" d="M24 9.5c3.54 0 6.36 1.46 7.82 2.68l5.8-5.8C34.36 3.36 29.64 1 24 1 14.82 1 6.98 6.98 3.34 15.02l6.74 5.23C12.36 13.36 17.64 9.5 24 9.5z"/>
                   <path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.43-4.74H24v9.02h12.42c-.54 2.92-2.18 5.39-4.66 7.06l7.18 5.59C43.98 37.02 46.1 31.23 46.1 24.5z"/>
                   <path fill="#FBBC05" d="M10.08 28.25c-1.08-3.23-1.08-6.77 0-10l-6.74-5.23C.98 13.98 0 18.82 0 24c0 5.18.98 10.02 3.34 13.98l6.74-5.23z"/>
-                  <path fill="#EA4335" d="M24 46.5c5.64 0 10.36-1.86 13.82-5.09l-7.18-5.59c-2.02 1.36-4.6 2.18-7.64 2.18-6.36 0-11.64-3.86-13.92-9.25l-6.74 5.23C6.98 41.02 14.82 46.5 24 46.5z"/>
+                  <path fill="#EA4335" d="M24 46.5c5.64 0 10.36-1.86 13.82-5.09l-7.18-5.59c-2.02 1.36-4.6 2.18-7.64 2.18-6.36 0-11.64-3.86-13.92-9.25l-6.74-5.23C6.98 41.02 14.82 46.5 24 46.5z"/>
                   <path fill="none" d="M0 0h48v48H0z"/>
                 </g>
               </svg>
@@ -1291,6 +1219,106 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Pricing Plans Modal -->
+  <div class="modal" id="pricingModal">
+    <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: 90vh; overflow-y: auto;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <a href="/" class="site-logo" style="position: static; margin-bottom: 1rem; display: flex; justify-content: center;">
+          <img src="static/logo.png" alt="r4ise logo" style="width: 60px; height: 60px; border-radius: 16px; box-shadow: 0 2px 8px rgba(99,102,241,0.10); background: #fff; padding: 5px;" />
+        </a>
+        <h2 style="color: var(--primary-color); margin-bottom: 0.5rem;">Choose Your Plan</h2>
+        <p style="color: var(--text-secondary);">Select the perfect plan for your forecasting needs</p>
+      </div>
+      
+      <!-- Pricing Plans -->
+      <div class="pricing-plans" id="pricingPlans">
+        <!-- Trial Plan -->
+        <div class="pricing-card trial">
+          <div class="plan-header">
+            <h4>Free Trial</h4>
+            <div class="price">€0</div>
+            <p class="period">1 month or 10 forecasts</p>
+          </div>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> 10 forecast downloads</li>
+            <li><i class="fas fa-check"></i> Full AI forecasting</li>
+            <li><i class="fas fa-check"></i> Excel & CSV export</li>
+            <li><i class="fas fa-check"></i> 30-day access</li>
+          </ul>
+          <button class="btn btn-primary" onclick="activateTrial()">
+            <i class="fas fa-play"></i>
+            Start Free Trial
+          </button>
+        </div>
+        
+        <!-- Single Forecast -->
+        <div class="pricing-card">
+          <div class="plan-header">
+            <h4>Single Forecast</h4>
+            <div class="price">€1.99</div>
+            <p class="period">One-time payment</p>
+          </div>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> 1 forecast download</li>
+            <li><i class="fas fa-check"></i> Full AI forecasting</li>
+            <li><i class="fas fa-check"></i> Excel & CSV export</li>
+            <li><i class="fas fa-check"></i> Lifetime access</li>
+          </ul>
+          <button class="btn btn-primary" onclick="purchasePlan('single_forecast')">
+            <i class="fas fa-shopping-cart"></i>
+            Buy Now
+          </button>
+        </div>
+        
+        <!-- Monthly Subscription -->
+        <div class="pricing-card featured">
+          <div class="plan-badge">Most Popular</div>
+          <div class="plan-header">
+            <h4>Monthly Subscription</h4>
+            <div class="price">€9.99</div>
+            <p class="period">per month</p>
+          </div>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> 100 forecasts per month</li>
+            <li><i class="fas fa-check"></i> Full AI forecasting</li>
+            <li><i class="fas fa-check"></i> Excel & CSV export</li>
+            <li><i class="fas fa-check"></i> Cancel anytime</li>
+          </ul>
+          <button class="btn btn-primary" onclick="purchasePlan('monthly_subscription')">
+            <i class="fas fa-shopping-cart"></i>
+            Subscribe Now
+          </button>
+        </div>
+        
+        <!-- Lifetime Access -->
+        <div class="pricing-card">
+          <div class="plan-header">
+            <h4>Lifetime Access</h4>
+            <div class="price">€99.99</div>
+            <p class="period">One-time payment</p>
+          </div>
+          <ul class="plan-features">
+            <li><i class="fas fa-check"></i> 500 forecasts per month</li>
+            <li><i class="fas fa-check"></i> Full AI forecasting</li>
+            <li><i class="fas fa-check"></i> Excel & CSV export</li>
+            <li><i class="fas fa-check"></i> Lifetime access</li>
+          </ul>
+          <button class="btn btn-primary" onclick="purchasePlan('lifetime_access')">
+            <i class="fas fa-shopping-cart"></i>
+            Buy Lifetime
+          </button>
+        </div>
+      </div>
+      
+      <div style="text-align: center; margin-top: 2rem;">
+        <button class="btn btn-back" onclick="hidePricingModal()">
+          <i class="fas fa-times"></i>
+          Close
+        </button>
+      </div>
     </div>
   </div>
 
@@ -2130,6 +2158,15 @@
       }
     });
 
+    // Pricing modal functions
+    function showPricingModal() {
+      document.getElementById('pricingModal').style.display = 'flex';
+    }
+    
+    function hidePricingModal() {
+      document.getElementById('pricingModal').style.display = 'none';
+    }
+    
     // Payment and subscription functions
     async function checkUserAccess() {
       try {
@@ -2207,6 +2244,7 @@
         if (result.success) {
           showSuccess('Free trial activated successfully!');
           updateSubscriptionUI();
+          hidePricingModal();
         } else {
           showError(result.error || 'Failed to activate trial');
         }
@@ -2240,6 +2278,7 @@
         
         if (result.url) {
           // Redirect to Stripe checkout
+          hidePricingModal();
           window.location.href = result.url;
         } else {
           showError(result.error || 'Failed to create checkout session');
