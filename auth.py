@@ -3,40 +3,34 @@ import json
 import logging
 from functools import wraps
 from typing import Optional, Dict, Any
-import firebase_admin  # type: ignore
-from firebase_admin import credentials, auth  # type: ignore
+from supabase import create_client, Client
 from flask import request, jsonify, g
-import jwt  # type: ignore
+import jwt
 from datetime import datetime, timedelta
 
 logger = logging.getLogger(__name__)
 
-# Initialize Firebase Admin SDK
-def initialize_firebase():
-    """Initialize Firebase Admin SDK with service account credentials."""
+# Supabase Configuration
+SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://iayecqndmobjswtzoldb.supabase.co')
+SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q')
+
+# Initialize Supabase client
+def initialize_supabase() -> Optional[Client]:
+    """Initialize Supabase client."""
     try:
-        # Check if Firebase is already initialized
-        if not firebase_admin._apps:
-            # Try to load from environment variable first
-            firebase_config = os.getenv('FIREBASE_CONFIG')
-            if firebase_config:
-                cred_dict = json.loads(firebase_config)
-                cred = credentials.Certificate(cred_dict)
-            else:
-                # Try to load from file
-                config_path = 'firebase_config.json'
-                if os.path.exists(config_path):
-                    cred = credentials.Certificate(config_path)
-                else:
-                    logger.warning("Firebase config not found. Authentication will be disabled.")
-                    return False
-            
-            firebase_admin.initialize_app(cred)
-            logger.info("Firebase Admin SDK initialized successfully")
-            return True
+        # Create client with proper configuration
+        supabase = create_client(
+            supabase_url=SUPABASE_URL,
+            supabase_key=SUPABASE_ANON_KEY
+        )
+        logger.info("Supabase client initialized successfully")
+        return supabase
     except Exception as e:
-        logger.error(f"Failed to initialize Firebase: {e}")
-        return False
+        logger.error(f"Failed to initialize Supabase: {e}")
+        return None
+
+# Global Supabase client
+supabase_client = initialize_supabase()
 
 # JWT Secret for session management
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key-change-in-production')
@@ -75,18 +69,26 @@ def get_user_from_token(token: str) -> Optional[Dict[str, Any]]:
         }
     return None
 
-def verify_firebase_token(id_token: str) -> Optional[Dict[str, Any]]:
-    """Verify Firebase ID token and return user information."""
+def verify_supabase_token(access_token: str) -> Optional[Dict[str, Any]]:
+    """Verify Supabase access token and return user information."""
     try:
-        decoded_token = auth.verify_id_token(id_token)
-        return {
-            'user_id': decoded_token['uid'],
-            'email': decoded_token.get('email', ''),
-            'name': decoded_token.get('name', ''),
-            'picture': decoded_token.get('picture', '')
-        }
+        if not supabase_client:
+            logger.error("Supabase client not initialized")
+            return None
+        
+        # Get user from Supabase using the access token
+        user = supabase_client.auth.get_user(access_token)
+        
+        if user and user.user:
+            return {
+                'user_id': user.user.id,
+                'email': user.user.email,
+                'name': user.user.user_metadata.get('name', ''),
+                'picture': user.user.user_metadata.get('avatar_url', '')
+            }
+        return None
     except Exception as e:
-        logger.error(f"Firebase token verification failed: {e}")
+        logger.error(f"Supabase token verification failed: {e}")
         return None
 
 def require_auth(f):
@@ -102,13 +104,13 @@ def require_auth(f):
                 g.current_user = user
                 return f(*args, **kwargs)
         
-        # Check for Firebase ID token in request body or headers
-        id_token = request.json.get('idToken') if request.is_json and request.json else None
-        if not id_token:
-            id_token = request.headers.get('X-Firebase-ID-Token')
+        # Check for Supabase access token in request body or headers
+        access_token = request.json.get('accessToken') if request.is_json and request.json else None
+        if not access_token:
+            access_token = request.headers.get('X-Supabase-Access-Token')
         
-        if id_token:
-            user = verify_firebase_token(id_token)
+        if access_token:
+            user = verify_supabase_token(access_token)
             if user:
                 g.current_user = user
                 return f(*args, **kwargs)
@@ -131,13 +133,13 @@ def optional_auth(f):
             if user:
                 g.current_user = user
         
-        # Check for Firebase ID token in request body or headers
-        id_token = request.json.get('idToken') if request.is_json and request.json else None
-        if not id_token:
-            id_token = request.headers.get('X-Firebase-ID-Token')
+        # Check for Supabase access token in request body or headers
+        access_token = request.json.get('accessToken') if request.is_json and request.json else None
+        if not access_token:
+            access_token = request.headers.get('X-Supabase-Access-Token')
         
-        if id_token and not g.current_user:
-            user = verify_firebase_token(id_token)
+        if access_token and not g.current_user:
+            user = verify_supabase_token(access_token)
             if user:
                 g.current_user = user
         
@@ -156,4 +158,54 @@ def create_user_session(user_info: Dict[str, Any]) -> Dict[str, Any]:
         'user': user_info,
         'token': jwt_token,
         'expires_in': JWT_EXPIRATION_HOURS * 3600  # seconds
-    } 
+    }
+
+def sign_in_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
+    """Sign in user with Supabase email/password."""
+    try:
+        if not supabase_client:
+            logger.error("Supabase client not initialized")
+            return None
+        
+        response = supabase_client.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
+        
+        if response.user:
+            return {
+                'user_id': response.user.id,
+                'email': response.user.email,
+                'name': response.user.user_metadata.get('name', ''),
+                'picture': response.user.user_metadata.get('avatar_url', ''),
+                'access_token': response.session.access_token if response.session else None
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Supabase sign in failed: {e}")
+        return None
+
+def sign_up_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
+    """Sign up user with Supabase email/password."""
+    try:
+        if not supabase_client:
+            logger.error("Supabase client not initialized")
+            return None
+        
+        response = supabase_client.auth.sign_up({
+            "email": email,
+            "password": password
+        })
+        
+        if response.user:
+            return {
+                'user_id': response.user.id,
+                'email': response.user.email,
+                'name': response.user.user_metadata.get('name', ''),
+                'picture': response.user.user_metadata.get('avatar_url', ''),
+                'access_token': response.session.access_token if response.session else None
+            }
+        return None
+    except Exception as e:
+        logger.error(f"Supabase sign up failed: {e}")
+        return None 
