@@ -8,6 +8,7 @@
   <link rel="icon" type="image/png" href="static/logo2.png?v=2" sizes="512x512">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
   <style>
@@ -1582,7 +1583,18 @@
     // Supabase config
     const SUPABASE_URL = 'https://iayecqndmobjswtzoldb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q';
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    let supabase;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase client initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Supabase client:', error);
+      // Fallback: show auth modal immediately
+      window.addEventListener('DOMContentLoaded', () => {
+        showAuthModal();
+      });
+    }
 
     // Auth modal logic
     const authModal = document.getElementById('authModal');
@@ -1633,38 +1645,71 @@
     };
     // Show login modal if not logged in
     async function onAuthStateChanged() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        showAuthModal();
-        document.getElementById('forecastPage').classList.add('hidden');
-        document.getElementById('homePage').classList.remove('hidden');
-        document.getElementById('logoutBtn')?.remove();
-      } else {
-        hideAuthModal();
-        // Add logout button if not present
-        if (!document.getElementById('logoutBtn')) {
-          const btn = document.createElement('button');
-          btn.className = 'btn btn-back';
-          btn.id = 'logoutBtn';
-          btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-          btn.onclick = async function() {
-            await supabase.auth.signOut();
-            onAuthStateChanged();
-          };
-          document.querySelector('.site-logo').parentElement.appendChild(btn);
+      try {
+        console.log('Checking authentication state...');
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          console.error('Auth session error:', error);
         }
+        
+        console.log('Session:', session ? 'Found' : 'Not found');
+        
+        if (!session) {
+          console.log('No session found, showing auth modal');
+          showAuthModal();
+          document.getElementById('forecastPage').classList.add('hidden');
+          document.getElementById('homePage').classList.remove('hidden');
+          document.getElementById('logoutBtn')?.remove();
+        } else {
+          console.log('Session found, hiding auth modal');
+          hideAuthModal();
+          // Add logout button if not present
+          if (!document.getElementById('logoutBtn')) {
+            const btn = document.createElement('button');
+            btn.className = 'btn btn-back';
+            btn.id = 'logoutBtn';
+            btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
+            btn.onclick = async function() {
+              await supabase.auth.signOut();
+              onAuthStateChanged();
+            };
+            document.querySelector('.site-logo').parentElement.appendChild(btn);
+          }
+        }
+      } catch (err) {
+        console.error('Auth state check error:', err);
+        // Fallback: show auth modal on error
+        showAuthModal();
       }
     }
     // Listen for auth state changes
-    supabase.auth.onAuthStateChange((_event, _session) => {
-      onAuthStateChanged();
-    });
+    if (supabase) {
+      supabase.auth.onAuthStateChange((_event, _session) => {
+        onAuthStateChanged();
+      });
+    }
     // On page load, check auth
-    window.addEventListener('DOMContentLoaded', onAuthStateChanged);
+    window.addEventListener('DOMContentLoaded', () => {
+      if (supabase) {
+        onAuthStateChanged();
+      } else {
+        showAuthModal();
+      }
+    });
 
     // Restrict forecast functionality
     const origShowPage = showPage;
     showPage = function(id) {
+      if (!supabase) {
+        if (id === 'forecastPage') {
+          showAuthModal();
+          return;
+        }
+        origShowPage(id);
+        return;
+      }
+      
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session && id === 'forecastPage') {
           showAuthModal();
