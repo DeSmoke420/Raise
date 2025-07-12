@@ -8,6 +8,7 @@ import math
 import pandas as pd
 import io
 from typing import Optional, Tuple, List, Dict, Any
+from functools import wraps
 
 # Configure logging first
 logging.basicConfig(level=logging.INFO)
@@ -71,6 +72,35 @@ try:
 except ImportError as e:
     logger.warning(f"Authentication module not available: {e}")
     AUTH_AVAILABLE = False
+    
+    # Import Flask's g for fallback functions
+    from flask import g
+    
+    # Create fallback decorators when auth is not available
+    def require_auth(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            return jsonify({'error': 'Authentication required'}), 401
+        return decorated_function
+    
+    def optional_auth(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            g.current_user = None
+            return f(*args, **kwargs)
+        return decorated_function
+    
+    def get_current_user() -> Optional[Dict[str, Any]]:
+        return None
+    
+    def create_user_session(user_info: Dict[str, Any]) -> Dict[str, Any]:
+        return {'error': 'Authentication not available'}
+    
+    def sign_in_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
+        return None
+    
+    def sign_up_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
+        return None
 
 # Import payment and subscription modules
 try:

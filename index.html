@@ -2006,13 +2006,28 @@
       const email = document.getElementById('authEmail').value.trim();
       const password = document.getElementById('authPassword').value;
       try {
-        let result;
-        if (isSignIn) {
-          result = await supabase.auth.signInWithPassword({ email, password });
-        } else {
-          result = await supabase.auth.signUp({ email, password });
+        // Use Flask backend authentication instead of Supabase client
+        const endpoint = isSignIn ? '/api/auth/signin' : '/api/auth/signup';
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Authentication failed');
         }
-        if (result.error) throw result.error;
+        
+        // Store the token locally
+        if (result.token) {
+          localStorage.setItem('auth_token', result.token);
+          localStorage.setItem('user_email', result.user.email);
+        }
+        
         hideAuthModal();
         onAuthStateChanged();
       } catch (err) {
@@ -2081,30 +2096,26 @@
     async function onAuthStateChanged() {
       try {
         console.log('Checking authentication state...');
-        const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) {
-          console.error('Auth session error:', error);
-        }
+        // Check for local authentication token
+        const token = localStorage.getItem('auth_token');
+        const userEmail = localStorage.getItem('user_email');
         
-        console.log('Session:', session ? 'Found' : 'Not found');
-        
-        if (!session) {
-          console.log('No session found, showing auth buttons');
+        if (!token || !userEmail) {
+          console.log('No local auth found, showing auth buttons');
           // Show auth buttons, hide user info
           document.getElementById('authButtons').style.display = 'flex';
           document.getElementById('userInfo').style.display = 'none';
           document.getElementById('forecastPage').classList.add('hidden');
           document.getElementById('homePage').classList.remove('hidden');
         } else {
-          console.log('Session found, showing user info');
+          console.log('Local auth found, showing user info');
           // Hide auth buttons, show user info
           document.getElementById('authButtons').style.display = 'none';
           document.getElementById('userInfo').style.display = 'flex';
           
           // Update user name
-          const userName = session.user.email || session.user.user_metadata?.name || 'User';
-          document.getElementById('userName').textContent = userName;
+          document.getElementById('userName').textContent = userEmail;
           
           hideAuthModal();
           
@@ -2123,7 +2134,9 @@
     // Logout function
     async function logout() {
       try {
-        await supabase.auth.signOut();
+        // Clear local authentication
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_email');
         onAuthStateChanged();
       } catch (err) {
         console.error('Logout error:', err);
@@ -2142,20 +2155,8 @@
       // Handle payment return first
       handlePaymentReturn();
       
-      if (supabase) {
-        // Check if we're returning from OAuth
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (session) {
-          console.log('Session found on page load:', session.user.email);
-          onAuthStateChanged();
-        } else {
-          onAuthStateChanged();
-        }
-      } else {
-        // Fallback: show auth buttons if Supabase not available
-        document.getElementById('authButtons').style.display = 'flex';
-        document.getElementById('userInfo').style.display = 'none';
-      }
+      // Check local authentication
+      onAuthStateChanged();
     });
 
     // Pricing modal functions

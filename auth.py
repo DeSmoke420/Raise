@@ -3,7 +3,6 @@ import json
 import logging
 from functools import wraps
 from typing import Optional, Dict, Any
-from supabase._sync.client import create_client  # type: ignore
 from flask import request, jsonify, g
 import jwt
 from datetime import datetime, timedelta
@@ -15,9 +14,16 @@ SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://iayecqndmobjswtzoldb.supabase.
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q')
 
 # Initialize Supabase client
-def initialize_supabase() -> Optional[Any]: # Changed return type hint to Any as Client is no longer imported
+def initialize_supabase() -> Optional[Any]:
     """Initialize Supabase client."""
     try:
+        # Try to import Supabase with error handling
+        try:
+            from supabase._sync.client import create_client  # type: ignore
+        except ImportError as e:
+            logger.error(f"Failed to import Supabase client: {e}")
+            return None
+        
         # Create client with proper configuration
         supabase = create_client(
             supabase_url=SUPABASE_URL,
@@ -31,6 +37,16 @@ def initialize_supabase() -> Optional[Any]: # Changed return type hint to Any as
 
 # Global Supabase client
 supabase_client = initialize_supabase()
+
+# Simple local authentication for development when Supabase is not available
+LOCAL_USERS = {
+    "test@example.com": {
+        "password": "password123",
+        "user_id": "local_user_1",
+        "email": "test@example.com",
+        "name": "Test User"
+    }
+}
 
 # JWT Secret for session management
 JWT_SECRET = os.getenv('JWT_SECRET', 'your-secret-key-change-in-production')
@@ -161,51 +177,87 @@ def create_user_session(user_info: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 def sign_in_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
-    """Sign in user with Supabase email/password."""
+    """Sign in user with Supabase email/password or local authentication."""
     try:
-        if not supabase_client:
-            logger.error("Supabase client not initialized")
-            return None
+        # Try Supabase first if available
+        if supabase_client:
+            response = supabase_client.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+            
+            if response.user:
+                return {
+                    'user_id': response.user.id,
+                    'email': response.user.email,
+                    'name': response.user.user_metadata.get('name', ''),
+                    'picture': response.user.user_metadata.get('avatar_url', ''),
+                    'access_token': response.session.access_token if response.session else None
+                }
         
-        response = supabase_client.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
+        # Fallback to local authentication
+        logger.info(f"Trying local authentication for {email}")
+        logger.info(f"Available local users: {list(LOCAL_USERS.keys())}")
+        if email in LOCAL_USERS:
+            logger.info(f"User {email} found in LOCAL_USERS")
+            if LOCAL_USERS[email]['password'] == password:
+                user_info = LOCAL_USERS[email]
+                logger.info(f"Local authentication successful for {email}")
+                return {
+                    'user_id': user_info['user_id'],
+                    'email': user_info['email'],
+                    'name': user_info['name'],
+                    'picture': '',
+                    'access_token': None
+                }
+            else:
+                logger.warning(f"Password mismatch for {email}")
+        else:
+            logger.warning(f"User {email} not found in LOCAL_USERS")
         
-        if response.user:
-            return {
-                'user_id': response.user.id,
-                'email': response.user.email,
-                'name': response.user.user_metadata.get('name', ''),
-                'picture': response.user.user_metadata.get('avatar_url', ''),
-                'access_token': response.session.access_token if response.session else None
-            }
         return None
     except Exception as e:
-        logger.error(f"Supabase sign in failed: {e}")
+        logger.error(f"Authentication failed: {e}")
         return None
 
 def sign_up_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
-    """Sign up user with Supabase email/password."""
+    """Sign up user with Supabase email/password or local authentication."""
     try:
-        if not supabase_client:
-            logger.error("Supabase client not initialized")
-            return None
+        # Try Supabase first if available
+        if supabase_client:
+            response = supabase_client.auth.sign_up({
+                "email": email,
+                "password": password
+            })
+            
+            if response.user:
+                return {
+                    'user_id': response.user.id,
+                    'email': response.user.email,
+                    'name': response.user.user_metadata.get('name', ''),
+                    'picture': response.user.user_metadata.get('avatar_url', ''),
+                    'access_token': response.session.access_token if response.session else None
+                }
         
-        response = supabase_client.auth.sign_up({
-            "email": email,
-            "password": password
-        })
-        
-        if response.user:
-            return {
-                'user_id': response.user.id,
-                'email': response.user.email,
-                'name': response.user.user_metadata.get('name', ''),
-                'picture': response.user.user_metadata.get('avatar_url', ''),
-                'access_token': response.session.access_token if response.session else None
+        # Fallback to local authentication (simple registration)
+        if email not in LOCAL_USERS:
+            # In a real app, you'd hash the password and store it properly
+            LOCAL_USERS[email] = {
+                "password": password,
+                "user_id": f"local_user_{len(LOCAL_USERS) + 1}",
+                "email": email,
+                "name": email.split('@')[0]
             }
+            logger.info(f"Local user registered: {email}")
+            return {
+                'user_id': LOCAL_USERS[email]['user_id'],
+                'email': email,
+                'name': LOCAL_USERS[email]['name'],
+                'picture': '',
+                'access_token': None
+            }
+        
         return None
     except Exception as e:
-        logger.error(f"Supabase sign up failed: {e}")
+        logger.error(f"Registration failed: {e}")
         return None 

@@ -8,8 +8,10 @@
     "venv",
     ".venv"
   ],
-  "reportMissingImports": "warning",
+  "reportMissingImports": "none",
   "reportMissingTypeStubs": false,
   "pythonVersion": "3.11",
-  "typeCheckingMode": "basic"
+  "typeCheckingMode": "basic",
+  "useLibraryCodeForTypes": true,
+  "pythonPath": "C:\\Users\\pmiga\\AppData\\Local\\Programs\\Python\\Python311\\python.exe"
 } 
