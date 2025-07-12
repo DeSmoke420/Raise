@@ -1592,6 +1592,9 @@
     const SUPABASE_URL = 'https://iayecqndmobjswtzoldb.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q';
     
+    console.log('Supabase URL:', SUPABASE_URL);
+    console.log('Current location:', window.location.href);
+    
     let supabase;
     try {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1661,13 +1664,35 @@
         googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
         
         const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google'
+          provider: 'google',
+          options: {
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent',
+            }
+          }
         });
         
         if (error) throw error;
         
-        // The redirect will happen automatically
         console.log('Google sign-in initiated:', data);
+        console.log('OAuth URL:', data?.url);
+        
+        // If we get a URL, it means we need to redirect
+        if (data?.url) {
+          console.log('Redirecting to OAuth URL...');
+          window.location.href = data.url;
+        } else {
+          // Check for session after a short delay
+          setTimeout(async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session) {
+              console.log('Session found after OAuth:', session.user.email);
+              hideAuthModal();
+              onAuthStateChanged();
+            }
+          }, 2000);
+        }
         
       } catch (err) {
         console.error('Google sign-in error:', err);
