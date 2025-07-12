@@ -692,15 +692,23 @@ def verify_session():
 @app.route('/api/subscription/access', methods=['GET'])
 def get_user_access():
     """Get current user's access level and forecast usage."""
-    if not PAYMENT_AVAILABLE:
-        return jsonify({'error': 'Payment system not available'}), 503
-    
     try:
         # Get user email from query parameter or auth
         user_email = request.args.get('user_email')
         
         if not user_email:
             return jsonify({'error': 'Missing user_email'}), 400
+        
+        # If payment system is not available, provide unlimited access for development
+        if not PAYMENT_AVAILABLE:
+            logger.info(f"Payment system not available - providing unlimited access for {user_email}")
+            return jsonify({
+                'access_type': 'development',
+                'forecasts_used': 0,
+                'forecasts_allowed': 999999,
+                'forecasts_remaining': 999999,
+                'is_active': True
+            })
         
         access = subscription_manager.get_user_access(user_email)
         return jsonify(access)

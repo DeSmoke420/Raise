@@ -2208,6 +2208,12 @@
             ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
             ${access.forecasts_remaining} forecasts remaining
           `;
+        } else if (access.access_type === 'development') {
+          details.innerHTML = `
+            <strong>Development Mode Active</strong><br>
+            Unlimited forecasts available<br>
+            Payment system disabled for development
+          `;
         } else {
           details.innerHTML = `
             <strong>${access.access_type === 'subscription' ? 'Monthly Subscription' : 'Lifetime Access'} Active</strong><br>
