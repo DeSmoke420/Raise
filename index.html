@@ -795,6 +795,18 @@
       font-size: 0.9rem;
       padding: 0.6rem 1rem;
       margin: 0;
+      background: white;
+      color: var(--text-primary);
+      border: 2px solid var(--border-color);
+      transition: all 0.2s ease;
+    }
+    
+    .auth-buttons .btn:hover {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-dark);
     }
     
     .user-info {
@@ -829,11 +841,11 @@
   <!-- Auth Header -->
   <div class="auth-header">
     <div class="auth-buttons" id="authButtons">
-      <button class="btn btn-secondary" onclick="toggleAuthModal()">
+      <button class="btn" onclick="toggleAuthModal()">
         <i class="fas fa-sign-in-alt"></i>
         Sign In
       </button>
-      <button class="btn btn-primary" onclick="toggleAuthModal('signup')">
+      <button class="btn" onclick="toggleAuthModal('signup')">
         <i class="fas fa-user-plus"></i>
         Sign Up
       </button>
