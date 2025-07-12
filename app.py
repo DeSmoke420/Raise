@@ -72,6 +72,16 @@ except ImportError as e:
     logger.warning(f"Authentication module not available: {e}")
     AUTH_AVAILABLE = False
 
+# Import payment and subscription modules
+try:
+    from stripe_config import payment_manager
+    from subscription_manager import subscription_manager
+    PAYMENT_AVAILABLE = True
+    logger.info("Payment modules imported successfully")
+except ImportError as e:
+    logger.warning(f"Payment modules not available: {e}")
+    PAYMENT_AVAILABLE = False
+
 # Configure CORS more securely
 CORS(app, origins=['*'], 
      methods=['GET', 'POST'], 
@@ -543,6 +553,171 @@ def health():
 def api_health():
     return jsonify({'status': 'healthy'})
 
+# Payment and subscription endpoints
+@app.route('/api/payments/products', methods=['GET'])
+def get_products():
+    """Get all available products."""
+    if not PAYMENT_AVAILABLE:
+        return jsonify({'error': 'Payment system not available'}), 503
+    
+    try:
+        products = payment_manager.get_all_products()
+        trial_config = payment_manager.get_trial_config()
+        return jsonify({
+            'products': products,
+            'trial': trial_config
+        })
+    except Exception as e:
+        logger.error(f"Error getting products: {e}")
+        return jsonify({'error': 'Failed to get products'}), 500
+
+@app.route('/api/payments/create-checkout', methods=['POST'])
+def create_checkout():
+    """Create a Stripe checkout session."""
+    if not PAYMENT_AVAILABLE:
+        return jsonify({'error': 'Payment system not available'}), 503
+    
+    try:
+        data = request.get_json()
+        product_id = data.get('product_id')
+        user_email = data.get('user_email')
+        
+        if not product_id or not user_email:
+            return jsonify({'error': 'Missing product_id or user_email'}), 400
+        
+        # Create checkout session
+        base_url = request.headers.get('Origin', 'https://r4ise.up.railway.app')
+        success_url = f"{base_url}/?payment=success&session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{base_url}/?payment=cancelled"
+        
+        session_data = payment_manager.create_checkout_session(
+            product_id=product_id,
+            user_email=user_email,
+            success_url=success_url,
+            cancel_url=cancel_url
+        )
+        
+        return jsonify(session_data)
+        
+    except Exception as e:
+        logger.error(f"Error creating checkout session: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/payments/verify-session', methods=['POST'])
+def verify_session():
+    """Verify a completed checkout session and activate subscription."""
+    if not PAYMENT_AVAILABLE:
+        return jsonify({'error': 'Payment system not available'}), 503
+    
+    try:
+        data = request.get_json()
+        session_id = data.get('session_id')
+        
+        if not session_id:
+            return jsonify({'error': 'Missing session_id'}), 400
+        
+        # Get session details from Stripe
+        session = payment_manager.get_session(session_id)
+        if not session:
+            return jsonify({'error': 'Invalid session ID'}), 400
+        
+        if session['status'] != 'complete' or session['payment_status'] != 'paid':
+            return jsonify({'error': 'Payment not completed'}), 400
+        
+        # Get product info
+        product_id = session['metadata'].get('product_id')
+        user_email = session['metadata'].get('user_email')
+        
+        if not product_id or not user_email:
+            return jsonify({'error': 'Missing product or user information'}), 400
+        
+        product_info = payment_manager.get_product_info(product_id)
+        if not product_info:
+            return jsonify({'error': 'Invalid product'}), 400
+        
+        # Activate subscription
+        subscription_data = {
+            'type': product_info['type'],
+            'forecasts_allowed': product_info['forecasts_allowed'],
+            'session_id': session_id,
+            'amount_total': session['amount_total'],
+            'currency': session['currency']
+        }
+        
+        success = subscription_manager.activate_subscription(user_email, product_id, subscription_data)
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Subscription activated successfully',
+                'user_access': subscription_manager.get_user_access(user_email)
+            })
+        else:
+            return jsonify({'error': 'Failed to activate subscription'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error verifying session: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/subscription/access', methods=['GET'])
+def get_user_access():
+    """Get current user's access level and forecast usage."""
+    if not PAYMENT_AVAILABLE:
+        return jsonify({'error': 'Payment system not available'}), 503
+    
+    try:
+        # Get user email from query parameter or auth
+        user_email = request.args.get('user_email')
+        
+        if not user_email:
+            return jsonify({'error': 'Missing user_email'}), 400
+        
+        access = subscription_manager.get_user_access(user_email)
+        return jsonify(access)
+        
+    except Exception as e:
+        logger.error(f"Error getting user access: {e}")
+        return jsonify({'error': 'Failed to get user access'}), 500
+
+@app.route('/api/subscription/activate-trial', methods=['POST'])
+def activate_trial():
+    """Activate trial access for a user."""
+    if not PAYMENT_AVAILABLE:
+        return jsonify({'error': 'Payment system not available'}), 503
+    
+    try:
+        data = request.get_json()
+        user_email = data.get('user_email')
+        
+        if not user_email:
+            return jsonify({'error': 'Missing user_email'}), 400
+        
+        # Check if user already has trial or subscription
+        current_access = subscription_manager.get_user_access(user_email)
+        if current_access['is_active']:
+            return jsonify({'error': 'User already has active access'}), 400
+        
+        # Activate trial
+        trial_config = payment_manager.get_trial_config()
+        success = subscription_manager.activate_trial(
+            user_email, 
+            trial_config['forecasts_allowed'], 
+            trial_config['duration_days']
+        )
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'message': 'Trial activated successfully',
+                'user_access': subscription_manager.get_user_access(user_email)
+            })
+        else:
+            return jsonify({'error': 'Failed to activate trial'}), 500
+        
+    except Exception as e:
+        logger.error(f"Error activating trial: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/forecast', methods=['POST'])
 @optional_auth
 def forecast():
@@ -555,6 +730,13 @@ def forecast():
         user_email = current_user['email'] if current_user else 'anonymous'
         
         logger.info(f"Forecast request from user: {user_email} (ID: {user_id})")
+        
+        # Check user access if payment system is available and user is authenticated
+        if PAYMENT_AVAILABLE and user_email and user_email != 'anonymous':
+            can_generate, message = subscription_manager.can_generate_forecast(user_email)
+            if not can_generate:
+                logger.warning(f"Access denied for {user_email}: {message}")
+                return jsonify({'error': message}), 403
         
         if request.content_type != 'application/json':
             logger.error(f"Unsupported content type: {request.content_type}")
@@ -839,6 +1021,11 @@ def forecast():
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
         
         logger.info(f"Generated {len(forecasts)} forecast entries")
+        
+        # Record forecast generation for authenticated users
+        if PAYMENT_AVAILABLE and user_email and user_email != 'anonymous':
+            subscription_manager.record_forecast_generation(user_email)
+            logger.info(f"Recorded forecast generation for user: {user_email}")
         
         # Create result dataframe
         result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))

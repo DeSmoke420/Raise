@@ -837,6 +837,121 @@
       padding: 0.4rem 0.8rem;
       margin: 0;
     }
+    
+    /* Pricing Plans Styles */
+    .pricing-plans {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    
+    .pricing-card {
+      background: var(--card-bg);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      text-align: center;
+      position: relative;
+      transition: all 0.3s ease;
+      box-shadow: var(--shadow-md);
+    }
+    
+    .pricing-card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--primary-color);
+    }
+    
+    .pricing-card.featured {
+      border-color: var(--primary-color);
+      box-shadow: var(--shadow-lg);
+      transform: scale(1.05);
+    }
+    
+    .pricing-card.trial {
+      border-color: var(--secondary-color);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.1));
+    }
+    
+    .plan-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-lg);
+      font-size: 0.8rem;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+    }
+    
+    .plan-header h4 {
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+    
+    .price {
+      font-size: 2.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 0.25rem;
+    }
+    
+    .period {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .plan-features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2rem 0;
+      text-align: left;
+    }
+    
+    .plan-features li {
+      padding: 0.5rem 0;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .plan-features li i {
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+      min-width: 16px;
+    }
+    
+    .pricing-card .btn {
+      width: 100%;
+      margin: 0;
+    }
+    
+    @media (max-width: 768px) {
+      .pricing-plans {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .pricing-card {
+        padding: 1.5rem;
+      }
+      
+      .pricing-card.featured {
+        transform: none;
+      }
+      
+      .price {
+        font-size: 2rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -886,6 +1001,104 @@
       <div class="header">
         <h1>Generate Forecast</h1>
         <p class="subtitle">Upload your historical data to generate AI-powered forecasts</p>
+      </div>
+      
+      <!-- Subscription Status -->
+      <div class="subscription-status" id="subscriptionStatus" style="display: none;">
+        <div class="info-box success">
+          <h3><i class="fas fa-check-circle"></i> Active Subscription</h3>
+          <p id="subscriptionDetails">Loading subscription details...</p>
+        </div>
+      </div>
+      
+      <!-- Payment Required -->
+      <div class="payment-required" id="paymentRequired" style="display: none;">
+        <div class="info-box warning">
+          <h3><i class="fas fa-lock"></i> Subscription Required</h3>
+          <p>You need an active subscription to generate forecasts. Choose a plan below to get started.</p>
+        </div>
+        
+        <!-- Pricing Plans -->
+        <div class="pricing-plans" id="pricingPlans">
+          <h3 style="text-align: center; margin: 2rem 0 1rem; color: var(--text-primary);">Choose Your Plan</h3>
+          
+          <!-- Trial Plan -->
+          <div class="pricing-card trial">
+            <div class="plan-header">
+              <h4>Free Trial</h4>
+              <div class="price">€0</div>
+              <p class="period">1 month or 10 forecasts</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> 10 forecast downloads</li>
+              <li><i class="fas fa-check"></i> Full AI forecasting</li>
+              <li><i class="fas fa-check"></i> Excel & CSV export</li>
+              <li><i class="fas fa-check"></i> 30-day access</li>
+            </ul>
+            <button class="btn btn-primary" onclick="activateTrial()">
+              <i class="fas fa-play"></i>
+              Start Free Trial
+            </button>
+          </div>
+          
+          <!-- Single Forecast -->
+          <div class="pricing-card">
+            <div class="plan-header">
+              <h4>Single Forecast</h4>
+              <div class="price">€1.99</div>
+              <p class="period">One-time payment</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> 1 forecast download</li>
+              <li><i class="fas fa-check"></i> Full AI forecasting</li>
+              <li><i class="fas fa-check"></i> Excel & CSV export</li>
+              <li><i class="fas fa-check"></i> Lifetime access</li>
+            </ul>
+            <button class="btn btn-primary" onclick="purchasePlan('single_forecast')">
+              <i class="fas fa-shopping-cart"></i>
+              Buy Now
+            </button>
+          </div>
+          
+          <!-- Monthly Subscription -->
+          <div class="pricing-card featured">
+            <div class="plan-badge">Most Popular</div>
+            <div class="plan-header">
+              <h4>Monthly Subscription</h4>
+              <div class="price">€9.99</div>
+              <p class="period">per month</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> 100 forecasts per month</li>
+              <li><i class="fas fa-check"></i> Full AI forecasting</li>
+              <li><i class="fas fa-check"></i> Excel & CSV export</li>
+              <li><i class="fas fa-check"></i> Cancel anytime</li>
+            </ul>
+            <button class="btn btn-primary" onclick="purchasePlan('monthly_subscription')">
+              <i class="fas fa-shopping-cart"></i>
+              Subscribe Now
+            </button>
+          </div>
+          
+          <!-- Lifetime Access -->
+          <div class="pricing-card">
+            <div class="plan-header">
+              <h4>Lifetime Access</h4>
+              <div class="price">€99.99</div>
+              <p class="period">One-time payment</p>
+            </div>
+            <ul class="plan-features">
+              <li><i class="fas fa-check"></i> 500 forecasts per month</li>
+              <li><i class="fas fa-check"></i> Full AI forecasting</li>
+              <li><i class="fas fa-check"></i> Excel & CSV export</li>
+              <li><i class="fas fa-check"></i> Lifetime access</li>
+            </ul>
+            <button class="btn btn-primary" onclick="purchasePlan('lifetime_access')">
+              <i class="fas fa-shopping-cart"></i>
+              Buy Lifetime
+            </button>
+          </div>
+        </div>
       </div>
       
       <div class="info-box">
@@ -1866,6 +2079,11 @@
           document.getElementById('userName').textContent = userName;
           
           hideAuthModal();
+          
+          // Check subscription status if user is on forecast page
+          if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
+            updateSubscriptionUI();
+          }
         }
       } catch (err) {
         console.error('Auth state check error:', err);
@@ -1891,8 +2109,11 @@
       });
     }
     
-    // On page load, check auth
+    // On page load, check auth and handle payment returns
     window.addEventListener('DOMContentLoaded', async () => {
+      // Handle payment return first
+      handlePaymentReturn();
+      
       if (supabase) {
         // Check if we're returning from OAuth
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -1909,6 +2130,170 @@
       }
     });
 
+    // Payment and subscription functions
+    async function checkUserAccess() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          return null;
+        }
+        
+        const userEmail = session.user.email;
+        const response = await fetch(`/api/subscription/access?user_email=${encodeURIComponent(userEmail)}`);
+        const access = await response.json();
+        
+        return { userEmail, access };
+      } catch (error) {
+        console.error('Error checking user access:', error);
+        return null;
+      }
+    }
+    
+    async function updateSubscriptionUI() {
+      const userAccess = await checkUserAccess();
+      
+      if (!userAccess) {
+        // User not authenticated
+        document.getElementById('subscriptionStatus').style.display = 'none';
+        document.getElementById('paymentRequired').style.display = 'none';
+        return;
+      }
+      
+      const { userEmail, access } = userAccess;
+      
+      if (access.is_active) {
+        // User has active subscription
+        document.getElementById('subscriptionStatus').style.display = 'block';
+        document.getElementById('paymentRequired').style.display = 'none';
+        
+        const details = document.getElementById('subscriptionDetails');
+        if (access.access_type === 'trial') {
+          details.innerHTML = `
+            <strong>Free Trial Active</strong><br>
+            ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
+            ${access.forecasts_remaining} forecasts remaining
+          `;
+        } else {
+          details.innerHTML = `
+            <strong>${access.access_type === 'subscription' ? 'Monthly Subscription' : 'Lifetime Access'} Active</strong><br>
+            ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
+            ${access.forecasts_remaining} forecasts remaining
+          `;
+        }
+      } else {
+        // User needs subscription
+        document.getElementById('subscriptionStatus').style.display = 'none';
+        document.getElementById('paymentRequired').style.display = 'block';
+      }
+    }
+    
+    async function activateTrial() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          showAuthModal();
+          return;
+        }
+        
+        const userEmail = session.user.email;
+        const response = await fetch('/api/subscription/activate-trial', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_email: userEmail })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Free trial activated successfully!');
+          updateSubscriptionUI();
+        } else {
+          showError(result.error || 'Failed to activate trial');
+        }
+      } catch (error) {
+        console.error('Error activating trial:', error);
+        showError('Failed to activate trial');
+      }
+    }
+    
+    async function purchasePlan(productId) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          showAuthModal();
+          return;
+        }
+        
+        const userEmail = session.user.email;
+        
+        // Create checkout session
+        const response = await fetch('/api/payments/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_id: productId,
+            user_email: userEmail
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.url) {
+          // Redirect to Stripe checkout
+          window.location.href = result.url;
+        } else {
+          showError(result.error || 'Failed to create checkout session');
+        }
+      } catch (error) {
+        console.error('Error creating checkout:', error);
+        showError('Failed to create checkout session');
+      }
+    }
+    
+    // Handle payment success/cancellation
+    function handlePaymentReturn() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get('payment');
+      const sessionId = urlParams.get('session_id');
+      
+      if (paymentStatus === 'success' && sessionId) {
+        // Verify the payment
+        verifyPayment(sessionId);
+      } else if (paymentStatus === 'cancelled') {
+        showError('Payment was cancelled');
+      }
+      
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    async function verifyPayment(sessionId) {
+      try {
+        showModal('Verifying your payment...');
+        
+        const response = await fetch('/api/payments/verify-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Payment verified! Your subscription is now active.');
+          updateSubscriptionUI();
+        } else {
+          showError(result.error || 'Failed to verify payment');
+        }
+      } catch (error) {
+        console.error('Error verifying payment:', error);
+        showError('Failed to verify payment');
+      } finally {
+        hideModal();
+      }
+    }
+    
     // Restrict forecast functionality
     const origShowPage = showPage;
     showPage = function(id) {
@@ -1921,6 +2306,8 @@
               return;
             }
             origShowPage(id);
+            // Update subscription UI after showing the page
+            setTimeout(updateSubscriptionUI, 100);
           });
         } else {
           showAuthModal();
