@@ -1781,13 +1781,11 @@
         
         console.log('Starting Google OAuth flow...');
         
-        // Use redirect-based OAuth (more reliable than popup)
-        console.log('Current origin:', window.location.origin);
-        console.log('Current URL:', window.location.href);
-        
+        // Use redirect-based OAuth with explicit redirectTo
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
+            redirectTo: 'https://r4ise.up.railway.app/',
             queryParams: {
               access_type: 'offline',
               prompt: 'consent'
