@@ -512,7 +512,7 @@ def google_callback():
     """Handle Google OAuth callback - redirect to frontend."""
     # This route handles the OAuth callback and redirects to the frontend
     # The actual OAuth flow is handled by Supabase
-    return redirect('/')
+    return redirect('https://raiseproject-production.up.railway.app')
 
 @app.route('/')
 def index():
