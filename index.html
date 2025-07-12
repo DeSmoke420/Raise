@@ -959,6 +959,12 @@
             <i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>
             Continue with Google
           </button>
+          <div style="margin-top: 0.5rem;">
+            <button type="button" class="btn btn-secondary" id="googleSignInBtn2" style="background: #4285f4; color: white; border: 1px solid #4285f4; font-size: 0.9rem;">
+              <i class="fab fa-google" style="margin-right: 0.5rem;"></i>
+              Try Alternative Google Sign-in
+            </button>
+          </div>
         </div>
       </form>
     </div>
@@ -1615,6 +1621,7 @@
     const authSubmitBtn = document.getElementById('authSubmitBtn');
     const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
     const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const googleSignInBtn2 = document.getElementById('googleSignInBtn2');
     let isSignIn = true;
 
     function showAuthModal() {
@@ -1670,6 +1677,7 @@
             queryParams: {
               access_type: 'offline',
               prompt: 'consent',
+              state: Date.now().toString() // Cache busting
             },
             skipBrowserRedirect: true
           }
@@ -1679,6 +1687,7 @@
         
         console.log('Google sign-in initiated:', data);
         console.log('OAuth URL:', data?.url);
+        console.log('Full OAuth response:', JSON.stringify(data, null, 2));
         
         // If we get a URL, open it in a popup
         if (data?.url) {
@@ -1731,6 +1740,39 @@
         authError.style.display = 'block';
         googleSignInBtn.disabled = false;
         googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
+      }
+    };
+
+    // Alternative Google Sign-in functionality (simpler approach)
+    googleSignInBtn2.onclick = async function() {
+      try {
+        authError.style.display = 'none';
+        googleSignInBtn2.disabled = true;
+        googleSignInBtn2.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
+        
+        console.log('Trying alternative Google sign-in method...');
+        
+        // Use a simpler OAuth approach
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google'
+        });
+        
+        if (error) throw error;
+        
+        console.log('Alternative Google sign-in response:', data);
+        
+        // If we get a URL, redirect to it
+        if (data?.url) {
+          console.log('Redirecting to:', data.url);
+          window.location.href = data.url;
+        }
+        
+      } catch (err) {
+        console.error('Alternative Google sign-in error:', err);
+        authError.textContent = err.message || 'Alternative Google sign-in failed';
+        authError.style.display = 'block';
+        googleSignInBtn2.disabled = false;
+        googleSignInBtn2.innerHTML = '<i class="fab fa-google" style="margin-right: 0.5rem;"></i>Try Alternative Google Sign-in';
       }
     };
     // Show login modal if not logged in
