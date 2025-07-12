@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 # Initialize Stripe
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
 if not stripe.api_key:
-    logger.error("STRIPE_SECRET_KEY environment variable not set")
-    raise ValueError("STRIPE_SECRET_KEY environment variable is required")
+    logger.warning("STRIPE_SECRET_KEY environment variable not set - payment features will be disabled")
+    PAYMENT_ENABLED = False
+else:
+    PAYMENT_ENABLED = True
 
 # Product configurations
 PRODUCTS = {
@@ -54,9 +56,13 @@ TRIAL_CONFIG = {
 class PaymentManager:
     def __init__(self):
         self.stripe = stripe
+        self.enabled = PAYMENT_ENABLED
         
     def create_checkout_session(self, product_id: str, user_email: str, success_url: str, cancel_url: str) -> Dict[str, Any]:
         """Create a Stripe checkout session for the specified product."""
+        if not self.enabled:
+            raise ValueError("Payment system is not enabled - STRIPE_SECRET_KEY not set")
+            
         try:
             if product_id not in PRODUCTS:
                 raise ValueError(f"Invalid product ID: {product_id}")
@@ -120,6 +126,9 @@ class PaymentManager:
     
     def get_session(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve a checkout session by ID."""
+        if not self.enabled:
+            return None
+            
         try:
             session = self.stripe.checkout.Session.retrieve(session_id)
             return {

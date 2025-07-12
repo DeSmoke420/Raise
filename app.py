@@ -74,10 +74,10 @@ except ImportError as e:
 
 # Import payment and subscription modules
 try:
-    from stripe_config import payment_manager
+    from stripe_config import payment_manager, PAYMENT_ENABLED
     from subscription_manager import subscription_manager
-    PAYMENT_AVAILABLE = True
-    logger.info("Payment modules imported successfully")
+    PAYMENT_AVAILABLE = True and PAYMENT_ENABLED
+    logger.info(f"Payment modules imported successfully. Payment enabled: {PAYMENT_AVAILABLE}")
 except ImportError as e:
     logger.warning(f"Payment modules not available: {e}")
     PAYMENT_AVAILABLE = False
