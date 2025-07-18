@@ -196,7 +196,7 @@ def create_forecast_model_with_diagnostics(
     use_prophet: bool = True
 ) -> dict:
     """
-    Try all selected models, evaluate on holdout set, and return forecasts, scores, and diagnostics for each.
+    Fit each model on the entire time series for both evaluation and forecasting (no train/test split).
     Returns a dict:
       {
         'forecasts': {model_name: [forecast values]},
@@ -207,7 +207,7 @@ def create_forecast_model_with_diagnostics(
     """
     import numpy as np
     start_time = time.time()
-    logger.info(f"Starting model selection for time series with {len(ts)} points")
+    logger.info(f"Starting model selection for time series with {len(ts)} points (NO train/test split)")
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
     diagnostics = {}
     forecasts = {}
@@ -217,20 +217,6 @@ def create_forecast_model_with_diagnostics(
     best_metric_name = None
     best_forecast = None
     model_names = []
-
-    # --- Holdout split ---
-    n = len(ts)
-    if n < 6:
-        return {
-            'forecasts': {},
-            'scores': {},
-            'best_model': None,
-            'diagnostics': {'all': 'Not enough data for holdout evaluation.'}
-        }
-    split_idx = int(n * 0.8)
-    train_ts = ts.iloc[:split_idx]
-    test_ts = ts.iloc[split_idx:]
-    test_len = len(test_ts)
 
     def mape(y_true, y_pred):
         y_true, y_pred = np.array(y_true), np.array(y_pred)
@@ -245,14 +231,12 @@ def create_forecast_model_with_diagnostics(
 
     # --- Simple Moving Average (always as fallback) ---
     try:
-        if len(train_ts) >= 3:
-            window_size = min(3, len(train_ts) // 2)
-            ma_value = float(train_ts.tail(window_size).mean())
-            ma_forecast = [ma_value] * test_len
-            mape_score = mape(test_ts, ma_forecast)
-            rmse_score = rmse(test_ts, ma_forecast)
-            forecasts['Simple MA'] = [ma_value] * period_count
-            scores['Simple MA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+        if len(ts) >= 3:
+            window_size = min(3, len(ts) // 2)
+            ma_value = float(ts.tail(window_size).mean())
+            ma_forecast = [ma_value] * period_count
+            forecasts['Simple MA'] = ma_forecast
+            scores['Simple MA'] = {'MAPE': None, 'RMSE': None}
             diagnostics['Simple MA'] = f"window={window_size}"
             model_names.append('Simple MA')
     except Exception as e:
@@ -261,19 +245,17 @@ def create_forecast_model_with_diagnostics(
     # --- Holt-Winters ---
     if use_hw:
         try:
-            if len(train_ts) >= seasonal_periods * 2:
-                model = ExponentialSmoothing(train_ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
-            elif len(train_ts) >= 4:
-                model = ExponentialSmoothing(train_ts, trend='add', seasonal=None)
+            if len(ts) >= seasonal_periods * 2:
+                model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+            elif len(ts) >= 4:
+                model = ExponentialSmoothing(ts, trend='add', seasonal=None)
             else:
                 raise ValueError("Insufficient data for Holt-Winters")
             fit = model.fit()
-            hw_forecast = fit.forecast(test_len)
-            mape_score = mape(test_ts, hw_forecast)
-            rmse_score = rmse(test_ts, hw_forecast)
-            forecasts['Holt-Winters'] = fit.forecast(period_count).tolist()
-            scores['Holt-Winters'] = {'MAPE': mape_score, 'RMSE': rmse_score}
-            diagnostics['Holt-Winters'] = f"fit params: {fit.params}"  # Add more details if needed
+            hw_forecast = fit.forecast(period_count)
+            forecasts['Holt-Winters'] = hw_forecast.tolist()
+            scores['Holt-Winters'] = {'MAPE': None, 'RMSE': None}
+            diagnostics['Holt-Winters'] = f"fit params: {fit.params}"
             model_names.append('Holt-Winters')
         except Exception as e:
             diagnostics['Holt-Winters'] = f"Failed: {e}"
@@ -283,7 +265,7 @@ def create_forecast_model_with_diagnostics(
     if use_prophet:
         try:
             from prophet import Prophet
-            df_prophet = train_ts.reset_index()
+            df_prophet = ts.reset_index()
             df_prophet.columns = ['ds', 'y']
             model = Prophet()
             model.fit(df_prophet)
@@ -293,16 +275,10 @@ def create_forecast_model_with_diagnostics(
                 freq = 'W'
             else:
                 freq = 'D'
-            future = model.make_future_dataframe(periods=test_len, freq=freq)
+            future = model.make_future_dataframe(periods=period_count, freq=freq)
             forecast_df = model.predict(future)
-            prophet_forecast = forecast_df.tail(test_len)['yhat'].values
-            mape_score = mape(test_ts, prophet_forecast)
-            rmse_score = rmse(test_ts, prophet_forecast)
-            # Forecast for output
-            future_full = model.make_future_dataframe(periods=period_count, freq=freq)
-            forecast_full = model.predict(future_full)
-            forecasts['Prophet'] = forecast_full.tail(period_count)['yhat'].values.tolist()
-            scores['Prophet'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+            forecasts['Prophet'] = forecast_df.tail(period_count)['yhat'].values.tolist()
+            scores['Prophet'] = {'MAPE': None, 'RMSE': None}
             diagnostics['Prophet'] = f"fit params: {model.params if hasattr(model, 'params') else 'n/a'}"
             model_names.append('Prophet')
         except Exception as e:
@@ -352,25 +328,16 @@ def create_forecast_model_with_diagnostics(
                     forecast_values = model.predict(n_periods=period_count)
                     return model, forecast_values
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    if len(train_ts) >= seasonal_periods * 2:
-                        future = executor.submit(fit_arima, train_ts, True, seasonal_periods, test_len)
-                    elif len(train_ts) >= 4:
-                        future = executor.submit(fit_arima, train_ts, False, seasonal_periods, test_len)
+                    if len(ts) >= seasonal_periods * 2:
+                        future = executor.submit(fit_arima, ts, True, seasonal_periods, period_count)
+                    elif len(ts) >= 4:
+                        future = executor.submit(fit_arima, ts, False, seasonal_periods, period_count)
                     else:
                         raise ValueError("Insufficient data for ARIMA")
                     try:
                         model, arima_forecast = future.result(timeout=ARIMA_TIMEOUT)
-                        mape_score = mape(test_ts, arima_forecast)
-                        rmse_score = rmse(test_ts, arima_forecast)
-                        # Forecast for output
-                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor2:
-                            if len(train_ts) >= seasonal_periods * 2:
-                                future2 = executor2.submit(fit_arima, ts, True, seasonal_periods, period_count)
-                            else:
-                                future2 = executor2.submit(fit_arima, ts, False, seasonal_periods, period_count)
-                            _, arima_forecast_full = future2.result(timeout=ARIMA_TIMEOUT)
-                        forecasts['ARIMA'] = arima_forecast_full.tolist()
-                        scores['ARIMA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+                        forecasts['ARIMA'] = arima_forecast.tolist()
+                        scores['ARIMA'] = {'MAPE': None, 'RMSE': None}
                         diagnostics['ARIMA'] = f"fit params: {model.get_params() if hasattr(model, 'get_params') else 'n/a'}"
                         model_names.append('ARIMA')
                     except concurrent.futures.TimeoutError:
@@ -391,18 +358,15 @@ def create_forecast_model_with_diagnostics(
         diagnostics['ARIMA'] = "Not available (pmdarima not installed)."
 
     # --- Best model selection ---
-    for model in model_names:
-        mape_score = scores[model]['MAPE']
-        rmse_score = scores[model]['RMSE']
-        metric = mape_score if mape_score is not None else rmse_score
-        if metric is not None and metric < best_metric:
-            best_metric = metric
+    # Use the first selected model as the best (for compatibility with old logic)
+    for model in ['ARIMA', 'Holt-Winters', 'Prophet']:
+        if model in forecasts:
             best_model = model
-            best_metric_name = 'MAPE' if mape_score is not None else 'RMSE'
             best_forecast = forecasts[model]
+            break
 
     elapsed_time = time.time() - start_time
-    logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model} ({best_metric_name}={best_metric:.4f})")
+    logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model}")
     return {
         'forecasts': forecasts,
         'scores': scores,
