@@ -1119,17 +1119,6 @@ def forecast():
             )
             forecasts_dict = model_results['forecasts']
             best_model_name = model_results['best_model']
-            # --- Prophet aggregation logic ---
-            if use_prophet and 'Prophet' in forecasts_dict and forecasts_dict['Prophet']:
-                if prophet_aggregate is None:
-                    prophet_aggregate = [0.0] * len(forecasts_dict['Prophet'])
-                    prophet_periods = len(forecasts_dict['Prophet'])
-                    prophet_dates = []
-                    # Save the future_dates for the first item as reference
-                    prophet_dates = future_dates.copy()
-                for idx, val in enumerate(forecasts_dict['Prophet']):
-                    if val is not None:
-                        prophet_aggregate[idx] += float(val)
             # Log model diagnostics and test predictions
             for model in ['ARIMA', 'Holt-Winters', 'Prophet']:
                 diag = model_results['diagnostics'].get(model, '')
@@ -1187,6 +1176,15 @@ def forecast():
                                 future_dates.append(next_date.strftime('%m/%d/%Y'))
                 except (TypeError, AttributeError, ValueError):
                     continue
+            # --- Prophet aggregation logic (moved after future_dates is defined) ---
+            if use_prophet and 'Prophet' in forecasts_dict and forecasts_dict['Prophet']:
+                if prophet_aggregate is None:
+                    prophet_aggregate = [0.0] * len(forecasts_dict['Prophet'])
+                    prophet_periods = len(forecasts_dict['Prophet'])
+                    prophet_dates = future_dates.copy()
+                for idx, val in enumerate(forecasts_dict['Prophet']):
+                    if val is not None:
+                        prophet_aggregate[idx] += float(val)
             # For each period, build a row with all model forecasts and best model
             for idx, date_str in enumerate(future_dates):
                 row = {
