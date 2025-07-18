@@ -196,7 +196,8 @@ def create_forecast_model_with_diagnostics(
     use_prophet: bool = True
 ) -> dict:
     """
-    Fit each model on the entire time series for both evaluation and forecasting (no train/test split).
+    For each model, fit on 80% train, evaluate on 20% test (MAPE preferred, RMSE fallback),
+    select the best model, then fit the best model on the full data for the actual forecast.
     Returns a dict:
       {
         'forecasts': {model_name: [forecast values]},
@@ -207,7 +208,7 @@ def create_forecast_model_with_diagnostics(
     """
     import numpy as np
     start_time = time.time()
-    logger.info(f"Starting model selection for time series with {len(ts)} points (NO train/test split)")
+    logger.info(f"Starting model selection for time series with {len(ts)} points (train/test for best model)")
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
     diagnostics = {}
     forecasts = {}
@@ -229,32 +230,33 @@ def create_forecast_model_with_diagnostics(
         y_true, y_pred = np.array(y_true), np.array(y_pred)
         return np.sqrt(np.mean((y_true - y_pred) ** 2))
 
-    # --- Simple Moving Average (always as fallback) ---
-    try:
-        if len(ts) >= 3:
-            window_size = min(3, len(ts) // 2)
-            ma_value = float(ts.tail(window_size).mean())
-            ma_forecast = [ma_value] * period_count
-            forecasts['Simple MA'] = ma_forecast
-            scores['Simple MA'] = {'MAPE': None, 'RMSE': None}
-            diagnostics['Simple MA'] = f"window={window_size}"
-            model_names.append('Simple MA')
-    except Exception as e:
-        diagnostics['Simple MA'] = f"Failed: {e}"
+    n = len(ts)
+    if n < 6:
+        return {
+            'forecasts': {},
+            'scores': {},
+            'best_model': None,
+            'diagnostics': {'all': 'Not enough data for evaluation.'}
+        }
+    split_idx = int(n * 0.8)
+    train_ts = ts.iloc[:split_idx]
+    test_ts = ts.iloc[split_idx:]
+    test_len = len(test_ts)
 
     # --- Holt-Winters ---
     if use_hw:
         try:
-            if len(ts) >= seasonal_periods * 2:
-                model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
-            elif len(ts) >= 4:
-                model = ExponentialSmoothing(ts, trend='add', seasonal=None)
+            if len(train_ts) >= seasonal_periods * 2:
+                model = ExponentialSmoothing(train_ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+            elif len(train_ts) >= 4:
+                model = ExponentialSmoothing(train_ts, trend='add', seasonal=None)
             else:
                 raise ValueError("Insufficient data for Holt-Winters")
             fit = model.fit()
-            hw_forecast = fit.forecast(period_count)
-            forecasts['Holt-Winters'] = hw_forecast.tolist()
-            scores['Holt-Winters'] = {'MAPE': None, 'RMSE': None}
+            hw_forecast = fit.forecast(test_len)
+            mape_score = mape(test_ts, hw_forecast)
+            rmse_score = rmse(test_ts, hw_forecast)
+            scores['Holt-Winters'] = {'MAPE': mape_score, 'RMSE': rmse_score}
             diagnostics['Holt-Winters'] = f"fit params: {fit.params}"
             model_names.append('Holt-Winters')
         except Exception as e:
@@ -265,7 +267,7 @@ def create_forecast_model_with_diagnostics(
     if use_prophet:
         try:
             from prophet import Prophet
-            df_prophet = ts.reset_index()
+            df_prophet = train_ts.reset_index()
             df_prophet.columns = ['ds', 'y']
             model = Prophet()
             model.fit(df_prophet)
@@ -275,10 +277,12 @@ def create_forecast_model_with_diagnostics(
                 freq = 'W'
             else:
                 freq = 'D'
-            future = model.make_future_dataframe(periods=period_count, freq=freq)
+            future = model.make_future_dataframe(periods=test_len, freq=freq)
             forecast_df = model.predict(future)
-            forecasts['Prophet'] = forecast_df.tail(period_count)['yhat'].values.tolist()
-            scores['Prophet'] = {'MAPE': None, 'RMSE': None}
+            prophet_forecast = forecast_df.tail(test_len)['yhat'].values
+            mape_score = mape(test_ts, prophet_forecast)
+            rmse_score = rmse(test_ts, prophet_forecast)
+            scores['Prophet'] = {'MAPE': mape_score, 'RMSE': rmse_score}
             diagnostics['Prophet'] = f"fit params: {model.params if hasattr(model, 'params') else 'n/a'}"
             model_names.append('Prophet')
         except Exception as e:
@@ -289,9 +293,9 @@ def create_forecast_model_with_diagnostics(
     if use_arima and pm is not None and not skip_arima:
         ARIMA_TIMEOUT = 20
         try:
-            if len(ts) > 300:
+            if len(train_ts) > 300:
                 diagnostics['ARIMA'] = "Skipped: individual item too long (>300 points)"
-                logger.warning(f"ARIMA skipped for item: too long ({len(ts)} points)")
+                logger.warning(f"ARIMA skipped for item: too long ({len(train_ts)} points)")
             else:
                 import concurrent.futures
                 def fit_arima(ts, seasonal, seasonal_periods, period_count):
@@ -328,16 +332,17 @@ def create_forecast_model_with_diagnostics(
                     forecast_values = model.predict(n_periods=period_count)
                     return model, forecast_values
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    if len(ts) >= seasonal_periods * 2:
-                        future = executor.submit(fit_arima, ts, True, seasonal_periods, period_count)
-                    elif len(ts) >= 4:
-                        future = executor.submit(fit_arima, ts, False, seasonal_periods, period_count)
+                    if len(train_ts) >= seasonal_periods * 2:
+                        future = executor.submit(fit_arima, train_ts, True, seasonal_periods, test_len)
+                    elif len(train_ts) >= 4:
+                        future = executor.submit(fit_arima, train_ts, False, seasonal_periods, test_len)
                     else:
                         raise ValueError("Insufficient data for ARIMA")
                     try:
                         model, arima_forecast = future.result(timeout=ARIMA_TIMEOUT)
-                        forecasts['ARIMA'] = arima_forecast.tolist()
-                        scores['ARIMA'] = {'MAPE': None, 'RMSE': None}
+                        mape_score = mape(test_ts, arima_forecast)
+                        rmse_score = rmse(test_ts, arima_forecast)
+                        scores['ARIMA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
                         diagnostics['ARIMA'] = f"fit params: {model.get_params() if hasattr(model, 'get_params') else 'n/a'}"
                         model_names.append('ARIMA')
                     except concurrent.futures.TimeoutError:
@@ -358,15 +363,99 @@ def create_forecast_model_with_diagnostics(
         diagnostics['ARIMA'] = "Not available (pmdarima not installed)."
 
     # --- Best model selection ---
-    # Use the first selected model as the best (for compatibility with old logic)
-    for model in ['ARIMA', 'Holt-Winters', 'Prophet']:
-        if model in forecasts:
+    best_model = None
+    best_metric = float('inf')
+    best_metric_name = None
+    for model in model_names:
+        mape_score = scores[model]['MAPE']
+        rmse_score = scores[model]['RMSE']
+        metric = mape_score if mape_score is not None else rmse_score
+        if metric is not None and metric < best_metric:
+            best_metric = metric
             best_model = model
-            best_forecast = forecasts[model]
-            break
+            best_metric_name = 'MAPE' if mape_score is not None else 'RMSE'
+
+    # --- Forecast for best model (fit on full data) ---
+    best_forecast = None
+    if best_model:
+        if best_model == 'Holt-Winters':
+            if len(ts) >= seasonal_periods * 2:
+                model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+            elif len(ts) >= 4:
+                model = ExponentialSmoothing(ts, trend='add', seasonal=None)
+            else:
+                model = None
+            if model:
+                fit = model.fit()
+                best_forecast = fit.forecast(period_count).tolist()
+        elif best_model == 'Prophet':
+            from prophet import Prophet
+            df_prophet = ts.reset_index()
+            df_prophet.columns = ['ds', 'y']
+            model = Prophet()
+            model.fit(df_prophet)
+            if time_unit == 'monthly':
+                freq = 'M'
+            elif time_unit == 'weekly':
+                freq = 'W'
+            else:
+                freq = 'D'
+            future = model.make_future_dataframe(periods=period_count, freq=freq)
+            forecast_df = model.predict(future)
+            best_forecast = forecast_df.tail(period_count)['yhat'].values.tolist()
+        elif best_model == 'ARIMA' and pm is not None:
+            ARIMA_TIMEOUT = 20
+            import concurrent.futures
+            def fit_arima(ts, seasonal, seasonal_periods, period_count):
+                if pm is None:
+                    raise RuntimeError("pmdarima is not installed")
+                if seasonal:
+                    model = pm.auto_arima(
+                        ts,
+                        seasonal=True,
+                        m=seasonal_periods,
+                        suppress_warnings=True,
+                        start_p=0, max_p=1,
+                        start_q=0, max_q=1,
+                        max_d=1,
+                        start_P=0, max_P=1,
+                        start_Q=0, max_Q=1,
+                        max_D=1,
+                        stepwise=True,
+                        n_jobs=1,
+                        random_state=42
+                    )
+                else:
+                    model = pm.auto_arima(
+                        ts,
+                        seasonal=False,
+                        suppress_warnings=True,
+                        start_p=0, max_p=1,
+                        start_q=0, max_q=1,
+                        max_d=1,
+                        stepwise=True,
+                        n_jobs=1,
+                        random_state=42
+                    )
+                forecast_values = model.predict(n_periods=period_count)
+                return model, forecast_values
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                if len(ts) >= seasonal_periods * 2:
+                    future = executor.submit(fit_arima, ts, True, seasonal_periods, period_count)
+                elif len(ts) >= 4:
+                    future = executor.submit(fit_arima, ts, False, seasonal_periods, period_count)
+                else:
+                    future = None
+                if future:
+                    try:
+                        model, arima_forecast = future.result(timeout=ARIMA_TIMEOUT)
+                        best_forecast = arima_forecast.tolist()
+                    except Exception:
+                        best_forecast = None
+    forecasts = {best_model: best_forecast} if best_model and best_forecast else {}
 
     elapsed_time = time.time() - start_time
-    logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model}")
+    logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model} ({best_metric_name}={best_metric:.4f})")
     return {
         'forecasts': forecasts,
         'scores': scores,
@@ -1071,7 +1160,7 @@ def forecast():
             subscription_manager.record_forecast_generation(user_email)
             logger.info(f"Recorded forecast generation for user: {user_email}")
         # Create result dataframe
-        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Best Model", "Diagnostics"])
+        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Best Model"])
         result_df["Item ID"] = result_df["Item ID"].astype(str)
         # Return single file based on export format
         if export_format == 'xlsx':
