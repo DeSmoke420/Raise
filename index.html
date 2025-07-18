@@ -1128,11 +1128,11 @@
         <!-- Model Selection UI -->
         <div class="field">
           <label for="modelSelect">
-            <i class="fas fa-cogs"></i> Forecast Models
+            <i class="fas fa-cogs"></i> Forecast Model
           </label>
           <div class="input-group">
             <i class="fas fa-robot"></i>
-            <select id="modelSelect" multiple style="min-width: 180px; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+            <select id="modelSelect" style="min-width: 180px; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
               <option value="all" selected>All</option>
               <option value="arima">ARIMA</option>
               <option value="holtwinters">Holt-Winters</option>
@@ -1494,13 +1494,15 @@
         // Model selection flags
         const modelSelect = document.getElementById('modelSelect');
         let useARIMA = false, useHW = false, useProphet = false;
-        let selectedModels = Array.from(modelSelect.selectedOptions).map(opt => opt.value);
-        if (selectedModels.includes('all')) {
+        const selectedModel = modelSelect.value;
+        if (selectedModel === 'all') {
           useARIMA = useHW = useProphet = true;
-        } else {
-          useARIMA = selectedModels.includes('arima');
-          useHW = selectedModels.includes('holtwinters');
-          useProphet = selectedModels.includes('prophet');
+        } else if (selectedModel === 'arima') {
+          useARIMA = true;
+        } else if (selectedModel === 'holtwinters') {
+          useHW = true;
+        } else if (selectedModel === 'prophet') {
+          useProphet = true;
         }
         
         const res = await fetch('/api/forecast', {
