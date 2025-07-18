@@ -320,8 +320,8 @@ def create_forecast_model_with_diagnostics(
         logger.info('Attempting ARIMA fit...')
         ARIMA_TIMEOUT = 20
         try:
-            if len(train_ts) > 300:
-                diagnostics['ARIMA'] = "Skipped: individual item too long (>300 points)"
+            if len(train_ts) > 100:
+                diagnostics['ARIMA'] = "Skipped: individual item too long (>100 points)"
                 logger.warning(f"ARIMA skipped for item: too long ({len(train_ts)} points)")
                 forecasts['ARIMA'] = [None] * period_count
             else:
@@ -1066,7 +1066,7 @@ def forecast():
 
         # --- Skip ARIMA logic ---
         skip_arima = False
-        if len(df) > 2000 or len(unique_items) > 20:
+        if len(df) > 1000 or len(unique_items) > 10:
             skip_arima = True
             logger.info(f"Skipping ARIMA for performance: {len(unique_items)} items, {len(df)} rows")
         # --- End skip ARIMA logic ---
