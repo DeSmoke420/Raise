@@ -245,6 +245,7 @@ def create_forecast_model_with_diagnostics(
 
     # --- Holt-Winters ---
     if use_hw:
+        logger.info('Attempting Holt-Winters fit...')
         try:
             if len(train_ts) >= seasonal_periods * 2:
                 model = ExponentialSmoothing(train_ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
@@ -260,21 +261,18 @@ def create_forecast_model_with_diagnostics(
             diagnostics['Holt-Winters'] = f"fit params: {fit.params}"
             model_names.append('Holt-Winters')
             # Forecast for output (fit on full data)
-            try:
-                if len(ts) >= seasonal_periods * 2:
-                    model_full = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
-                elif len(ts) >= 4:
-                    model_full = ExponentialSmoothing(ts, trend='add', seasonal=None)
-                else:
-                    model_full = None
-                if model_full:
-                    fit_full = model_full.fit()
-                    forecasts['Holt-Winters'] = fit_full.forecast(period_count).tolist()
-                else:
-                    forecasts['Holt-Winters'] = [None] * period_count
-            except Exception as e:
-                logger.warning(f"Holt-Winters full fit failed: {e}")
+            if len(ts) >= seasonal_periods * 2:
+                model_full = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+            elif len(ts) >= 4:
+                model_full = ExponentialSmoothing(ts, trend='add', seasonal=None)
+            else:
+                model_full = None
+            if model_full:
+                fit_full = model_full.fit()
+                forecasts['Holt-Winters'] = fit_full.forecast(period_count).tolist()
+            else:
                 forecasts['Holt-Winters'] = [None] * period_count
+            logger.info('Holt-Winters fit and forecast successful.')
         except Exception as e:
             diagnostics['Holt-Winters'] = f"Failed: {e}"
             logger.warning(f"Holt-Winters skipped or failed: {e}")
@@ -282,6 +280,7 @@ def create_forecast_model_with_diagnostics(
 
     # --- Prophet ---
     if use_prophet:
+        logger.info('Attempting Prophet fit...')
         try:
             from prophet import Prophet
             df_prophet = train_ts.reset_index()
@@ -303,17 +302,14 @@ def create_forecast_model_with_diagnostics(
             diagnostics['Prophet'] = f"fit params: {model.params if hasattr(model, 'params') else 'n/a'}"
             model_names.append('Prophet')
             # Forecast for output (fit on full data)
-            try:
-                df_prophet_full = ts.reset_index()
-                df_prophet_full.columns = ['ds', 'y']
-                model_full = Prophet()
-                model_full.fit(df_prophet_full)
-                future_full = model_full.make_future_dataframe(periods=period_count, freq=freq)
-                forecast_full = model_full.predict(future_full)
-                forecasts['Prophet'] = forecast_full.tail(period_count)['yhat'].values.tolist()
-            except Exception as e:
-                logger.warning(f"Prophet full fit failed: {e}")
-                forecasts['Prophet'] = [None] * period_count
+            df_prophet_full = ts.reset_index()
+            df_prophet_full.columns = ['ds', 'y']
+            model_full = Prophet()
+            model_full.fit(df_prophet_full)
+            future_full = model_full.make_future_dataframe(periods=period_count, freq=freq)
+            forecast_full = model_full.predict(future_full)
+            forecasts['Prophet'] = forecast_full.tail(period_count)['yhat'].values.tolist()
+            logger.info('Prophet fit and forecast successful.')
         except Exception as e:
             diagnostics['Prophet'] = f"Failed: {e}"
             logger.warning(f"Prophet skipped or failed: {e}")
@@ -321,6 +317,7 @@ def create_forecast_model_with_diagnostics(
 
     # --- ARIMA ---
     if use_arima and pm is not None and not skip_arima:
+        logger.info('Attempting ARIMA fit...')
         ARIMA_TIMEOUT = 20
         try:
             if len(train_ts) > 300:
@@ -388,6 +385,7 @@ def create_forecast_model_with_diagnostics(
                                 try:
                                     model_full, arima_forecast_full = future2.result(timeout=ARIMA_TIMEOUT)
                                     forecasts['ARIMA'] = arima_forecast_full.tolist()
+                                    logger.info('ARIMA fit and forecast successful.')
                                 except Exception as e:
                                     logger.warning(f"ARIMA full fit failed: {e}")
                                     forecasts['ARIMA'] = [None] * period_count
