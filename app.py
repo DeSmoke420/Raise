@@ -1132,8 +1132,7 @@ def forecast():
                     'Forecast (ARIMA)': '',
                     'Forecast (Holt-Winters)': '',
                     'Forecast (Prophet)': '',
-                    'Best Model': best_model_name,
-                    'Diagnostics': ''
+                    'Best Model': best_model_name
                 }
                 for model in model_names:
                     # Only fill forecast if the model was selected by the user
@@ -1148,8 +1147,6 @@ def forecast():
                         if not allow_negative and val < 0:
                             val = 0
                         row[f'Forecast ({model})'] = val
-                # Add diagnostics for this item/model
-                row['Diagnostics'] = str(model_results['diagnostics'])
                 output_rows.append(row)
         if not output_rows:
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
