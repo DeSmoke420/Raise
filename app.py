@@ -259,9 +259,26 @@ def create_forecast_model_with_diagnostics(
             scores['Holt-Winters'] = {'MAPE': mape_score, 'RMSE': rmse_score}
             diagnostics['Holt-Winters'] = f"fit params: {fit.params}"
             model_names.append('Holt-Winters')
+            # Forecast for output (fit on full data)
+            try:
+                if len(ts) >= seasonal_periods * 2:
+                    model_full = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+                elif len(ts) >= 4:
+                    model_full = ExponentialSmoothing(ts, trend='add', seasonal=None)
+                else:
+                    model_full = None
+                if model_full:
+                    fit_full = model_full.fit()
+                    forecasts['Holt-Winters'] = fit_full.forecast(period_count).tolist()
+                else:
+                    forecasts['Holt-Winters'] = [None] * period_count
+            except Exception as e:
+                logger.warning(f"Holt-Winters full fit failed: {e}")
+                forecasts['Holt-Winters'] = [None] * period_count
         except Exception as e:
             diagnostics['Holt-Winters'] = f"Failed: {e}"
             logger.warning(f"Holt-Winters skipped or failed: {e}")
+            forecasts['Holt-Winters'] = [None] * period_count
 
     # --- Prophet ---
     if use_prophet:
@@ -285,9 +302,22 @@ def create_forecast_model_with_diagnostics(
             scores['Prophet'] = {'MAPE': mape_score, 'RMSE': rmse_score}
             diagnostics['Prophet'] = f"fit params: {model.params if hasattr(model, 'params') else 'n/a'}"
             model_names.append('Prophet')
+            # Forecast for output (fit on full data)
+            try:
+                df_prophet_full = ts.reset_index()
+                df_prophet_full.columns = ['ds', 'y']
+                model_full = Prophet()
+                model_full.fit(df_prophet_full)
+                future_full = model_full.make_future_dataframe(periods=period_count, freq=freq)
+                forecast_full = model_full.predict(future_full)
+                forecasts['Prophet'] = forecast_full.tail(period_count)['yhat'].values.tolist()
+            except Exception as e:
+                logger.warning(f"Prophet full fit failed: {e}")
+                forecasts['Prophet'] = [None] * period_count
         except Exception as e:
             diagnostics['Prophet'] = f"Failed: {e}"
             logger.warning(f"Prophet skipped or failed: {e}")
+            forecasts['Prophet'] = [None] * period_count
 
     # --- ARIMA ---
     if use_arima and pm is not None and not skip_arima:
@@ -296,6 +326,7 @@ def create_forecast_model_with_diagnostics(
             if len(train_ts) > 300:
                 diagnostics['ARIMA'] = "Skipped: individual item too long (>300 points)"
                 logger.warning(f"ARIMA skipped for item: too long ({len(train_ts)} points)")
+                forecasts['ARIMA'] = [None] * period_count
             else:
                 import concurrent.futures
                 def fit_arima(ts, seasonal, seasonal_periods, period_count):
@@ -345,22 +376,43 @@ def create_forecast_model_with_diagnostics(
                         scores['ARIMA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
                         diagnostics['ARIMA'] = f"fit params: {model.get_params() if hasattr(model, 'get_params') else 'n/a'}"
                         model_names.append('ARIMA')
+                        # Forecast for output (fit on full data)
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor2:
+                            if len(ts) >= seasonal_periods * 2:
+                                future2 = executor2.submit(fit_arima, ts, True, seasonal_periods, period_count)
+                            elif len(ts) >= 4:
+                                future2 = executor2.submit(fit_arima, ts, False, seasonal_periods, period_count)
+                            else:
+                                future2 = None
+                            if future2:
+                                try:
+                                    model_full, arima_forecast_full = future2.result(timeout=ARIMA_TIMEOUT)
+                                    forecasts['ARIMA'] = arima_forecast_full.tolist()
+                                except Exception as e:
+                                    logger.warning(f"ARIMA full fit failed: {e}")
+                                    forecasts['ARIMA'] = [None] * period_count
                     except concurrent.futures.TimeoutError:
                         diagnostics['ARIMA'] = f"Skipped: fitting timed out after {ARIMA_TIMEOUT} seconds."
                         logger.warning(f"ARIMA fitting timed out after {ARIMA_TIMEOUT} seconds.")
+                        forecasts['ARIMA'] = [None] * period_count
                     except Exception as e:
                         diagnostics['ARIMA'] = f"Failed: {e}"
                         logger.warning(f"ARIMA failed: {e}")
+                        forecasts['ARIMA'] = [None] * period_count
         except Exception as e:
             diagnostics['ARIMA'] = f"Failed: {e}"
             logger.warning(f"ARIMA failed: {e}")
+            forecasts['ARIMA'] = [None] * period_count
     elif not use_arima:
         diagnostics['ARIMA'] = "Skipped: not selected by user."
+        forecasts['ARIMA'] = [None] * period_count
     elif skip_arima:
         diagnostics['ARIMA'] = "Skipped: global skip for performance."
         logger.warning(f"ARIMA skipped for performance (global skip).")
+        forecasts['ARIMA'] = [None] * period_count
     elif pm is None:
         diagnostics['ARIMA'] = "Not available (pmdarima not installed)."
+        forecasts['ARIMA'] = [None] * period_count
 
     # --- Best model selection ---
     best_model = None
