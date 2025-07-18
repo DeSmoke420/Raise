@@ -102,6 +102,9 @@ except ImportError as e:
     def sign_up_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
         return None
 
+# Force disable authentication for development
+AUTH_AVAILABLE = False
+
 # Import payment and subscription modules
 try:
     from stripe_config import payment_manager, PAYMENT_ENABLED
@@ -111,6 +114,9 @@ try:
 except ImportError as e:
     logger.warning(f"Payment modules not available: {e}")
     PAYMENT_AVAILABLE = False
+
+# Force disable payment for development
+PAYMENT_AVAILABLE = False
 
 # Configure CORS more securely
 CORS(app, origins=['*'], 
