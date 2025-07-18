@@ -1582,7 +1582,9 @@
     async function parseForecastAndCreateChart(blob, outputFormat) {
       try {
         let forecastData = [];
-        
+        let bestModel = null;
+        let bestModelCol = null;
+        let header = [];
         if (outputFormat === 'xlsx') {
           // Parse Excel file
           const arrayBuffer = await blob.arrayBuffer();
@@ -1596,72 +1598,41 @@
           const lines = text.split('\n');
           forecastData = lines.map(line => line.split(',').map(cell => cell.trim()));
         }
-        
+        if (forecastData.length < 2) return;
+        header = forecastData[0];
+        // Find best model from the first row (assume all rows have the same best model)
+        const bestModelIdx = header.indexOf('Best Model');
+        if (bestModelIdx !== -1) {
+          bestModel = forecastData[1][bestModelIdx];
+        }
+        // Determine which forecast column to use
+        if (bestModel) {
+          bestModelCol = header.find(h => h.toLowerCase().includes(bestModel.toLowerCase()));
+        }
+        // Fallback order if not found
+        if (!bestModelCol) {
+          bestModelCol = header.find(h => h.toLowerCase().includes('prophet')) || header.find(h => h.toLowerCase().includes('holt')) || header.find(h => h.toLowerCase().includes('arima'));
+        }
+        const dateIdx = header.indexOf('Date');
+        const forecastIdx = header.indexOf(bestModelCol);
         // Remove header row and empty rows
-        forecastData = forecastData.filter(row => row.length >= 3 && row[0] !== 'Date');
-        
-        // Aggregate data by date (sum all items for each date)
-        const aggregatedData = {};
-        forecastData.forEach(row => {
-          const date = row[0];
-          const quantity = parseFloat(row[2]) || 0;
-          
-          if (aggregatedData[date]) {
-            aggregatedData[date] += quantity;
-          } else {
-            aggregatedData[date] = quantity;
-          }
-        });
-        
-        // Convert to arrays for chart with proper date sorting
-        const dates = Object.keys(aggregatedData).sort((a, b) => {
-          // Parse dates in DD/MM/YYYY or MM/DD/YYYY format
-          const parseDate = (dateStr) => {
-            const parts = dateStr.split('/');
-            if (parts.length === 3) {
-              // Check if it's DD/MM/YYYY (EUR) or MM/DD/YYYY (US) format
-              const day = parseInt(parts[0]);
-              const month = parseInt(parts[1]);
-              const year = parseInt(parts[2]);
-              
-              // If day > 12, it's likely DD/MM/YYYY format
-              if (day > 12) {
-                return new Date(year, month - 1, day);
-              } else {
-                // Assume MM/DD/YYYY format
-                return new Date(year, month - 1, day);
-              }
-            }
-            return new Date(dateStr);
-          };
-          
-          return parseDate(a) - parseDate(b);
-        });
-        const quantities = dates.map(date => aggregatedData[date]);
-        
-        // Create chart
+        const rows = forecastData.slice(1).filter(row => row.length >= 3 && row[0] !== 'Date');
+        // Build arrays for chart
+        const dates = rows.map(row => row[dateIdx]);
+        const quantities = rows.map(row => parseFloat(row[forecastIdx]) || 0);
         createForecastChart(dates, quantities);
-        
-        // Show summary
-        showForecastSummary(aggregatedData);
-        
-        // Show the preview and download options
+        showForecastSummary(Object.fromEntries(dates.map((d, i) => [d, quantities[i]])));
         document.getElementById('forecastPreview').style.display = 'block';
         document.getElementById('downloadOptions').style.display = 'block';
-        
-        // Enhanced smooth scroll to the forecast preview with iPhone-style animation
         setTimeout(() => {
           const previewElement = document.getElementById('forecastPreview');
-          const offset = 80; // More space above the preview
+          const offset = 80;
           const elementPosition = previewElement.getBoundingClientRect().top;
           const offsetPosition = elementPosition + window.pageYOffset - offset;
-          
-          // Use a more pronounced smooth scroll
           const startPosition = window.pageYOffset;
           const distance = offsetPosition - startPosition;
-          const duration = 1200; // Longer duration for more visible animation
+          const duration = 1200;
           let start = null;
-          
           function animation(currentTime) {
             if (start === null) start = currentTime;
             const timeElapsed = currentTime - start;
@@ -1669,18 +1640,14 @@
             window.scrollTo(0, run);
             if (timeElapsed < duration) requestAnimationFrame(animation);
           }
-          
-          // Easing function for smooth iPhone-style animation
           function easeInOutCubic(t, b, c, d) {
             t /= d / 2;
             if (t < 1) return c / 2 * t * t * t + b;
             t -= 2;
             return c / 2 * (t * t * t + 2) + b;
           }
-          
           requestAnimationFrame(animation);
         }, 500);
-        
       } catch (error) {
         console.error('Error parsing forecast data:', error);
       }
