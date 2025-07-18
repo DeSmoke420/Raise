@@ -1192,10 +1192,14 @@ def forecast():
                     )
                     forecast_list = forecasts_dict.get(model)
                     if model_selected and forecast_list and idx < len(forecast_list):
-                        val = round(float(forecast_list[idx]), decimal_places)
-                        if not allow_negative and val < 0:
-                            val = 0
-                        row[f'Forecast ({model})'] = val
+                        val_raw = forecast_list[idx]
+                        if val_raw is not None:
+                            val = round(float(val_raw), decimal_places)
+                            if not allow_negative and val < 0:
+                                val = 0
+                            row[f'Forecast ({model})'] = val
+                        else:
+                            row[f'Forecast ({model})'] = ''
                 output_rows.append(row)
         if not output_rows:
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
