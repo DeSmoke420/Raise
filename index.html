@@ -1130,9 +1130,9 @@
           <label for="modelSelect">
             <i class="fas fa-cogs"></i> Forecast Model
           </label>
-          <div class="input-group">
-            <i class="fas fa-robot"></i>
-            <select id="modelSelect" style="min-width: 180px; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+          <div class="input-group" style="position: relative;">
+            <i class="fas fa-robot" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #64748b;"></i>
+            <select id="modelSelect" style="min-width: 180px; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
               <option value="all" selected>All</option>
               <option value="arima">ARIMA</option>
               <option value="holtwinters">Holt-Winters</option>
