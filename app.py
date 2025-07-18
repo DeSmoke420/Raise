@@ -1193,8 +1193,8 @@ def forecast():
                     'Forecast (ARIMA)': '',
                     'Forecast (Holt-Winters)': '',
                     'Forecast (Prophet)': '',
-                    'Best Model': best_model_name,
-                    'Average': ''
+                    'Average': '',
+                    'Best Model': best_model_name
                 }
                 for model in model_names:
                     # Only fill forecast if the model was selected by the user
@@ -1224,19 +1224,6 @@ def forecast():
                 else:
                     row['Average'] = ''
                 output_rows.append(row)
-        # --- Add TOTAL row for Prophet aggregate ---
-        if use_prophet and prophet_aggregate is not None and prophet_dates is not None:
-            for idx, date_str in enumerate(prophet_dates):
-                row = {
-                    'Date': date_str,
-                    'Item ID': 'TOTAL',
-                    'Forecast (ARIMA)': '',
-                    'Forecast (Holt-Winters)': '',
-                    'Forecast (Prophet)': round(prophet_aggregate[idx], decimal_places),
-                    'Best Model': 'Prophet',
-                    'Average': round(prophet_aggregate[idx], decimal_places)
-                }
-                output_rows.append(row)
         if not output_rows:
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
@@ -1246,7 +1233,7 @@ def forecast():
             subscription_manager.record_forecast_generation(user_email)
             logger.info(f"Recorded forecast generation for user: {user_email}")
         # Create result dataframe
-        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Best Model", "Average"])
+        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Average", "Best Model"])
         result_df["Item ID"] = result_df["Item ID"].astype(str)
         # Return single file based on export format
         if export_format == 'xlsx':
