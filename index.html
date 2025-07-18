@@ -1125,6 +1125,18 @@
             </select>
           </div>
         </div>
+        <!-- Model Selection UI -->
+        <div class="field">
+          <label>
+            <i class="fas fa-cogs"></i> Models to Use
+          </label>
+          <div class="input-group" style="display: flex; gap: 1rem; flex-wrap: wrap;">
+            <label><input type="checkbox" id="useARIMA" checked> ARIMA</label>
+            <label><input type="checkbox" id="useHW" checked> Holt-Winters</label>
+            <label><input type="checkbox" id="useProphet" checked> Prophet</label>
+            <label><input type="checkbox" id="useAllModels" checked> All</label>
+          </div>
+        </div>
       </div>
       
 
@@ -1476,6 +1488,11 @@
           allowNegative: allowNegative
         };
         
+        // Model selection flags
+        const useARIMA = document.getElementById('useARIMA').checked;
+        const useHW = document.getElementById('useHW').checked;
+        const useProphet = document.getElementById('useProphet').checked;
+        
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1483,10 +1500,13 @@
             csv, 
             timeUnit, 
             periods, 
-            exportFormat: 'csv', // Always get CSV for preview
+            exportFormat: 'csv',
             dateFormat: dateFormat,
             decimalPlaces: parseInt(decimalPlaces),
-            allowNegative: allowNegative
+            allowNegative: allowNegative,
+            useARIMA,
+            useHW,
+            useProphet
           })
         });
         
@@ -2259,6 +2279,23 @@
       setTimeout(() => {
         onAuthStateChanged();
       }, 500);
+    });
+
+    // --- Model selection All toggle logic ---
+    document.addEventListener('DOMContentLoaded', function() {
+      const allBox = document.getElementById('useAllModels');
+      const arimaBox = document.getElementById('useARIMA');
+      const hwBox = document.getElementById('useHW');
+      const prophetBox = document.getElementById('useProphet');
+      function updateAllBox() {
+        allBox.checked = arimaBox.checked && hwBox.checked && prophetBox.checked;
+      }
+      allBox.addEventListener('change', function() {
+        arimaBox.checked = hwBox.checked = prophetBox.checked = allBox.checked;
+      });
+      arimaBox.addEventListener('change', updateAllBox);
+      hwBox.addEventListener('change', updateAllBox);
+      prophetBox.addEventListener('change', updateAllBox);
     });
   </script>
 </body>

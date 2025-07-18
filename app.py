@@ -186,232 +186,229 @@ def validate_time_series_data(ts: pd.Series, time_unit: str) -> Dict[str, Any]:
             result['warnings'].append(f"Detected {outliers} outlier(s) in the data.")
     return result
 
-def create_forecast_model_with_diagnostics(ts: pd.Series, time_unit: str, period_count: int, skip_arima: bool = False) -> Tuple[Optional[List[float]], str, str]:
-    """Try all models, select the best one, and return diagnostics."""
+def create_forecast_model_with_diagnostics(
+    ts: pd.Series,
+    time_unit: str,
+    period_count: int,
+    skip_arima: bool = False,
+    use_arima: bool = True,
+    use_hw: bool = True,
+    use_prophet: bool = True
+) -> dict:
+    """
+    Try all selected models, evaluate on holdout set, and return forecasts, scores, and diagnostics for each.
+    Returns a dict:
+      {
+        'forecasts': {model_name: [forecast values]},
+        'scores': {model_name: {'MAPE': ..., 'RMSE': ...}},
+        'best_model': model_name,
+        'diagnostics': {model_name: ...}
+      }
+    """
+    import numpy as np
     start_time = time.time()
     logger.info(f"Starting model selection for time series with {len(ts)} points")
     seasonal_periods = SEASONAL_PERIODS.get(time_unit, 12)
-    diagnostics = []
+    diagnostics = {}
+    forecasts = {}
+    scores = {}
     best_model = None
-    best_score = float('inf')
+    best_metric = float('inf')
+    best_metric_name = None
     best_forecast = None
-    best_name = None
-    model_scores = {}  # Store scores for fair comparison
-    
+    model_names = []
 
-    
-    # Simple Moving Average (fallback for small datasets)
-    try:
-        if len(ts) >= 3:
-            # Use simple moving average as fallback
-            window_size = min(3, len(ts) // 2)
-            # Calculate simple average of last few values
-            recent_values = ts.tail(window_size)
-            ma_value = float(recent_values.mean())
-            ma_forecast = [ma_value] * period_count
-            diagnostics.append(f"Simple MA: window={window_size}")
-            if best_forecast is None:
-                best_forecast = ma_forecast
-                best_name = "Simple Moving Average"
-    except Exception as e:
-        diagnostics.append(f"Simple MA failed: {e}")
-    
-    # Holt-Winters (try without seasonality for small datasets)
-    try:
-        if len(ts) >= seasonal_periods * 2:
-            # Full seasonal model
-            model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
-        elif len(ts) >= 4:
-            # Non-seasonal model for small datasets
-            model = ExponentialSmoothing(ts, trend='add', seasonal=None)
-        else:
-            raise ValueError("Insufficient data for Holt-Winters")
-            
-        fit = model.fit()
-        forecast_values = fit.forecast(period_count)
-        diagnostics.append(f"Holt-Winters: AIC={fit.aic:.2f}")
-        model_scores["Holt-Winters"] = fit.aic
-        if fit.aic < best_score:
-            best_score = fit.aic
-            best_forecast = forecast_values.tolist()
-            best_name = "Holt-Winters"
-    except Exception as e:
-        diagnostics.append(f"Holt-Winters failed: {e}")
-    
-    # Prophet (try with different frequency settings)
-    try:
-        prophet_start = time.time()
-        logger.info(f"Trying Prophet model...")
-        model = Prophet()
-        df_prophet = ts.reset_index()
-        df_prophet.columns = ['ds', 'y']
-        logger.info(f"Fitting Prophet model with {len(df_prophet)} data points...")
-        model.fit(df_prophet)
-        
-        # Use appropriate frequency based on time unit
-        if time_unit == 'monthly':
-            freq = 'M'  # Monthly frequency
-        elif time_unit == 'weekly':
-            freq = 'W'
-        else:  # daily
-            freq = 'D'
-            
-        future = model.make_future_dataframe(periods=period_count, freq=freq)
-        forecast_df = model.predict(future)
-        forecast_values = forecast_df.tail(period_count)['yhat'].values
-        
-        # Prophet doesn't have AIC, so use MSE as a proxy
-        y_true = df_prophet['y']
-        y_pred = model.predict(df_prophet)['yhat']
-        mse = ((y_true - y_pred) ** 2).mean()
-        prophet_time = time.time() - prophet_start
-        diagnostics.append(f"Prophet: MSE={mse:.2f} (took {prophet_time:.2f}s)")
-        model_scores["Prophet"] = mse
-        # Don't compare MSE directly with AIC - will handle separately
-    except Exception as e:
-        diagnostics.append(f"Prophet failed: {e}")
-    
-    # ARIMA (try non-seasonal for small datasets)
-    logger.info(f"pmdarima available: {pm is not None}")
-    import concurrent.futures
-    ARIMA_TIMEOUT = 10  # seconds
-    if pm is not None and not skip_arima:
-        def fit_arima(ts, seasonal, seasonal_periods, period_count):
-            if seasonal:
-                model = pm.auto_arima(  # type: ignore
-                    ts, 
-                    seasonal=True, 
-                    m=seasonal_periods, 
-                    suppress_warnings=True, 
-                    start_p=0, max_p=1,  # Fixed: start_p must be <= max_p
-                    start_q=0, max_q=1,  # Fixed: start_q must be <= max_q
-                    max_d=1,
-                    start_P=0, max_P=1,  # Fixed: start_P must be <= max_P
-                    start_Q=0, max_Q=1,  # Fixed: start_Q must be <= max_Q
-                    max_D=1,
-                    stepwise=True,  # Use stepwise search (faster)
-                    n_jobs=1,  # Single thread to avoid conflicts
-                    random_state=42  # For reproducibility
-                )
-            else:
-                model = pm.auto_arima(  # type: ignore
-                    ts, 
-                    seasonal=False, 
-                    suppress_warnings=True, 
-                    start_p=0, max_p=1,  # Fixed: start_p must be <= max_p
-                    start_q=0, max_q=1,  # Fixed: start_q must be <= max_q
-                    max_d=1,
-                    stepwise=True,  # Use stepwise search (faster)
-                    n_jobs=1,  # Single thread to avoid conflicts
-                    random_state=42  # For reproducibility
-                )
-            forecast_values = model.predict(n_periods=period_count)
-            return model, forecast_values
+    # --- Holdout split ---
+    n = len(ts)
+    if n < 6:
+        return {
+            'forecasts': {},
+            'scores': {},
+            'best_model': None,
+            'diagnostics': {'all': 'Not enough data for holdout evaluation.'}
+        }
+    split_idx = int(n * 0.8)
+    train_ts = ts.iloc[:split_idx]
+    test_ts = ts.iloc[split_idx:]
+    test_len = len(test_ts)
 
+    def mape(y_true, y_pred):
+        y_true, y_pred = np.array(y_true), np.array(y_pred)
+        mask = y_true != 0
+        if not np.any(mask):
+            return None
+        return np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
+
+    def rmse(y_true, y_pred):
+        y_true, y_pred = np.array(y_true), np.array(y_pred)
+        return np.sqrt(np.mean((y_true - y_pred) ** 2))
+
+    # --- Simple Moving Average (always as fallback) ---
+    try:
+        if len(train_ts) >= 3:
+            window_size = min(3, len(train_ts) // 2)
+            ma_value = float(train_ts.tail(window_size).mean())
+            ma_forecast = [ma_value] * test_len
+            mape_score = mape(test_ts, ma_forecast)
+            rmse_score = rmse(test_ts, ma_forecast)
+            forecasts['Simple MA'] = [ma_value] * period_count
+            scores['Simple MA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+            diagnostics['Simple MA'] = f"window={window_size}"
+            model_names.append('Simple MA')
+    except Exception as e:
+        diagnostics['Simple MA'] = f"Failed: {e}"
+
+    # --- Holt-Winters ---
+    if use_hw:
         try:
-            arima_start = time.time()
-            logger.info(f"Trying ARIMA model...")
-            # Skip ARIMA if dataset is too large (will be too slow)
-            if len(ts) > 100:
-                logger.info(f"Skipping ARIMA for large dataset ({len(ts)} points)")
-                raise ValueError("Dataset too large for ARIMA")
-            logger.info(f"ARIMA dataset size: {len(ts)} points, seasonal periods: {seasonal_periods}")
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                if len(ts) >= seasonal_periods * 2:
-                    future = executor.submit(fit_arima, ts, True, seasonal_periods, period_count)
-                elif len(ts) >= 4:
-                    future = executor.submit(fit_arima, ts, False, seasonal_periods, period_count)
-                else:
-                    raise ValueError("Insufficient data for ARIMA")
-                try:
-                    model, forecast_values = future.result(timeout=ARIMA_TIMEOUT)
-                    arima_time = time.time() - arima_start
-                    diagnostics.append(f"ARIMA: AIC={model.aic():.2f} (took {arima_time:.2f}s)")
-                    model_scores["ARIMA"] = model.aic()
-                    if model.aic() < best_score:
-                        best_score = model.aic()
-                        best_forecast = forecast_values.tolist()
-                        best_name = "ARIMA"
-                except concurrent.futures.TimeoutError:
-                    logger.error(f"ARIMA fitting timed out after {ARIMA_TIMEOUT} seconds.")
-                    diagnostics.append(f"ARIMA skipped: fitting timed out after {ARIMA_TIMEOUT} seconds.")
-                except Exception as e:
-                    logger.error(f"ARIMA failed with error: {e}")
-                    diagnostics.append(f"ARIMA failed: {e}")
-        except Exception as e:
-            logger.error(f"ARIMA failed with error: {e}")
-            diagnostics.append(f"ARIMA failed: {e}")
-    elif skip_arima:
-        diagnostics.append("ARIMA skipped for performance (too many items or rows).")
-    else:
-        diagnostics.append("ARIMA not available (pmdarima not installed).")
-    
-    # Last resort: use the last value repeated
-    if best_forecast is None and len(ts) > 0:
-        last_value = float(ts.iloc[-1])
-        best_forecast = [last_value] * period_count
-        best_name = "Last Value"
-        diagnostics.append("Using last value as fallback")
-    
-    # Fair model comparison - normalize scores for fair comparison
-    if len(model_scores) > 1:
-        logger.info(f"Model scores before comparison: {model_scores}")
-        
-        # If we have both AIC and MSE models, use a fair comparison
-        aic_models = {k: v for k, v in model_scores.items() if k in ["Holt-Winters", "ARIMA"]}
-        mse_models = {k: v for k, v in model_scores.items() if k == "Prophet"}
-        
-        if aic_models and mse_models:
-            # Since we only have one model in each category, use a different approach
-            # Convert MSE to a comparable scale with AIC using log transformation
-            aic_avg = sum(aic_models.values()) / len(aic_models)
-            mse_avg = sum(mse_models.values()) / len(mse_models)
-            
-            # Use log of MSE to make it more comparable to AIC
-            log_mse_avg = math.log(mse_avg) if mse_avg > 0 else 0
-            
-            logger.info(f"AIC average: {aic_avg:.2f}, MSE average: {mse_avg:.2f}, Log(MSE): {log_mse_avg:.2f}")
-            
-            # Compare AIC vs log(MSE) - both should be lower for better models
-            if aic_avg < log_mse_avg:
-                best_model_name = list(aic_models.keys())[0]  # Use the AIC model
-                logger.info(f"Selecting AIC model ({best_model_name}) over MSE model")
+            if len(train_ts) >= seasonal_periods * 2:
+                model = ExponentialSmoothing(train_ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+            elif len(train_ts) >= 4:
+                model = ExponentialSmoothing(train_ts, trend='add', seasonal=None)
             else:
-                best_model_name = list(mse_models.keys())[0]  # Use the MSE model
-                logger.info(f"Selecting MSE model ({best_model_name}) over AIC model")
-            
-            logger.info(f"Best model after comparison: {best_model_name}")
-            
-            # Update best model if different
-            if best_model_name != best_name:
-                logger.info(f"Model selection changed from {best_name} to {best_model_name}")
-                best_name = best_model_name
-                # Re-run the best model to get its forecast
-                if best_model_name == "Prophet":
-                    # Prophet was already run, use its forecast
-                    pass  # Keep existing Prophet forecast
-                elif best_model_name == "Holt-Winters":
-                    # Re-run Holt-Winters
-                    model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
-                    fit = model.fit()
-                    best_forecast = fit.forecast(period_count).tolist()
-                elif best_model_name == "ARIMA" and pm is not None:
-                    # Re-run ARIMA
-                    if len(ts) >= seasonal_periods * 2:
-                        model = pm.auto_arima(ts, seasonal=True, m=seasonal_periods, suppress_warnings=True, 
-                                            max_p=1, max_q=1, max_d=1, max_P=1, max_Q=1, max_D=1, 
-                                            stepwise=True, n_jobs=1, random_state=42)
+                raise ValueError("Insufficient data for Holt-Winters")
+            fit = model.fit()
+            hw_forecast = fit.forecast(test_len)
+            mape_score = mape(test_ts, hw_forecast)
+            rmse_score = rmse(test_ts, hw_forecast)
+            forecasts['Holt-Winters'] = fit.forecast(period_count).tolist()
+            scores['Holt-Winters'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+            diagnostics['Holt-Winters'] = f"fit params: {fit.params}"  # Add more details if needed
+            model_names.append('Holt-Winters')
+        except Exception as e:
+            diagnostics['Holt-Winters'] = f"Failed: {e}"
+            logger.warning(f"Holt-Winters skipped or failed: {e}")
+
+    # --- Prophet ---
+    if use_prophet:
+        try:
+            from prophet import Prophet
+            df_prophet = train_ts.reset_index()
+            df_prophet.columns = ['ds', 'y']
+            model = Prophet()
+            model.fit(df_prophet)
+            if time_unit == 'monthly':
+                freq = 'M'
+            elif time_unit == 'weekly':
+                freq = 'W'
+            else:
+                freq = 'D'
+            future = model.make_future_dataframe(periods=test_len, freq=freq)
+            forecast_df = model.predict(future)
+            prophet_forecast = forecast_df.tail(test_len)['yhat'].values
+            mape_score = mape(test_ts, prophet_forecast)
+            rmse_score = rmse(test_ts, prophet_forecast)
+            # Forecast for output
+            future_full = model.make_future_dataframe(periods=period_count, freq=freq)
+            forecast_full = model.predict(future_full)
+            forecasts['Prophet'] = forecast_full.tail(period_count)['yhat'].values.tolist()
+            scores['Prophet'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+            diagnostics['Prophet'] = f"fit params: {model.params if hasattr(model, 'params') else 'n/a'}"
+            model_names.append('Prophet')
+        except Exception as e:
+            diagnostics['Prophet'] = f"Failed: {e}"
+            logger.warning(f"Prophet skipped or failed: {e}")
+
+    # --- ARIMA ---
+    if use_arima and pm is not None and not skip_arima:
+        ARIMA_TIMEOUT = 20
+        try:
+            if len(ts) > 300:
+                diagnostics['ARIMA'] = "Skipped: individual item too long (>300 points)"
+                logger.warning(f"ARIMA skipped for item: too long ({len(ts)} points)")
+            else:
+                import concurrent.futures
+                def fit_arima(ts, seasonal, seasonal_periods, period_count):
+                    if pm is None:
+                        raise RuntimeError("pmdarima is not installed")
+                    if seasonal:
+                        model = pm.auto_arima(
+                            ts,
+                            seasonal=True,
+                            m=seasonal_periods,
+                            suppress_warnings=True,
+                            start_p=0, max_p=1,
+                            start_q=0, max_q=1,
+                            max_d=1,
+                            start_P=0, max_P=1,
+                            start_Q=0, max_Q=1,
+                            max_D=1,
+                            stepwise=True,
+                            n_jobs=1,
+                            random_state=42
+                        )
                     else:
-                        model = pm.auto_arima(ts, seasonal=False, suppress_warnings=True, 
-                                            max_p=1, max_q=1, max_d=1, stepwise=True, n_jobs=1, random_state=42)
-                    best_forecast = model.predict(n_periods=period_count).tolist()
-    
+                        model = pm.auto_arima(
+                            ts,
+                            seasonal=False,
+                            suppress_warnings=True,
+                            start_p=0, max_p=1,
+                            start_q=0, max_q=1,
+                            max_d=1,
+                            stepwise=True,
+                            n_jobs=1,
+                            random_state=42
+                        )
+                    forecast_values = model.predict(n_periods=period_count)
+                    return model, forecast_values
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                    if len(train_ts) >= seasonal_periods * 2:
+                        future = executor.submit(fit_arima, train_ts, True, seasonal_periods, test_len)
+                    elif len(train_ts) >= 4:
+                        future = executor.submit(fit_arima, train_ts, False, seasonal_periods, test_len)
+                    else:
+                        raise ValueError("Insufficient data for ARIMA")
+                    try:
+                        model, arima_forecast = future.result(timeout=ARIMA_TIMEOUT)
+                        mape_score = mape(test_ts, arima_forecast)
+                        rmse_score = rmse(test_ts, arima_forecast)
+                        # Forecast for output
+                        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor2:
+                            if len(train_ts) >= seasonal_periods * 2:
+                                future2 = executor2.submit(fit_arima, ts, True, seasonal_periods, period_count)
+                            else:
+                                future2 = executor2.submit(fit_arima, ts, False, seasonal_periods, period_count)
+                            _, arima_forecast_full = future2.result(timeout=ARIMA_TIMEOUT)
+                        forecasts['ARIMA'] = arima_forecast_full.tolist()
+                        scores['ARIMA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
+                        diagnostics['ARIMA'] = f"fit params: {model.get_params() if hasattr(model, 'get_params') else 'n/a'}"
+                        model_names.append('ARIMA')
+                    except concurrent.futures.TimeoutError:
+                        diagnostics['ARIMA'] = f"Skipped: fitting timed out after {ARIMA_TIMEOUT} seconds."
+                        logger.warning(f"ARIMA fitting timed out after {ARIMA_TIMEOUT} seconds.")
+                    except Exception as e:
+                        diagnostics['ARIMA'] = f"Failed: {e}"
+                        logger.warning(f"ARIMA failed: {e}")
+        except Exception as e:
+            diagnostics['ARIMA'] = f"Failed: {e}"
+            logger.warning(f"ARIMA failed: {e}")
+    elif not use_arima:
+        diagnostics['ARIMA'] = "Skipped: not selected by user."
+    elif skip_arima:
+        diagnostics['ARIMA'] = "Skipped: global skip for performance."
+        logger.warning(f"ARIMA skipped for performance (global skip).")
+    elif pm is None:
+        diagnostics['ARIMA'] = "Not available (pmdarima not installed)."
+
+    # --- Best model selection ---
+    for model in model_names:
+        mape_score = scores[model]['MAPE']
+        rmse_score = scores[model]['RMSE']
+        metric = mape_score if mape_score is not None else rmse_score
+        if metric is not None and metric < best_metric:
+            best_metric = metric
+            best_model = model
+            best_metric_name = 'MAPE' if mape_score is not None else 'RMSE'
+            best_forecast = forecasts[model]
+
     elapsed_time = time.time() - start_time
-    if best_forecast is not None:
-        logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_name}")
-        return best_forecast, best_name or '', ' | '.join(diagnostics)
-    logger.warning(f"Model selection failed after {elapsed_time:.2f}s. No models succeeded.")
-    return None, '', ' | '.join(diagnostics)
+    logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model} ({best_metric_name}={best_metric:.4f})")
+    return {
+        'forecasts': forecasts,
+        'scores': scores,
+        'best_model': best_model,
+        'diagnostics': diagnostics
+    }
 
 def validate_input_data(data: dict) -> Tuple[bool, str]:
     """Validate input data for forecast endpoint."""
@@ -967,10 +964,15 @@ def forecast():
 
         # --- Skip ARIMA logic ---
         skip_arima = False
-        if len(df) > 1000 or len(unique_items) > 10:
+        if len(df) > 2000 or len(unique_items) > 20:
             skip_arima = True
             logger.info(f"Skipping ARIMA for performance: {len(unique_items)} items, {len(df)} rows")
         # --- End skip ARIMA logic ---
+
+        # Read model selection flags from request (default True)
+        use_arima = data.get('useARIMA', True)
+        use_hw = data.get('useHW', True)
+        use_prophet = data.get('useProphet', True)
 
         # Determine the global date range (all periods across all items)
         all_periods = pd.Series(df['period'].unique()).sort_values().to_list()
@@ -978,115 +980,122 @@ def forecast():
         global_max_period = df['period'].max()
         logger.info(f"Global period range: {global_min_period} to {global_max_period}, total periods: {len(all_periods)}")
 
+        # Prepare output rows
+        output_rows = []
+        model_names = ['ARIMA', 'Holt-Winters', 'Prophet']
+
         for i, item_id in enumerate(unique_items):
             logger.info(f"Processing item {i+1}/{len(unique_items)}: {item_id}")
             group = df[df[item_col] == item_id]
-            # Show raw data before aggregation
-            logger.info(f"Item {item_id}: Raw data points per month:")
-            monthly_counts = group.groupby('period').size()
-            logger.info(f"Item {item_id}: Data points per month: {monthly_counts.to_dict()}")
-            # Aggregate by period to ensure consistent monthly data
             ts = group.groupby('period')[qty_col].sum().sort_index()
-            # Reindex to global period range, fill missing with 0
             ts = ts.reindex(all_periods, fill_value=0)
-            logger.info(f"Item {item_id}: {len(ts)} monthly periods, range: {ts.index.min()} to {ts.index.max()}")
-            logger.info(f"Item {item_id}: Sample monthly totals: {ts.head(3).tolist()}")
-            # Show the aggregation details
-            logger.info(f"Item {item_id}: Monthly aggregation details:")
-            for period, period_group in group.groupby('period'):
-                logger.info(f"  {period}: {len(period_group)} data points, sum={period_group[qty_col].sum()}")
-            # Ensure ts is a Series for type checking
             if not isinstance(ts, pd.Series):
                 continue
-            # Data validation
             val_result = validate_time_series_data(ts, time_unit)
             if not val_result['sufficient']:
                 diagnostics_log.append(f"Item {item_id}: {val_result['warnings']}")
                 continue
             # Model selection with diagnostics
-            forecast_values, model_name, diag = create_forecast_model_with_diagnostics(ts, time_unit, period_count, skip_arima=skip_arima)
-            diagnostics_log.append(f"Item {item_id}: {diag}")
-            if forecast_values is None:
-                continue
+            model_results = create_forecast_model_with_diagnostics(
+                ts,
+                time_unit,
+                period_count,
+                skip_arima=skip_arima,
+                use_arima=use_arima,
+                use_hw=use_hw,
+                use_prophet=use_prophet
+            )
+            forecasts_dict = model_results['forecasts']
+            best_model_name = model_results['best_model']
             # Generate future dates
-            last_date = all_periods[-1]  # Use global last period for all items
-            # Type checking for last_date - handle pandas scalar properly
+            last_date = all_periods[-1]
             try:
-                # Convert to scalar if it's a pandas object
-                if hasattr(last_date, 'item'):  # type: ignore
-                    last_date = last_date.item()  # type: ignore
-                # Check if it's a valid date - handle pandas scalar properly
-                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):  # type: ignore
+                if hasattr(last_date, 'item'):
+                    last_date = last_date.item()
+                if last_date is None or (hasattr(last_date, '__bool__') and not bool(last_date)):
                     continue
-                # Convert to pandas Timestamp for consistent handling
-                last_date = pd.Timestamp(last_date)  # type: ignore
+                # Check for NaT (Not a Time)
+                if pd.isna(last_date):
+                    continue
+                last_date = pd.Timestamp(last_date)
             except (ValueError, TypeError, AttributeError):
                 continue
             future_dates = []
-            for i in range(1, period_count + 1):
+            for j in range(1, period_count + 1):
                 try:
+                    # Only perform date arithmetic if last_date is a valid Timestamp
+                    if last_date is None or bool(pd.isna(last_date)) or type(last_date).__name__ == 'NaTType' or not isinstance(last_date, pd.Timestamp):
+                        continue
                     if time_unit == 'monthly':
-                        next_date = (last_date + pd.DateOffset(months=i))  # type: ignore
-                        # Format according to user preference
+                        next_date = last_date + pd.DateOffset(months=j)
+                        if next_date is None or bool(pd.isna(next_date)) or type(next_date).__name__ == 'NaTType':
+                            continue
                         if date_format == 'EUR':
-                            # EUR format: DD/MM/YYYY (use 1st of month)
-                            future_dates.append(next_date.strftime('01/%m/%Y'))  # type: ignore
+                            if isinstance(next_date, pd.Timestamp):
+                                future_dates.append(next_date.strftime('01/%m/%Y'))
                         else:
-                            # US format: MM/DD/YYYY (use 1st of month)
-                            future_dates.append(next_date.strftime('%m/01/%Y'))  # type: ignore
+                            if isinstance(next_date, pd.Timestamp):
+                                future_dates.append(next_date.strftime('%m/01/%Y'))
                     elif time_unit == 'weekly':
-                        next_date = (last_date + timedelta(weeks=i))  # type: ignore
+                        next_date = last_date + timedelta(weeks=j)
+                        if next_date is None or bool(pd.isna(next_date)) or type(next_date).__name__ == 'NaTType':
+                            continue
                         if date_format == 'EUR':
-                            future_dates.append(next_date.strftime('%d/%m/%Y'))  # type: ignore
+                            if isinstance(next_date, pd.Timestamp):
+                                future_dates.append(next_date.strftime('%d/%m/%Y'))
                         else:
-                            future_dates.append(next_date.strftime('%m/%d/%Y'))  # type: ignore
-                    else:  # daily
-                        next_date = (last_date + timedelta(days=i))  # type: ignore
+                            if isinstance(next_date, pd.Timestamp):
+                                future_dates.append(next_date.strftime('%m/%d/%Y'))
+                    else:
+                        next_date = last_date + timedelta(days=j)
+                        if next_date is None or bool(pd.isna(next_date)) or type(next_date).__name__ == 'NaTType':
+                            continue
                         if date_format == 'EUR':
-                            future_dates.append(next_date.strftime('%d/%m/%Y'))  # type: ignore
+                            if isinstance(next_date, pd.Timestamp):
+                                future_dates.append(next_date.strftime('%d/%m/%Y'))
                         else:
-                            future_dates.append(next_date.strftime('%m/%d/%Y'))  # type: ignore
-                except (TypeError, AttributeError):
-                    # Skip if date arithmetic fails
+                            if isinstance(next_date, pd.Timestamp):
+                                future_dates.append(next_date.strftime('%m/%d/%Y'))
+                except (TypeError, AttributeError, ValueError):
                     continue
-            # Add forecasts to results
-            for date_str, val in zip(future_dates, forecast_values):
-                val = round(float(val), decimal_places)
-                
-                # Replace negative values with 0 if not allowed
-                if not allow_negative and val < 0:
-                    logger.info(f"Item {item_id}: Replacing negative forecast value {val} with 0")
-                    val = 0
-                
-                forecasts.append([date_str, item_id, val, model_name])
-        
-        if not forecasts:
+            # For each period, build a row with all model forecasts and best model
+            for idx, date_str in enumerate(future_dates):
+                row = {
+                    'Date': date_str,
+                    'Item ID': item_id,
+                    'Forecast (ARIMA)': '',
+                    'Forecast (Holt-Winters)': '',
+                    'Forecast (Prophet)': '',
+                    'Best Model': best_model_name
+                }
+                for model in model_names:
+                    forecast_list = forecasts_dict.get(model)
+                    if forecast_list and idx < len(forecast_list):
+                        val = round(float(forecast_list[idx]), decimal_places)
+                        if not allow_negative and val < 0:
+                            val = 0
+                        row[f'Forecast ({model})'] = val
+                output_rows.append(row)
+        if not output_rows:
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
-        
-        logger.info(f"Generated {len(forecasts)} forecast entries")
-        
+        logger.info(f"Generated {len(output_rows)} forecast entries")
         # Record forecast generation for authenticated users
         if PAYMENT_AVAILABLE and user_email and user_email != 'anonymous':
             subscription_manager.record_forecast_generation(user_email)
             logger.info(f"Recorded forecast generation for user: {user_email}")
-        
         # Create result dataframe
-        result_df = pd.DataFrame(forecasts, columns=pd.Index(["Date", "Item ID", "Forecast Quantity", "Model"]))
-        # Ensure Item ID is string before export
+        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Best Model"])
         result_df["Item ID"] = result_df["Item ID"].astype(str)
-        
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
-                # Use temporary file approach for better compatibility
                 import tempfile
                 with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
                     result_df.to_excel(tmp_file.name, index=False, float_format=f"%.{decimal_places}f", engine='openpyxl')
                     with open(tmp_file.name, 'rb') as f:
                         excel_data = f.read()
-                    os.unlink(tmp_file.name)  # Clean up temp file
-                
+                    os.unlink(tmp_file.name)
                 response = send_file(
                     io.BytesIO(excel_data),
                     download_name="AI_generated_Forecast.xlsx",
@@ -1098,7 +1107,6 @@ def forecast():
                 return response
             except ImportError:
                 logger.warning("openpyxl not available, falling back to CSV")
-                # Fall back to CSV if openpyxl is not available
                 output = io.StringIO()
                 result_df.to_csv(output, index=False, float_format=f"%.{decimal_places}f", quoting=csv.QUOTE_MINIMAL)
                 output.seek(0)
@@ -1111,8 +1119,7 @@ def forecast():
                 response.headers['Access-Control-Allow-Origin'] = '*'
                 response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
                 return response
-        else:  # Default to CSV
-            # Export to CSV
+        else:
             output = io.StringIO()
             result_df.to_csv(output, index=False, float_format=f"%.{decimal_places}f", quoting=csv.QUOTE_MINIMAL)
             output.seek(0)
