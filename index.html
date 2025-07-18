@@ -1612,6 +1612,50 @@
         }
         if (forecastData.length < 2) return;
         header = forecastData[0];
+        // --- Custom logic: Use TOTAL Prophet row if present ---
+        const itemIdIdx = header.indexOf('Item ID');
+        const dateIdx = header.indexOf('Date');
+        const prophetIdx = header.indexOf('Forecast (Prophet)');
+        let totalRows = [];
+        if (itemIdIdx !== -1 && prophetIdx !== -1) {
+          totalRows = forecastData.slice(1).filter(row => row[itemIdIdx] && row[itemIdIdx].toUpperCase() === 'TOTAL');
+        }
+        if (totalRows.length > 0) {
+          // Use TOTAL Prophet row for preview
+          const dates = totalRows.map(row => row[dateIdx]);
+          const quantities = totalRows.map(row => parseFloat(row[prophetIdx]) || 0);
+          createForecastChart(dates, quantities);
+          showForecastSummary(Object.fromEntries(dates.map((d, i) => [d, quantities[i]])));
+          document.getElementById('forecastPreview').style.display = 'block';
+          document.getElementById('downloadOptions').style.display = 'block';
+          setTimeout(() => {
+            const previewElement = document.getElementById('forecastPreview');
+            const offset = 80;
+            const elementPosition = previewElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - offset;
+            const startPosition = window.pageYOffset;
+            const distance = offsetPosition - startPosition;
+            const duration = 1200;
+            let start = null;
+            function animation(currentTime) {
+              if (start === null) start = currentTime;
+              const timeElapsed = currentTime - start;
+              const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+              window.scrollTo(0, run);
+              if (timeElapsed < duration) requestAnimationFrame(animation);
+            }
+            function easeInOutCubic(t, b, c, d) {
+              t /= d / 2;
+              if (t < 1) return c / 2 * t * t * t + b;
+              t -= 2;
+              return c / 2 * (t * t * t + 2) + b;
+            }
+            requestAnimationFrame(animation);
+          }, 500);
+          return;
+        }
+        // --- End custom logic ---
+        // Existing logic fallback
         // Find best model from the first row (assume all rows have the same best model)
         const bestModelIdx = header.indexOf('Best Model');
         if (bestModelIdx !== -1) {
@@ -1625,7 +1669,6 @@
         if (!bestModelCol) {
           bestModelCol = header.find(h => h.toLowerCase().includes('prophet')) || header.find(h => h.toLowerCase().includes('holt')) || header.find(h => h.toLowerCase().includes('arima'));
         }
-        const dateIdx = header.indexOf('Date');
         const forecastIdx = header.indexOf(bestModelCol);
         // Remove header row and empty rows
         const rows = forecastData.slice(1).filter(row => row.length >= 3 && row[0] !== 'Date');
