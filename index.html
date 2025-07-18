@@ -1527,21 +1527,21 @@
     }
 
     async function generateForecast() {
-      const token = localStorage.getItem('auth_token');
-      const userEmail = localStorage.getItem('user_email');
+      // const token = localStorage.getItem('auth_token');
+      // const userEmail = localStorage.getItem('user_email');
       
       // If not authenticated, show payment options
-      if (!token || !userEmail) {
-        showPricingModal();
-        return;
-      }
+      // if (!token || !userEmail) {
+      //   showPricingModal();
+      //   return;
+      // }
       
       // Check if user has access to generate forecasts
-      const userAccess = await checkUserAccess();
-      if (!userAccess || !userAccess.access.is_active) {
-        showPricingModal();
-        return;
-      }
+      // const userAccess = await checkUserAccess();
+      // if (!userAccess || !userAccess.access.is_active) {
+      //   showPricingModal();
+      //   return;
+      // }
       
       // Proceed with forecast generation
       const file = document.getElementById('historicalFile').files[0];
