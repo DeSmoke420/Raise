@@ -996,6 +996,13 @@ def forecast():
                 diagnostics_log.append(f"Item {item_id}: {val_result['warnings']}")
                 continue
             # Model selection with diagnostics
+            # --- General review: add detailed logging ---
+            logger.info(f"Item {item_id}: Full time series: {ts.index.tolist()} -> {ts.values.tolist()}")
+            n = len(ts)
+            split_idx = int(n * 0.8)
+            logger.info(f"Item {item_id}: Train indices: 0 to {split_idx-1}, Test indices: {split_idx} to {n-1}")
+            logger.info(f"Item {item_id}: Train values: {ts.iloc[:split_idx].values.tolist()}")
+            logger.info(f"Item {item_id}: Test values: {ts.iloc[split_idx:].values.tolist()}")
             model_results = create_forecast_model_with_diagnostics(
                 ts,
                 time_unit,
@@ -1007,6 +1014,12 @@ def forecast():
             )
             forecasts_dict = model_results['forecasts']
             best_model_name = model_results['best_model']
+            # Log model diagnostics and test predictions
+            for model in ['ARIMA', 'Holt-Winters', 'Prophet']:
+                diag = model_results['diagnostics'].get(model, '')
+                logger.info(f"Item {item_id}: {model} diagnostics: {diag}")
+                if model in model_results['scores']:
+                    logger.info(f"Item {item_id}: {model} MAPE: {model_results['scores'][model]['MAPE']}, RMSE: {model_results['scores'][model]['RMSE']}")
             # Generate future dates
             last_date = all_periods[-1]
             try:
@@ -1066,15 +1079,24 @@ def forecast():
                     'Forecast (ARIMA)': '',
                     'Forecast (Holt-Winters)': '',
                     'Forecast (Prophet)': '',
-                    'Best Model': best_model_name
+                    'Best Model': best_model_name,
+                    'Diagnostics': ''
                 }
                 for model in model_names:
+                    # Only fill forecast if the model was selected by the user
+                    model_selected = (
+                        (model == 'ARIMA' and use_arima) or
+                        (model == 'Holt-Winters' and use_hw) or
+                        (model == 'Prophet' and use_prophet)
+                    )
                     forecast_list = forecasts_dict.get(model)
-                    if forecast_list and idx < len(forecast_list):
+                    if model_selected and forecast_list and idx < len(forecast_list):
                         val = round(float(forecast_list[idx]), decimal_places)
                         if not allow_negative and val < 0:
                             val = 0
                         row[f'Forecast ({model})'] = val
+                # Add diagnostics for this item/model
+                row['Diagnostics'] = str(model_results['diagnostics'])
                 output_rows.append(row)
         if not output_rows:
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
@@ -1085,7 +1107,7 @@ def forecast():
             subscription_manager.record_forecast_generation(user_email)
             logger.info(f"Recorded forecast generation for user: {user_email}")
         # Create result dataframe
-        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Best Model"])
+        result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Best Model", "Diagnostics"])
         result_df["Item ID"] = result_df["Item ID"].astype(str)
         # Return single file based on export format
         if export_format == 'xlsx':
