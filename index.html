@@ -1032,12 +1032,12 @@
       </div>
       
       <!-- Payment Required -->
-      <div class="payment-required" id="paymentRequired" style="display: none;">
+      <!-- <div class="payment-required" id="paymentRequired" style="display: none;">
         <div class="info-box warning">
           <h3><i class="fas fa-lock"></i> Subscription Required</h3>
           <p>You need an active subscription to generate forecasts. <button class="btn btn-primary" onclick="showPricingModal()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;">Choose a Plan</button></p>
         </div>
-      </div>
+      </div> -->
       
       <div class="info-box">
         <h3><i class="fas fa-info-circle"></i>Data Requirements</h3>
@@ -1233,110 +1233,7 @@
   </div>
 
   <!-- Pricing Plans Modal -->
-  <div class="modal" id="pricingModal">
-    <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: 90vh; overflow-y: auto;">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <a href="/" class="site-logo" style="position: static; margin-bottom: 1rem; display: flex; justify-content: center;">
-          <img src="static/logo.png" alt="r4ise logo" style="width: 60px; height: 60px; border-radius: 16px; box-shadow: 0 2px 8px rgba(99,102,241,0.10); background: #fff; padding: 5px;" />
-        </a>
-        <h2 style="color: var(--primary-color); margin-bottom: 0.5rem;">Choose Your Plan</h2>
-        <p style="color: var(--text-secondary);">Select the perfect plan for your forecasting needs</p>
-      </div>
-      
-      <!-- Pricing Plans -->
-      <div class="pricing-plans" id="pricingPlans">
-        <!-- Trial Plan -->
-        <div class="pricing-card trial">
-          <div class="plan-header">
-            <h4>Free Trial</h4>
-            <div class="price">€0</div>
-            <p class="period">1 month or 10 forecasts</p>
-          </div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 10 forecast downloads</li>
-            <li><i class="fas fa-check"></i> Full AI forecasting</li>
-            <li><i class="fas fa-check"></i> Excel & CSV export</li>
-            <li><i class="fas fa-check"></i> 30-day access</li>
-          </ul>
-          <button class="btn btn-primary" onclick="activateTrial()">
-            <i class="fas fa-play"></i>
-            Start Free Trial
-          </button>
-        </div>
-        
-        <!-- Single Forecast -->
-        <div class="pricing-card">
-          <div class="plan-header">
-            <h4>Single Forecast</h4>
-            <div class="price">€1.99</div>
-            <p class="period">One-time payment</p>
-          </div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 1 forecast download</li>
-            <li><i class="fas fa-check"></i> Full AI forecasting</li>
-            <li><i class="fas fa-check"></i> Excel & CSV export</li>
-            <li><i class="fas fa-check"></i> Instant access</li>
-          </ul>
-          <button class="btn btn-primary" onclick="purchasePlan('prod_SfV4kXPuZK0qB3')">
-            <i class="fas fa-shopping-cart"></i>
-            Buy Now
-          </button>
-        </div>
-        
-        <!-- Monthly Subscription -->
-        <div class="pricing-card featured">
-          <div class="plan-badge">Most Popular</div>
-          <div class="plan-header">
-            <h4>Monthly Subscription</h4>
-            <div class="price">€9.99</div>
-            <p class="period">per month</p>
-            <div class="trial-badge">7-day free trial</div>
-          </div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 100 forecasts per month</li>
-            <li><i class="fas fa-check"></i> Full AI forecasting</li>
-            <li><i class="fas fa-check"></i> Excel & CSV export</li>
-            <li><i class="fas fa-check"></i> Cancel anytime</li>
-          </ul>
-          <button class="btn btn-primary" onclick="purchasePlan('prod_SfV7vjDZodqoQa')">
-            <i class="fas fa-shopping-cart"></i>
-            Start Free Trial
-          </button>
-        </div>
-        
-        <!-- Lifetime Access -->
-        <div class="pricing-card">
-          <div class="plan-header">
-            <h4>Lifetime Access</h4>
-            <div class="price">€99.99</div>
-            <p class="period">One-time payment</p>
-          </div>
-          <ul class="plan-features">
-            <li><i class="fas fa-check"></i> 500 forecasts per month</li>
-            <li><i class="fas fa-check"></i> Full AI forecasting</li>
-            <li><i class="fas fa-check"></i> Excel & CSV export</li>
-            <li><i class="fas fa-check"></i> Lifetime access</li>
-          </ul>
-          <button class="btn btn-primary" onclick="purchasePlan('prod_SfV5mUmDQiJVx3')">
-            <i class="fas fa-shopping-cart"></i>
-            Buy Lifetime
-          </button>
-        </div>
-      </div>
-      
-      <div style="text-align: center; margin-top: 2rem;">
-        <p style="color: var(--text-secondary); margin-bottom: 1rem;">Already have an account?</p>
-        <button class="btn btn-secondary" onclick="hidePricingModal(); showAuthModal();" style="margin-right: 1rem;">
-          <i class="fas fa-sign-in-alt"></i>
-          Sign In
-        </button>
-        <button class="btn btn-back" onclick="hidePricingModal()">
-          <i class="fas fa-times"></i>
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- <div class="modal" id="pricingModal"> ... </div> -->
 
   <script>
     const modal = document.getElementById('modal');
@@ -2299,13 +2196,12 @@
     };
 
     // Pricing modal functions
-    function showPricingModal() {
-      document.getElementById('pricingModal').style.display = 'flex';
-    }
-    
-    function hidePricingModal() {
-      document.getElementById('pricingModal').style.display = 'none';
-    }
+    // function showPricingModal() {
+    //   document.getElementById('pricingModal').style.display = 'flex';
+    // }
+    // function hidePricingModal() {
+    //   document.getElementById('pricingModal').style.display = 'none';
+    // }
     
     // Handle payment success/cancellation
     function handlePaymentReturn() {
