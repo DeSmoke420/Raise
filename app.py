@@ -502,7 +502,6 @@ def create_forecast_model_with_diagnostics(
                         best_forecast = arima_forecast.tolist()
                     except Exception:
                         best_forecast = None
-    forecasts = {best_model: best_forecast} if best_model and best_forecast else {}
 
     elapsed_time = time.time() - start_time
     logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model} ({best_metric_name}={best_metric:.4f})")
