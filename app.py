@@ -325,47 +325,49 @@ def create_forecast_model_with_diagnostics(
                 logger.warning(f"ARIMA skipped for item: too long ({len(train_ts)} points, stricter)")
                 forecasts['ARIMA'] = [None] * period_count
             else:
-    import concurrent.futures
-        def fit_arima(ts, seasonal, seasonal_periods, period_count):
+                import concurrent.futures
+                def fit_arima(ts, seasonal, seasonal_periods, period_count):
                     if pm is None:
                         raise RuntimeError("pmdarima is not installed")
-            if seasonal:
+                    if seasonal:
                         model = pm.auto_arima(
-                    ts, 
-                    seasonal=True, 
-                    m=seasonal_periods, 
-                    suppress_warnings=True, 
+                            ts, 
+                            seasonal=True, 
+                            m=seasonal_periods, 
+                            suppress_warnings=True, 
                             start_p=0, max_p=1,
                             start_q=0, max_q=1,
-                    max_d=1,
+                            max_d=1,
                             start_P=0, max_P=1,
                             start_Q=0, max_Q=1,
-                    max_D=1,
+                            max_D=1,
                             stepwise=True,
                             n_jobs=1,
                             random_state=42
-                )
-            else:
+                        )
+                    else:
                         model = pm.auto_arima(
-                    ts, 
-                    seasonal=False, 
-                    suppress_warnings=True, 
+                            ts, 
+                            seasonal=False, 
+                            suppress_warnings=True, 
                             start_p=0, max_p=1,
                             start_q=0, max_q=1,
-                    max_d=1,
+                            max_d=1,
                             stepwise=True,
                             n_jobs=1,
                             random_state=42
-                )
-            forecast_values = model.predict(n_periods=period_count)
-            return model, forecast_values
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                        )
+                    forecast_values = model.predict(n_periods=period_count)
+                    return model, forecast_values
+                
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                     if len(train_ts) >= seasonal_periods * 2:
                         future = executor.submit(fit_arima, train_ts, True, seasonal_periods, test_len)
                     elif len(train_ts) >= 4:
                         future = executor.submit(fit_arima, train_ts, False, seasonal_periods, test_len)
                     else:
                         raise ValueError("Insufficient data for ARIMA")
+                    
                     try:
                         model, arima_forecast = future.result(timeout=ARIMA_TIMEOUT)
                         mape_score = mape(test_ts, arima_forecast)
@@ -373,14 +375,16 @@ def create_forecast_model_with_diagnostics(
                         scores['ARIMA'] = {'MAPE': mape_score, 'RMSE': rmse_score}
                         diagnostics['ARIMA'] = f"fit params: {model.get_params() if hasattr(model, 'get_params') else 'n/a'}"
                         model_names.append('ARIMA')
+                        
                         # Forecast for output (fit on full data)
                         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor2:
-                if len(ts) >= seasonal_periods * 2:
+                            if len(ts) >= seasonal_periods * 2:
                                 future2 = executor2.submit(fit_arima, ts, True, seasonal_periods, period_count)
-                elif len(ts) >= 4:
+                            elif len(ts) >= 4:
                                 future2 = executor2.submit(fit_arima, ts, False, seasonal_periods, period_count)
-                else:
+                            else:
                                 future2 = None
+                            
                             if future2:
                                 try:
                                     model_full, arima_forecast_full = future2.result(timeout=ARIMA_TIMEOUT)
@@ -389,11 +393,11 @@ def create_forecast_model_with_diagnostics(
                                 except Exception as e:
                                     logger.warning(f"ARIMA full fit failed: {e}")
                                     forecasts['ARIMA'] = [None] * period_count
-                except concurrent.futures.TimeoutError:
+                    except concurrent.futures.TimeoutError:
                         diagnostics['ARIMA'] = f"Skipped: fitting timed out after {ARIMA_TIMEOUT} seconds."
                         logger.warning(f"ARIMA fitting timed out after {ARIMA_TIMEOUT} seconds.")
                         forecasts['ARIMA'] = [None] * period_count
-                except Exception as e:
+                    except Exception as e:
                         diagnostics['ARIMA'] = f"Failed: {e}"
                         logger.warning(f"ARIMA failed: {e}")
                         forecasts['ARIMA'] = [None] * period_count
@@ -492,11 +496,11 @@ def create_forecast_model_with_diagnostics(
                 forecast_values = model.predict(n_periods=period_count)
                 return model, forecast_values
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                    if len(ts) >= seasonal_periods * 2:
+                if len(ts) >= seasonal_periods * 2:
                     future = executor.submit(fit_arima, ts, True, seasonal_periods, period_count)
                 elif len(ts) >= 4:
                     future = executor.submit(fit_arima, ts, False, seasonal_periods, period_count)
-                    else:
+                else:
                     future = None
                 if future:
                     try:
@@ -978,7 +982,7 @@ def forecast():
         if dd_mm_indicators > mm_dd_indicators:
             df[date_col] = dt1
             logger.info("Date parsing succeeded with dayfirst=True (DD/MM format detected)")
-            else:
+        else:
             df[date_col] = dt2
             logger.info("Date parsing succeeded with dayfirst=False (MM/DD format detected)")
         
@@ -993,8 +997,8 @@ def forecast():
                     if valid_custom > 0:
                         df[date_col] = dt_custom
                         logger.info(f"Date parsing succeeded with format {fmt}")
-                            break
-        except Exception as e:
+                        break
+                except Exception as e:
                     logger.warning(f"Date parsing failed for format {fmt}: {e}")
             else:
                 logger.error("Could not parse date column with any known format.")
@@ -1201,8 +1205,8 @@ def forecast():
                         val_raw = forecast_list[idx]
                         if val_raw is not None:
                             val = round(float(val_raw), decimal_places)
-                if not allow_negative and val < 0:
-                    val = 0
+                            if not allow_negative and val < 0:
+                                val = 0
                             row[f'Forecast ({model})'] = val
                         else:
                             row[f'Forecast ({model})'] = ''
