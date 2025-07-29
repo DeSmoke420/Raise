@@ -1697,9 +1697,24 @@
           const forecastIdx = header.indexOf(bestModelCol);
           // Remove header row and empty rows
           const rows = forecastData.slice(1).filter(row => row.length >= 3 && row[0] !== 'Date');
-          // Build arrays for chart
-          const dates = rows.map(row => row[dateIdx]);
-          const quantities = rows.map(row => parseFloat(row[forecastIdx]) || 0);
+          
+          // AGGREGATE DATA BY DATE: Sum quantities across all items for each date
+          const dateAggregation = {};
+          rows.forEach(row => {
+            const date = row[dateIdx];
+            const quantity = parseFloat(row[forecastIdx]) || 0;
+            if (date) {
+              if (!dateAggregation[date]) {
+                dateAggregation[date] = 0;
+              }
+              dateAggregation[date] += quantity;
+            }
+          });
+          
+          // Sort dates and build arrays for chart
+          const sortedDates = Object.keys(dateAggregation).sort();
+          const dates = sortedDates;
+          const quantities = sortedDates.map(date => dateAggregation[date]);
           createForecastChart(dates, quantities);
           showForecastSummary(Object.fromEntries(dates.map((d, i) => [d, quantities[i]])));
           document.getElementById('forecastPreview').style.display = 'block';
@@ -1744,7 +1759,7 @@
           data: {
             labels: dates,
             datasets: [{
-              label: 'Forecast Quantity',
+              label: 'Aggregated Forecast (All Items)',
               data: quantities,
               borderColor: 'rgb(99, 102, 241)',
               backgroundColor: 'rgba(99, 102, 241, 0.1)',
