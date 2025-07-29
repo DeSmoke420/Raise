@@ -116,7 +116,7 @@ except ImportError as e:
     PAYMENT_AVAILABLE = False
 
 # Force disable payment for development
-PAYMENT_AVAILABLE = False
+    PAYMENT_AVAILABLE = False
 
 # Configure CORS more securely
 CORS(app, origins=['*'], 
@@ -331,10 +331,10 @@ def create_forecast_model_with_diagnostics(
                         raise RuntimeError("pmdarima is not installed")
                     if seasonal:
                         model = pm.auto_arima(
-                            ts,
-                            seasonal=True,
-                            m=seasonal_periods,
-                            suppress_warnings=True,
+                            ts, 
+                            seasonal=True, 
+                            m=seasonal_periods, 
+                            suppress_warnings=True, 
                             start_p=0, max_p=1,
                             start_q=0, max_q=1,
                             max_d=1,
@@ -347,9 +347,9 @@ def create_forecast_model_with_diagnostics(
                         )
                     else:
                         model = pm.auto_arima(
-                            ts,
-                            seasonal=False,
-                            suppress_warnings=True,
+                            ts, 
+                            seasonal=False, 
+                            suppress_warnings=True, 
                             start_p=0, max_p=1,
                             start_q=0, max_q=1,
                             max_d=1,
@@ -504,7 +504,7 @@ def create_forecast_model_with_diagnostics(
                         best_forecast = arima_forecast.tolist()
                     except Exception:
                         best_forecast = None
-
+    
     elapsed_time = time.time() - start_time
     logger.info(f"Model selection completed in {elapsed_time:.2f}s. Best model: {best_model} ({best_metric_name}={best_metric:.4f})")
     return {
@@ -927,98 +927,40 @@ def forecast():
         logger.info(f"Processing data with columns: {date_col}, {item_col}, {qty_col}")
         logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
         
-        # Simple and reliable date parsing
-        logger.info(f"Sample date values: {df[date_col].head(3).tolist()}")
-        
-        # Auto-detect input date format (don't use user preference for input parsing)
-        logger.info(f"Auto-detecting input date format (user output preference: {date_format})")
-        
-        # Check if dates look like DD/MM/YYYY format
+        # --- Robust date parsing: try multiple strategies ---
         sample_dates = df[date_col].head(100).astype(str).tolist()
         logger.info(f"Analyzing date patterns in: {sample_dates}")
-        dd_mm_yyyy_pattern = False
-        day_values = []
-        month_values = []
-        
-        # First pass: collect all day and month values
-        for date_str in sample_dates:
-            if '/' in date_str:
-                parts = date_str.split('/')
-                if len(parts) == 3:
-                    try:
-                        day = int(parts[0])
-                        month = int(parts[1])
-                        year = int(parts[2])
-                        day_values.append(day)
-                        month_values.append(month)
-                    except ValueError:
-                        continue
-        
-        if day_values and month_values:
-            # Analyze patterns to determine format
-            unique_days = set(day_values)
-            unique_months = set(month_values)
-            
-            logger.info(f"Date pattern analysis: unique_days={unique_days}, unique_months={unique_months}")
-            
-            # Clear DD/MM indicators:
-            # 1. Any day > 12 (obvious DD/MM)
-            # 2. Any month > 12 (obvious DD/MM)
-            # 3. Day always 1 AND months vary from 1-12 (EUR format with day=1)
-            
-            has_day_over_12 = any(d > 12 for d in unique_days)
-            has_month_over_12 = any(m > 12 for m in unique_months)
-            day_always_one = unique_days == {1}
-            month_varies_1_to_12 = unique_months == set(range(1, 13)) or (min(unique_months) == 1 and max(unique_months) <= 12)
-            
-            if has_day_over_12 or has_month_over_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: obvious indicator (day>12 or month>12)")
-            elif day_always_one and month_varies_1_to_12:
-                dd_mm_yyyy_pattern = True
-                logger.info(f"Detected DD/MM/YYYY: day always 1, months vary 1-12 (EUR format)")
+        # 1. Try pandas flexible parsing with dayfirst True/False
+        dt1 = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
+        dt2 = pd.to_datetime(df[date_col], dayfirst=False, errors='coerce')
+        valid1 = dt1.notna().sum()
+        valid2 = dt2.notna().sum()
+        logger.info(f"Date parsing: dayfirst=True valid={valid1}, dayfirst=False valid={valid2}")
+        if valid1 == 0 and valid2 == 0:
+            # 2. Try common custom formats
+            custom_formats = ['%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%d/%m/%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
+            for fmt in custom_formats:
+                try:
+                    dt_custom = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
+                    valid_custom = dt_custom.notna().sum()
+                    logger.info(f"Date parsing: format={fmt} valid={valid_custom}")
+                    if valid_custom > 0:
+                        df[date_col] = dt_custom
+                        logger.info(f"Date parsing succeeded with format {fmt}")
+                        break
+                except Exception as e:
+                    logger.warning(f"Date parsing failed for format {fmt}: {e}")
             else:
-                logger.info(f"Assuming MM/DD format: day_always_one={day_always_one}, month_varies_1_to_12={month_varies_1_to_12}")
-        
-        # Try pandas default parsing first (works for most cases)
-        try:
-            if dd_mm_yyyy_pattern:
-                # For DD/MM/YYYY, try specific format first
-                logger.info("Trying DD/MM/YYYY format first")
-                df[date_col] = pd.to_datetime(df[date_col], format='%d/%m/%Y', errors='coerce')
-                valid_dates = df[date_col].notna().sum()
-                logger.info(f"DD/MM/YYYY parsing: {valid_dates} valid dates out of {len(df)}")
-                
-                if valid_dates == 0:
-                    # If DD/MM/YYYY failed, try pandas default
-                    logger.info("DD/MM/YYYY failed, trying pandas default")
-                    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                    valid_dates = df[date_col].notna().sum()
+                logger.error("Could not parse date column with any known format.")
+                return jsonify({'error': 'Could not parse date column: please use a standard date format like YYYY-MM-DD, DD/MM/YYYY, or MM/DD/YYYY.'}), 400
+        else:
+            # Use the one with more valid dates
+            if valid1 >= valid2:
+                df[date_col] = dt1
+                logger.info("Date parsing succeeded with dayfirst=True")
             else:
-                # For other formats, try pandas default first
-                df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-                valid_dates = df[date_col].notna().sum()
-                logger.info(f"Pandas default parsing: {valid_dates} valid dates out of {len(df)}")
-            
-            if valid_dates > 0:
-                logger.info("Date parsing successful")
-            else:
-                # If pandas default failed, try specific formats
-                logger.info("Pandas default failed, trying specific formats")
-                date_formats = ['%m/%Y', '%d/%m/%Y', '%Y/%m/%d', '%Y-%m-%d']
-                
-                for fmt in date_formats:
-                    try:
-                        df[date_col] = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
-                        valid_dates = df[date_col].notna().sum()
-                        if valid_dates > 0:
-                            logger.info(f"Successfully parsed dates with format: {fmt} ({valid_dates} valid dates)")
-                            break
-                    except Exception:
-                        continue
-        except Exception as e:
-            logger.error(f"Date parsing error: {e}")
-            return jsonify({'error': f'Could not parse date column: {e}'}), 400
+                df[date_col] = dt2
+                logger.info("Date parsing succeeded with dayfirst=False")
         
         df = df.dropna(subset=[date_col, qty_col, item_col])
         logger.info(f"Valid rows after date parsing: {len(df)}")
@@ -1210,8 +1152,8 @@ def forecast():
                         val_raw = forecast_list[idx]
                         if val_raw is not None:
                             val = round(float(val_raw), decimal_places)
-                            if not allow_negative and val < 0:
-                                val = 0
+                if not allow_negative and val < 0:
+                    val = 0
                             row[f'Forecast ({model})'] = val
                         else:
                             row[f'Forecast ({model})'] = ''
