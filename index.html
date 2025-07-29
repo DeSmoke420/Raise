@@ -1178,48 +1178,46 @@
           
           <div class="scenario-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
             <div class="field">
-              <label for="scenarioName">
+              <label for="scenarioName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                 <i class="fas fa-tag"></i> Scenario Name
               </label>
-              <div class="input-group">
-                <i class="fas fa-edit"></i>
-                <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%;">
+              <div class="input-group" style="position: relative;">
+                <i class="fas fa-edit" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
               </div>
             </div>
             
             <div class="field">
-              <label for="startDate">
+              <label for="startDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                 <i class="fas fa-calendar"></i> Start Date
               </label>
-              <div class="input-group">
-                <i class="fas fa-calendar-day"></i>
-                <input type="date" id="startDate" style="width: 100%;">
+              <div class="input-group" style="position: relative;">
+                <i class="fas fa-calendar-day" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                <input type="date" id="startDate" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
               </div>
             </div>
             
             <div class="field">
-              <label for="endDate">
+              <label for="endDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                 <i class="fas fa-calendar"></i> End Date
               </label>
-              <div class="input-group">
-                <i class="fas fa-calendar-day"></i>
-                <input type="date" id="endDate" style="width: 100%;">
+              <div class="input-group" style="position: relative;">
+                <i class="fas fa-calendar-day" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                <input type="date" id="endDate" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
               </div>
             </div>
             
             <div class="field">
-              <label for="adjustmentFactor">
+              <label for="adjustmentFactor" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                 <i class="fas fa-percentage"></i> Adjustment Factor
               </label>
-              <div class="input-group">
-                <i class="fas fa-calculator"></i>
-                <input type="number" id="adjustmentFactor" step="0.01" min="0.01" placeholder="e.g. 1.2" style="width: 100%;">
+              <div class="input-group" style="position: relative;">
+                <i class="fas fa-calculator" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                <input type="number" id="adjustmentFactor" step="0.01" min="0.01" placeholder="e.g. 1.2" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
               </div>
             </div>
             
-
-            
-            <button class="btn btn-secondary" onclick="addScenarioAdjustment()" style="height: fit-content; padding: 0.75rem 1rem;">
+            <button class="btn btn-secondary" onclick="addScenarioAdjustment()" style="height: fit-content; padding: 0.75rem 1rem; margin-top: 1.5rem;">
               <i class="fas fa-plus"></i> Add
             </button>
           </div>
