@@ -975,6 +975,16 @@ def forecast():
         logger.info(f"Date range after parsing: {df[date_col].min()} to {df[date_col].max()}")
         logger.info(f"Unique months in data: {df[date_col].dt.to_period('M').nunique()}")
         
+        # CRITICAL DEBUG: Log the actual data structure
+        logger.info("=== CRITICAL DEBUG: DATA STRUCTURE ANALYSIS ===")
+        logger.info(f"Total rows in dataframe: {len(df)}")
+        logger.info(f"Unique items: {df[item_col].nunique()}")
+        logger.info(f"Unique dates: {df[date_col].nunique()}")
+        logger.info(f"Sample of actual data:")
+        for i, row in df.head(10).iterrows():
+            logger.info(f"  Row {i}: {row[item_col]} | {row[date_col]} | {row[qty_col]}")
+        logger.info("=== END CRITICAL DEBUG ===")
+        
         try:
             df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
             # Always round actuals to 2 decimals for preview
