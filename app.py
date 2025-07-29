@@ -943,6 +943,35 @@ def forecast():
         logger.info(f"Sample parsed with dayfirst=True: {dt1.head(5).tolist()}")
         logger.info(f"Sample parsed with dayfirst=False: {dt2.head(5).tolist()}")
         
+        # Improved logic: Check if the dates look like they're in DD/MM format
+        # If the first few dates have day > 12, it's likely DD/MM format
+        sample_dates_str = df[date_col].head(10).astype(str).tolist()
+        dd_mm_indicators = 0
+        mm_dd_indicators = 0
+        
+        for date_str in sample_dates_str:
+            try:
+                parts = date_str.split('/')
+                if len(parts) == 3:
+                    first_part = int(parts[0])
+                    second_part = int(parts[1])
+                    if first_part > 12:  # Day > 12, likely DD/MM
+                        dd_mm_indicators += 1
+                    elif second_part > 12:  # Month > 12, likely MM/DD
+                        mm_dd_indicators += 1
+            except:
+                pass
+        
+        logger.info(f"Format indicators: DD/MM indicators={dd_mm_indicators}, MM/DD indicators={mm_dd_indicators}")
+        
+        # Choose the better parsing based on indicators
+        if dd_mm_indicators > mm_dd_indicators:
+            df[date_col] = dt1
+            logger.info("Date parsing succeeded with dayfirst=True (DD/MM format detected)")
+        else:
+            df[date_col] = dt2
+            logger.info("Date parsing succeeded with dayfirst=False (MM/DD format detected)")
+        
         if valid1 == 0 and valid2 == 0:
             # 2. Try common custom formats
             custom_formats = ['%d/%m/%Y', '%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
@@ -960,14 +989,7 @@ def forecast():
             else:
                 logger.error("Could not parse date column with any known format.")
                 return jsonify({'error': 'Could not parse date column: please use a standard date format like YYYY-MM-DD, DD/MM/YYYY, or MM/DD/YYYY.'}), 400
-        else:
-            # Use the one with more valid dates
-            if valid1 >= valid2:
-                df[date_col] = dt1
-                logger.info("Date parsing succeeded with dayfirst=True")
-            else:
-                df[date_col] = dt2
-                logger.info("Date parsing succeeded with dayfirst=False")
+
         
         df = df.dropna(subset=[date_col, qty_col, item_col])
         logger.info(f"Valid rows after date parsing: {len(df)}")
