@@ -1000,156 +1000,156 @@
 </head>
 <body>
   <main class="main-content">
-    <a href="/" class="site-logo">
-      <img src="static/logo.png" alt="r4ise logo" />
-    </a>
-    
-    <!-- Auth Header -->
-    <div class="auth-header">
-      <div class="auth-buttons" id="authButtons">
-        <button class="btn" onclick="toggleAuthModal()">
-          <i class="fas fa-sign-in-alt"></i>
-          Sign In
-        </button>
-        <button class="btn" onclick="toggleAuthModal('signup')">
-          <i class="fas fa-user-plus"></i>
-          Sign Up
-        </button>
-      </div>
-      <div class="user-info" id="userInfo" style="display: none;">
-        <span class="user-name" id="userName"></span>
-        <button class="btn btn-back" onclick="logout()">
-          <i class="fas fa-sign-out-alt"></i>
-          Logout
-        </button>
-      </div>
+  <a href="/" class="site-logo">
+    <img src="static/logo.png" alt="r4ise logo" />
+  </a>
+  
+  <!-- Auth Header -->
+  <div class="auth-header">
+    <div class="auth-buttons" id="authButtons">
+      <button class="btn" onclick="toggleAuthModal()">
+        <i class="fas fa-sign-in-alt"></i>
+        Sign In
+      </button>
+      <button class="btn" onclick="toggleAuthModal('signup')">
+        <i class="fas fa-user-plus"></i>
+        Sign Up
+      </button>
     </div>
-    <div class="container">
-      <!-- Home Page -->
-      <div class="card fade-in" id="homePage">
-        <div class="header">
-          <div class="logo">
-            <i class="fas fa-chart-line"></i>
-          </div>
-          <h1>AI Forecast Intelligence</h1>
-          <p class="subtitle">Advanced forecasting powered by machine learning</p>
+    <div class="user-info" id="userInfo" style="display: none;">
+      <span class="user-name" id="userName"></span>
+      <button class="btn btn-back" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+        Logout
+      </button>
+    </div>
+  </div>
+  <div class="container">
+    <!-- Home Page -->
+    <div class="card fade-in" id="homePage">
+      <div class="header">
+        <div class="logo">
+          <i class="fas fa-chart-line"></i>
         </div>
-        
-        <button class="btn btn-primary" onclick="showPage('forecastPage')">
-          <i class="fas fa-magic"></i>
-          Generate Forecast
-        </button>
+        <h1>AI Forecast Intelligence</h1>
+        <p class="subtitle">Advanced forecasting powered by machine learning</p>
       </div>
+      
+      <button class="btn btn-primary" onclick="showPage('forecastPage')">
+        <i class="fas fa-magic"></i>
+        Generate Forecast
+      </button>
+    </div>
 
-      <!-- Forecast Page -->
-      <div class="card hidden slide-in" id="forecastPage">
-        <div class="header">
-          <h1>Generate Forecast</h1>
-          <p class="subtitle">Upload your historical data to generate AI-powered forecasts</p>
+    <!-- Forecast Page -->
+    <div class="card hidden slide-in" id="forecastPage">
+      <div class="header">
+        <h1>Generate Forecast</h1>
+        <p class="subtitle">Upload your historical data to generate AI-powered forecasts</p>
+      </div>
+      
+      <!-- Subscription Status -->
+      <div class="subscription-status" id="subscriptionStatus" style="display: none;">
+        <div class="info-box success">
+          <h3><i class="fas fa-check-circle"></i> Active Subscription</h3>
+          <p id="subscriptionDetails">Loading subscription details...</p>
         </div>
-        
-        <!-- Subscription Status -->
-        <div class="subscription-status" id="subscriptionStatus" style="display: none;">
-          <div class="info-box success">
-            <h3><i class="fas fa-check-circle"></i> Active Subscription</h3>
-            <p id="subscriptionDetails">Loading subscription details...</p>
-          </div>
-        </div>
-        
-        <!-- Payment Required -->
+      </div>
+      
+      <!-- Payment Required -->
         <!-- <div class="payment-required" id="paymentRequired" style="display: none;">
-          <div class="info-box warning">
-            <h3><i class="fas fa-lock"></i> Subscription Required</h3>
-            <p>You need an active subscription to generate forecasts. <button class="btn btn-primary" onclick="showPricingModal()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;">Choose a Plan</button></p>
-          </div>
+        <div class="info-box warning">
+          <h3><i class="fas fa-lock"></i> Subscription Required</h3>
+          <p>You need an active subscription to generate forecasts. <button class="btn btn-primary" onclick="showPricingModal()" style="margin-left: 1rem; padding: 0.5rem 1rem; font-size: 0.9rem;">Choose a Plan</button></p>
+        </div>
         </div> -->
-        
-        <div class="info-box">
-          <h3><i class="fas fa-info-circle"></i>Data Requirements</h3>
-          <p>Your Excel file (.xlsx) must contain exactly three columns with the following headers: <strong>"Date"</strong>, <strong>"Item"</strong>, and <strong>"Quantity"</strong>. The <strong>"Date"</strong> column must be in a valid Excel date format such as <em>dd/mm/yyyy, mm/dd/yyyy, or mm/yyyy</em>. The <strong>"Item"</strong> column can be either text or a number. The <strong>"Quantity"</strong> column must contain numeric values only, with or without decimals, and should not include any thousands separators (e.g., write "1000" instead of "1,000"). Both European (e.g., "1000,5") and US (e.g., "1000.5") decimal formats are accepted. The system will automatically detect the order of the columns based on their headers.</p>
+      
+      <div class="info-box">
+        <h3><i class="fas fa-info-circle"></i>Data Requirements</h3>
+        <p>Your Excel file (.xlsx) must contain exactly three columns with the following headers: <strong>"Date"</strong>, <strong>"Item"</strong>, and <strong>"Quantity"</strong>. The <strong>"Date"</strong> column must be in a valid Excel date format such as <em>dd/mm/yyyy, mm/dd/yyyy, or mm/yyyy</em>. The <strong>"Item"</strong> column can be either text or a number. The <strong>"Quantity"</strong> column must contain numeric values only, with or without decimals, and should not include any thousands separators (e.g., write "1000" instead of "1,000"). Both European (e.g., "1000,5") and US (e.g., "1000.5") decimal formats are accepted. The system will automatically detect the order of the columns based on their headers.</p>
+      </div>
+      
+      <div class="field">
+        <label for="historicalFile">
+          <i class="fas fa-upload"></i> Historical Data
+        </label>
+        <div class="file-upload">
+          <input type="file" id="historicalFile" accept=".xlsx,.xls,.csv" onchange="previewData(this)">
+          <div class="file-upload-label">
+            <i class="fas fa-file-upload"></i>
+            <span>Choose file or drag and drop</span>
+          </div>
+        </div>
+        <div class="data-preview" id="dataPreview">
+          <h4>Data Preview</h4>
+          <div id="previewTable"></div>
+        </div>
+      </div>
+      
+      <div class="grid">
+        <div class="field">
+          <label for="timeUnit">
+            <i class="fas fa-clock"></i> Time Unit
+          </label>
+          <div class="input-group">
+            <i class="fas fa-calendar"></i>
+            <select id="timeUnit">
+              <option value="monthly">Monthly</option>
+              <option value="weekly">Weekly</option>
+              <option value="daily">Daily</option>
+            </select>
+          </div>
         </div>
         
         <div class="field">
-          <label for="historicalFile">
-            <i class="fas fa-upload"></i> Historical Data
+          <label for="periodCount">
+            <i class="fas fa-hashtag"></i> Forecast Periods
           </label>
-          <div class="file-upload">
-            <input type="file" id="historicalFile" accept=".xlsx,.xls,.csv" onchange="previewData(this)">
-            <div class="file-upload-label">
-              <i class="fas fa-file-upload"></i>
-              <span>Choose file or drag and drop</span>
-            </div>
-          </div>
-          <div class="data-preview" id="dataPreview">
-            <h4>Data Preview</h4>
-            <div id="previewTable"></div>
+          <div class="input-group">
+            <i class="fas fa-chart-bar"></i>
+            <input type="number" id="periodCount" min="1" max="120" placeholder="e.g. 12" value="12">
           </div>
         </div>
         
-        <div class="grid">
-          <div class="field">
-            <label for="timeUnit">
-              <i class="fas fa-clock"></i> Time Unit
-            </label>
-            <div class="input-group">
-              <i class="fas fa-calendar"></i>
-              <select id="timeUnit">
-                <option value="monthly">Monthly</option>
-                <option value="weekly">Weekly</option>
-                <option value="daily">Daily</option>
-              </select>
-            </div>
+        <div class="field">
+          <label for="dateFormat">
+            <i class="fas fa-globe"></i> Date Format
+          </label>
+          <div class="input-group">
+            <i class="fas fa-calendar-alt"></i>
+            <select id="dateFormat">
+              <option value="EUR">EUR (DD/MM/YYYY)</option>
+              <option value="US">US (MM/DD/YYYY)</option>
+            </select>
           </div>
-          
-          <div class="field">
-            <label for="periodCount">
-              <i class="fas fa-hashtag"></i> Forecast Periods
-            </label>
-            <div class="input-group">
-              <i class="fas fa-chart-bar"></i>
-              <input type="number" id="periodCount" min="1" max="120" placeholder="e.g. 12" value="12">
-            </div>
+        </div>
+        
+        <div class="field">
+          <label for="decimalPlaces">
+            <i class="fas fa-calculator"></i> Decimal(s)
+          </label>
+          <div class="input-group">
+            <i class="fas fa-hashtag"></i>
+            <select id="decimalPlaces">
+              <option value="0">0</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+            </select>
           </div>
-          
-          <div class="field">
-            <label for="dateFormat">
-              <i class="fas fa-globe"></i> Date Format
-            </label>
-            <div class="input-group">
-              <i class="fas fa-calendar-alt"></i>
-              <select id="dateFormat">
-                <option value="EUR">EUR (DD/MM/YYYY)</option>
-                <option value="US">US (MM/DD/YYYY)</option>
-              </select>
-            </div>
+        </div>
+        
+        <div class="field">
+          <label for="allowNegative">
+            <i class="fas fa-shield-alt"></i> Allow Negative Forecast Values
+          </label>
+          <div class="input-group">
+            <i class="fas fa-minus-circle"></i>
+            <select id="allowNegative">
+              <option value="false">No</option>
+              <option value="true">Yes</option>
+            </select>
           </div>
-          
-          <div class="field">
-            <label for="decimalPlaces">
-              <i class="fas fa-calculator"></i> Decimal(s)
-            </label>
-            <div class="input-group">
-              <i class="fas fa-hashtag"></i>
-              <select id="decimalPlaces">
-                <option value="0">0</option>
-                <option value="1">1</option>
-                <option value="2">2</option>
-              </select>
-            </div>
-          </div>
-          
-          <div class="field">
-            <label for="allowNegative">
-              <i class="fas fa-shield-alt"></i> Allow Negative Forecast Values
-            </label>
-            <div class="input-group">
-              <i class="fas fa-minus-circle"></i>
-              <select id="allowNegative">
-                <option value="false">No</option>
-                <option value="true">Yes</option>
-              </select>
-            </div>
-          </div>
+        </div>
           <!-- Model Selection UI -->
           <div class="field">
             <label for="modelSelect">
@@ -1162,11 +1162,11 @@
                 <option value="arima">ARIMA</option>
                 <option value="holtwinters">Holt-Winters</option>
                 <option value="prophet">Prophet</option>
-              </select>
-            </div>
+            </select>
           </div>
         </div>
-        
+      </div>
+      
         <!-- Scenario Adjustment Section -->
         <div class="scenario-section" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-color); border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
           <h3 style="margin-bottom: 1rem; color: var(--text-primary);">
@@ -1258,298 +1258,298 @@
 
         
 
-        
-        <button class="btn btn-primary" onclick="generateForecast()" id="generateBtn">
-          <i class="fas fa-rocket"></i>
-          Generate Forecast
-        </button>
-        
-        <button class="btn btn-back" onclick="showPage('homePage')">
-          <i class="fas fa-arrow-left"></i>
-          Back to Home
-        </button>
-        
-        <!-- Forecast Preview Chart -->
-        <div class="forecast-preview" id="forecastPreview">
-          <h3><i class="fas fa-chart-line"></i> Forecast Preview</h3>
-          <div class="chart-container">
-            <canvas id="forecastChart"></canvas>
-          </div>
-          <div class="chart-summary" id="chartSummary">
-            <h4>Summary</h4>
-            <p id="summaryText"></p>
-          </div>
-          <div class="download-options" id="downloadOptions" style="display: none;">
-            <h4><i class="fas fa-download"></i> Download Forecast</h4>
-            <div class="download-buttons">
-              <button class="btn btn-primary" onclick="downloadForecast('xlsx')">
-                <i class="fas fa-file-excel"></i>
-                Download Excel (.xlsx)
-              </button>
-              <button class="btn btn-secondary" onclick="downloadForecast('csv')">
-                <i class="fas fa-file-csv"></i>
-                Download CSV (.csv)
-              </button>
-            </div>
-          </div>
+      
+      <button class="btn btn-primary" onclick="generateForecast()" id="generateBtn">
+        <i class="fas fa-rocket"></i>
+        Generate Forecast
+      </button>
+      
+      <button class="btn btn-back" onclick="showPage('homePage')">
+        <i class="fas fa-arrow-left"></i>
+        Back to Home
+      </button>
+      
+      <!-- Forecast Preview Chart -->
+      <div class="forecast-preview" id="forecastPreview">
+        <h3><i class="fas fa-chart-line"></i> Forecast Preview</h3>
+        <div class="chart-container">
+          <canvas id="forecastChart"></canvas>
         </div>
-      </div>
-
-
-    </div>
-
-    <!-- Modal -->
-    <div class="modal" id="modal">
-      <div class="modal-content">
-        <div class="spinner" id="modalSpinner"></div>
-        <p class="modal-text" id="modalText">Processing your request<span id="dots">.</span></p>
-        <div class="progress-container" id="progressContainer" style="display: none;">
-          <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
-          </div>
-          <div class="progress-text" id="progressText">Processing...</div>
+        <div class="chart-summary" id="chartSummary">
+          <h4>Summary</h4>
+          <p id="summaryText"></p>
         </div>
-        <div class="modal-details" id="modalDetails" style="display: none;"></div>
-        <div class="modal-buttons" id="modalButtons" style="display: none;">
-          <button class="btn btn-back" onclick="hideModal()">
-            <i class="fas fa-arrow-left"></i>
-            Back
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Add after the main modal, before </body> -->
-    <div class="modal" id="authModal">
-      <div class="modal-content" style="max-width: 400px;">
-        <a href="/" class="site-logo" style="position: static; margin-bottom: 1.5rem; display: flex; justify-content: center;">
-          <img src="static/logo.png" alt="r4ise logo" style="width: 60px; height: 60px; border-radius: 16px; box-shadow: 0 2px 8px rgba(99,102,241,0.10); background: #fff; padding: 5px;" />
-        </a>
-        <h2 id="authTitle" style="margin-bottom: 1rem; color: var(--primary-color);">Sign In</h2>
-        <form id="authForm">
-          <div class="field">
-            <label for="authEmail">Email</label>
-            <input type="email" id="authEmail" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
-          </div>
-          <div class="field">
-            <label for="authPassword">Password</label>
-            <input type="password" id="authPassword" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
-          </div>
-          <div class="field" id="authError" style="color: var(--error-color); font-size: 0.95rem; display: none;"></div>
-          <button type="submit" class="btn btn-primary" id="authSubmitBtn">Sign In</button>
-          <button type="button" class="btn btn-secondary" id="toggleAuthMode" style="margin-top: 0.5rem;">Don't have an account? Register</button>
-          
-          <div style="margin-top: 1rem; text-align: center;">
-            <div style="margin: 1rem 0; color: var(--text-secondary);">or</div>
-            <button type="button" class="btn btn-secondary" id="googleSignInBtn" style="background: white; color: #333; border: 1px solid #ddd;">
-              <span style="display: inline-block; width: 20px; height: 20px; vertical-align: middle; margin-right: 0.5rem;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
-                  <g>
-                    <path fill="#4285F4" d="M24 9.5c3.54 0 6.36 1.46 7.82 2.68l5.8-5.8C34.36 3.36 29.64 1 24 1 14.82 1 6.98 6.98 3.34 15.02l6.74 5.23C12.36 13.36 17.64 9.5 24 9.5z"/>
-                    <path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.43-4.74H24v9.02h12.42c-.54 2.92-2.18 5.39-4.66 7.06l7.18 5.59C43.98 37.02 46.1 31.23 46.1 24.5z"/>
-                    <path fill="#FBBC05" d="M10.08 28.25c-1.08-3.23-1.08-6.77 0-10l-6.74-5.23C.98 13.98 0 18.82 0 24c0 5.18.98 10.02 3.34 13.98l6.74-5.23z"/>
-                    <path fill="#EA4335" d="M24 46.5c5.64 0 10.36-1.86 13.82-5.09l-7.18-5.59c-2.02 1.36-4.6 2.18-7.64 2.18-6.36 0-11.64-3.86-13.92-9.25l-6.74-5.23C6.98 41.02 14.82 46.5 24 46.5z"/>
-                    <path fill="none" d="M0 0h48v48H0z"/>
-                  </g>
-                </svg>
-              </span>
-              Continue with Google
+        <div class="download-options" id="downloadOptions" style="display: none;">
+          <h4><i class="fas fa-download"></i> Download Forecast</h4>
+          <div class="download-buttons">
+            <button class="btn btn-primary" onclick="downloadForecast('xlsx')">
+              <i class="fas fa-file-excel"></i>
+              Download Excel (.xlsx)
+            </button>
+            <button class="btn btn-secondary" onclick="downloadForecast('csv')">
+              <i class="fas fa-file-csv"></i>
+              Download CSV (.csv)
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
 
-    <!-- Pricing Plans Modal -->
+
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="modal-content">
+      <div class="spinner" id="modalSpinner"></div>
+      <p class="modal-text" id="modalText">Processing your request<span id="dots">.</span></p>
+      <div class="progress-container" id="progressContainer" style="display: none;">
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="progress-text" id="progressText">Processing...</div>
+      </div>
+      <div class="modal-details" id="modalDetails" style="display: none;"></div>
+      <div class="modal-buttons" id="modalButtons" style="display: none;">
+        <button class="btn btn-back" onclick="hideModal()">
+          <i class="fas fa-arrow-left"></i>
+          Back
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add after the main modal, before </body> -->
+  <div class="modal" id="authModal">
+    <div class="modal-content" style="max-width: 400px;">
+      <a href="/" class="site-logo" style="position: static; margin-bottom: 1.5rem; display: flex; justify-content: center;">
+        <img src="static/logo.png" alt="r4ise logo" style="width: 60px; height: 60px; border-radius: 16px; box-shadow: 0 2px 8px rgba(99,102,241,0.10); background: #fff; padding: 5px;" />
+      </a>
+      <h2 id="authTitle" style="margin-bottom: 1rem; color: var(--primary-color);">Sign In</h2>
+      <form id="authForm">
+        <div class="field">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+        </div>
+        <div class="field">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" required style="width: 100%; padding: 0.75rem; border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+        </div>
+        <div class="field" id="authError" style="color: var(--error-color); font-size: 0.95rem; display: none;"></div>
+        <button type="submit" class="btn btn-primary" id="authSubmitBtn">Sign In</button>
+        <button type="button" class="btn btn-secondary" id="toggleAuthMode" style="margin-top: 0.5rem;">Don't have an account? Register</button>
+        
+        <div style="margin-top: 1rem; text-align: center;">
+          <div style="margin: 1rem 0; color: var(--text-secondary);">or</div>
+          <button type="button" class="btn btn-secondary" id="googleSignInBtn" style="background: white; color: #333; border: 1px solid #ddd;">
+            <span style="display: inline-block; width: 20px; height: 20px; vertical-align: middle; margin-right: 0.5rem;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+                <g>
+                  <path fill="#4285F4" d="M24 9.5c3.54 0 6.36 1.46 7.82 2.68l5.8-5.8C34.36 3.36 29.64 1 24 1 14.82 1 6.98 6.98 3.34 15.02l6.74 5.23C12.36 13.36 17.64 9.5 24 9.5z"/>
+                  <path fill="#34A853" d="M46.1 24.5c0-1.64-.15-3.22-.43-4.74H24v9.02h12.42c-.54 2.92-2.18 5.39-4.66 7.06l7.18 5.59C43.98 37.02 46.1 31.23 46.1 24.5z"/>
+                  <path fill="#FBBC05" d="M10.08 28.25c-1.08-3.23-1.08-6.77 0-10l-6.74-5.23C.98 13.98 0 18.82 0 24c0 5.18.98 10.02 3.34 13.98l6.74-5.23z"/>
+                  <path fill="#EA4335" d="M24 46.5c5.64 0 10.36-1.86 13.82-5.09l-7.18-5.59c-2.02 1.36-4.6 2.18-7.64 2.18-6.36 0-11.64-3.86-13.92-9.25l-6.74-5.23C6.98 41.02 14.82 46.5 24 46.5z"/>
+                  <path fill="none" d="M0 0h48v48H0z"/>
+                </g>
+              </svg>
+            </span>
+            Continue with Google
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Pricing Plans Modal -->
     <!-- <div class="modal" id="pricingModal"> ... </div> -->
 
-    <script>
-      const modal = document.getElementById('modal');
-      const dots = document.getElementById('dots');
-      let dotInterval;
+  <script>
+    const modal = document.getElementById('modal');
+    const dots = document.getElementById('dots');
+    let dotInterval;
 
-      function showPage(id) {
-        document.querySelectorAll('.card').forEach(div => {
-          div.classList.add('hidden');
-          div.classList.remove('fade-in', 'slide-in');
-        });
-        const targetPage = document.getElementById(id);
-        targetPage.classList.remove('hidden');
-        targetPage.classList.add(id === 'homePage' ? 'fade-in' : 'slide-in');
-        
-        // Reset form states
-        if (id === 'forecastPage') {
-          resetForecastForm();
-        }
+    function showPage(id) {
+      document.querySelectorAll('.card').forEach(div => {
+        div.classList.add('hidden');
+        div.classList.remove('fade-in', 'slide-in');
+      });
+      const targetPage = document.getElementById(id);
+      targetPage.classList.remove('hidden');
+      targetPage.classList.add(id === 'homePage' ? 'fade-in' : 'slide-in');
+      
+      // Reset form states
+      if (id === 'forecastPage') {
+        resetForecastForm();
       }
+    }
 
-      function resetForecastForm() {
-        document.getElementById('historicalFile').value = '';
-        document.getElementById('periodCount').value = '12';
-        document.getElementById('dateFormat').value = 'EUR';
-        document.getElementById('decimalPlaces').value = '0';
-        document.getElementById('allowNegative').value = 'false';
-        document.getElementById('dataPreview').style.display = 'none';
-        document.getElementById('forecastPreview').style.display = 'none';
-        document.getElementById('downloadOptions').style.display = 'none';
-        document.getElementById('generateBtn').disabled = false;
-        updateFileLabel('historicalFile', 'Choose file or drag and drop');
-        // Clear stored forecast settings
-        window.forecastSettings = null;
+    function resetForecastForm() {
+      document.getElementById('historicalFile').value = '';
+      document.getElementById('periodCount').value = '12';
+      document.getElementById('dateFormat').value = 'EUR';
+      document.getElementById('decimalPlaces').value = '0';
+      document.getElementById('allowNegative').value = 'false';
+      document.getElementById('dataPreview').style.display = 'none';
+      document.getElementById('forecastPreview').style.display = 'none';
+      document.getElementById('downloadOptions').style.display = 'none';
+      document.getElementById('generateBtn').disabled = false;
+      updateFileLabel('historicalFile', 'Choose file or drag and drop');
+      // Clear stored forecast settings
+      window.forecastSettings = null;
+    }
+
+
+
+    function updateFileLabel(inputId, defaultText) {
+      const input = document.getElementById(inputId);
+      const label = input.parentElement.querySelector('.file-upload-label');
+      label.classList.remove('success', 'error');
+      label.innerHTML = `<i class="fas fa-file-upload"></i><span>${defaultText}</span>`;
+    }
+
+    function showModal(msg, details = null, showButtons = false, showProgress = false) {
+      document.getElementById('modalText').textContent = msg;
+      const detailsDiv = document.getElementById('modalDetails');
+      const buttonsDiv = document.getElementById('modalButtons');
+      const spinner = document.getElementById('modalSpinner');
+      const progressContainer = document.getElementById('progressContainer');
+      
+      if (details) {
+        detailsDiv.innerHTML = details;
+        detailsDiv.style.display = 'block';
+      } else {
+        detailsDiv.style.display = 'none';
       }
-
-
-
-      function updateFileLabel(inputId, defaultText) {
-        const input = document.getElementById(inputId);
-        const label = input.parentElement.querySelector('.file-upload-label');
-        label.classList.remove('success', 'error');
-        label.innerHTML = `<i class="fas fa-file-upload"></i><span>${defaultText}</span>`;
-      }
-
-      function showModal(msg, details = null, showButtons = false, showProgress = false) {
-        document.getElementById('modalText').textContent = msg;
-        const detailsDiv = document.getElementById('modalDetails');
-        const buttonsDiv = document.getElementById('modalButtons');
-        const spinner = document.getElementById('modalSpinner');
-        const progressContainer = document.getElementById('progressContainer');
-        
-        if (details) {
-          detailsDiv.innerHTML = details;
-          detailsDiv.style.display = 'block';
-        } else {
-          detailsDiv.style.display = 'none';
-        }
-        
-        if (showButtons) {
-          buttonsDiv.style.display = 'flex';
-          spinner.style.display = 'none';
-          progressContainer.style.display = 'none';
-          clearInterval(dotInterval);
-        } else if (showProgress) {
-          buttonsDiv.style.display = 'none';
-          spinner.style.display = 'none';
-          progressContainer.style.display = 'block';
-          simulateProgress();
-        } else {
-          buttonsDiv.style.display = 'none';
-          progressContainer.style.display = 'none';
-          spinner.style.display = 'block';
-        let count = 1;
-        dotInterval = setInterval(() => {
-          dots.textContent = '.'.repeat(count);
-          count = count === 3 ? 1 : count + 1;
-        }, 500);
-        }
-        
-        modal.style.display = 'flex';
-      }
-
-      function hideModal() {
-        modal.style.display = 'none';
+      
+      if (showButtons) {
+        buttonsDiv.style.display = 'flex';
+        spinner.style.display = 'none';
+        progressContainer.style.display = 'none';
         clearInterval(dotInterval);
+      } else if (showProgress) {
+        buttonsDiv.style.display = 'none';
+        spinner.style.display = 'none';
+        progressContainer.style.display = 'block';
+        simulateProgress();
+      } else {
+        buttonsDiv.style.display = 'none';
+        progressContainer.style.display = 'none';
+        spinner.style.display = 'block';
+      let count = 1;
+      dotInterval = setInterval(() => {
+        dots.textContent = '.'.repeat(count);
+        count = count === 3 ? 1 : count + 1;
+      }, 500);
       }
+      
+      modal.style.display = 'flex';
+    }
+
+    function hideModal() {
+      modal.style.display = 'none';
+      clearInterval(dotInterval);
+    }
 
 
 
-      function simulateProgress() {
-        const fill = document.getElementById('progressFill');
-        const text = document.getElementById('progressText');
-        let progress = 0;
-        const interval = setInterval(() => {
-          progress += Math.random() * 15;
-          if (progress > 90) progress = 90;
-          fill.style.width = progress + '%';
-          text.textContent = `Processing... ${Math.round(progress)}%`;
-          if (progress >= 90) {
-            clearInterval(interval);
+    function simulateProgress() {
+      const fill = document.getElementById('progressFill');
+      const text = document.getElementById('progressText');
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += Math.random() * 15;
+        if (progress > 90) progress = 90;
+        fill.style.width = progress + '%';
+        text.textContent = `Processing... ${Math.round(progress)}%`;
+        if (progress >= 90) {
+          clearInterval(interval);
+        }
+      }, 500);
+    }
+
+    function previewData(input) {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const wb = XLSX.read(e.target.result, { type: 'binary' });
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+          
+          if (data.length > 0) {
+            const headers = data[0];
+            const preview = data.slice(1, 6); // Show first 5 rows
+            
+            let tableHTML = '<table><thead><tr>';
+            headers.forEach(header => {
+              tableHTML += `<th>${header}</th>`;
+            });
+            tableHTML += '</tr></thead><tbody>';
+            
+            preview.forEach(row => {
+              tableHTML += '<tr>';
+              row.forEach((cell, index) => {
+                const header = headers[index] ? headers[index].toLowerCase() : '';
+                let displayValue = cell === undefined || cell === null ? '' : cell;
+
+                // Format quantity columns to 2 decimals
+                if (header.includes('quantity') || header.includes('qty') || header.includes('amount')) {
+                  displayValue = Number(cell).toFixed(2);
+                }
+                // Only try to convert to date if header is a date/time/period column
+                else if (header.includes('date') || header.includes('time') || header.includes('period')) {
+                  if (typeof cell === 'number' && cell > 1000) {
+                    try {
+                      const excelDate = new Date((cell - 25569) * 86400 * 1000);
+                      if (!isNaN(excelDate.getTime())) {
+                        displayValue = excelDate.toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short'
+                        });
+                      }
+                    } catch (dateError) {
+                      // If date conversion fails, keep original value
+                      console.log('Date conversion failed for:', cell);
+                    }
+                  }
+                }
+                // For item id and all other columns, just display as string
+
+                tableHTML += `<td>${displayValue}</td>`;
+              });
+              tableHTML += '</tr>';
+            });
+            tableHTML += '</tbody></table>';
+            
+            document.getElementById('previewTable').innerHTML = tableHTML;
+            document.getElementById('dataPreview').style.display = 'block';
           }
-        }, 500);
-      }
+        } catch (error) {
+          console.error('Error previewing data:', error);
+        }
+      };
+      reader.readAsBinaryString(file);
+    }
 
-      function previewData(input) {
-        const file = input.files[0];
-        if (!file) return;
-
+    function readFileAsCSV(file) {
+      return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = e => {
           try {
             const wb = XLSX.read(e.target.result, { type: 'binary' });
             const sheet = wb.Sheets[wb.SheetNames[0]];
-            const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-            
-            if (data.length > 0) {
-              const headers = data[0];
-              const preview = data.slice(1, 6); // Show first 5 rows
-              
-              let tableHTML = '<table><thead><tr>';
-              headers.forEach(header => {
-                tableHTML += `<th>${header}</th>`;
-              });
-              tableHTML += '</tr></thead><tbody>';
-              
-              preview.forEach(row => {
-                tableHTML += '<tr>';
-                row.forEach((cell, index) => {
-                  const header = headers[index] ? headers[index].toLowerCase() : '';
-                  let displayValue = cell === undefined || cell === null ? '' : cell;
-
-                  // Format quantity columns to 2 decimals
-                  if (header.includes('quantity') || header.includes('qty') || header.includes('amount')) {
-                    displayValue = Number(cell).toFixed(2);
-                  }
-                  // Only try to convert to date if header is a date/time/period column
-                  else if (header.includes('date') || header.includes('time') || header.includes('period')) {
-                    if (typeof cell === 'number' && cell > 1000) {
-                      try {
-                        const excelDate = new Date((cell - 25569) * 86400 * 1000);
-                        if (!isNaN(excelDate.getTime())) {
-                          displayValue = excelDate.toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short'
-                          });
-                        }
-                      } catch (dateError) {
-                        // If date conversion fails, keep original value
-                        console.log('Date conversion failed for:', cell);
-                      }
-                    }
-                  }
-                  // For item id and all other columns, just display as string
-
-                  tableHTML += `<td>${displayValue}</td>`;
-                });
-                tableHTML += '</tr>';
-              });
-              tableHTML += '</tbody></table>';
-              
-              document.getElementById('previewTable').innerHTML = tableHTML;
-              document.getElementById('dataPreview').style.display = 'block';
-            }
-          } catch (error) {
-            console.error('Error previewing data:', error);
+            const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ',', RS: '\n', strip: true });
+            resolve(csv);
+          } catch (err) {
+            reject(err);
           }
         };
+        reader.onerror = e => reject(e);
         reader.readAsBinaryString(file);
-      }
-
-      function readFileAsCSV(file) {
-        return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = e => {
-            try {
-              const wb = XLSX.read(e.target.result, { type: 'binary' });
-              const sheet = wb.Sheets[wb.SheetNames[0]];
-              const csv = XLSX.utils.sheet_to_csv(sheet, { FS: ',', RS: '\n', strip: true });
-              resolve(csv);
-            } catch (err) {
-              reject(err);
-            }
-          };
-          reader.onerror = e => reject(e);
-          reader.readAsBinaryString(file);
-        });
-      }
+      });
+    }
 
       // Scenario Adjustment Functions
       let scenarioAdjustments = [];
@@ -1575,9 +1575,9 @@
         }
         if (!factor || factor <= 0) {
           showError('Please enter a valid adjustment factor (greater than 0)');
-          return;
-        }
-        
+        return;
+      }
+      
         // Add to adjustments array
         const adjustment = {
           name: name,
@@ -1616,8 +1616,8 @@
           table.style.display = 'none';
           applyBtn.style.display = 'none';
           clearBtn.style.display = 'none';
-          return;
-        }
+        return;
+      }
         
         table.style.display = 'block';
         applyBtn.style.display = 'inline-flex';
@@ -1688,43 +1688,43 @@
         //   showPricingModal();
         //   return;
         // }
+      
+      // Proceed with forecast generation
+      const file = document.getElementById('historicalFile').files[0];
+      const timeUnit = document.getElementById('timeUnit').value;
+      const periods = document.getElementById('periodCount').value.trim();
+      const dateFormat = document.getElementById('dateFormat').value;
+      const decimalPlaces = document.getElementById('decimalPlaces').value;
+      const allowNegative = document.getElementById('allowNegative').value === 'true';
+
+      if (!file) {
+        showError('Please upload a historical data file');
+        return;
+      }
+
+      if (!periods || periods < 1 || periods > 120) {
+        showError('Please specify a valid number of periods (1-120)');
+        return;
+      }
+
+      const generateBtn = document.getElementById('generateBtn');
+      generateBtn.disabled = true;
+      showModal("Analyzing your data and generating forecasts...", null, false, true);
+
+      try {
+        const csv = await readFileAsCSV(file);
+        console.log('Sending forecast request...');
         
-        // Proceed with forecast generation
-        const file = document.getElementById('historicalFile').files[0];
-        const timeUnit = document.getElementById('timeUnit').value;
-        const periods = document.getElementById('periodCount').value.trim();
-        const dateFormat = document.getElementById('dateFormat').value;
-        const decimalPlaces = document.getElementById('decimalPlaces').value;
-        const allowNegative = document.getElementById('allowNegative').value === 'true';
-
-        if (!file) {
-          showError('Please upload a historical data file');
-          return;
-        }
-
-        if (!periods || periods < 1 || periods > 120) {
-          showError('Please specify a valid number of periods (1-120)');
-          return;
-        }
-
-        const generateBtn = document.getElementById('generateBtn');
-        generateBtn.disabled = true;
-        showModal("Analyzing your data and generating forecasts...", null, false, true);
-
-        try {
-          const csv = await readFileAsCSV(file);
-          console.log('Sending forecast request...');
-          
-          // Store current settings for later download
-          window.forecastSettings = {
-            csv,
-            timeUnit,
-            periods,
-            dateFormat,
-            decimalPlaces: parseInt(decimalPlaces),
-            allowNegative: allowNegative
-          };
-          
+        // Store current settings for later download
+        window.forecastSettings = {
+          csv,
+          timeUnit,
+          periods,
+          dateFormat,
+          decimalPlaces: parseInt(decimalPlaces),
+          allowNegative: allowNegative
+        };
+        
           // Model selection flags
           const modelSelect = document.getElementById('modelSelect');
           let useARIMA = false, useHW = false, useProphet = false;
@@ -1763,96 +1763,96 @@
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
-          });
-          
-          console.log('Response status:', res.status);
-          console.log('Response headers:', Object.fromEntries(res.headers.entries()));
-          
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.error || "Forecast generation failed");
-          }
-          
-          // Handle response for preview
-          const contentType = res.headers.get('content-type');
-          console.log('Content-Type:', contentType);
-          const blob = await res.blob();
-          console.log('Blob size:', blob.size);
-          
-          // Parse and show preview
-          await parseForecastAndCreateChart(blob, 'csv');
-          showSuccess('Forecast generated successfully! Preview is now available.');
-          
-        } catch (e) {
-          console.error('Forecast error:', e);
-          showError('Error: ' + e.message);
-        } finally {
-          generateBtn.disabled = false;
-          hideModal();
+        });
+        
+        console.log('Response status:', res.status);
+        console.log('Response headers:', Object.fromEntries(res.headers.entries()));
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Forecast generation failed");
         }
-      }
-
-
-
-      function showError(message) {
-        showModal('Error', `<div style="color: var(--error-color); font-weight: 600;">${message}</div>`, true);
-      }
-
-      function showSuccess(message) {
-        showModal('Success', `<div style="color: var(--secondary-color); font-weight: 600;">${message}</div>`);
-        setTimeout(hideModal, 2000);
-      }
-
-      function downloadCSV(text, filename) {
-        const blob = new Blob([text], { type: 'text/csv' });
-        downloadBlob(blob, filename);
-      }
-
-      function downloadBlob(blob, filename) {
-        console.log('Starting download for:', filename);
-        console.log('Blob type:', blob.type);
+        
+        // Handle response for preview
+        const contentType = res.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+        const blob = await res.blob();
         console.log('Blob size:', blob.size);
         
-        // Single download method to prevent duplicate popups
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.style.display = 'none';
+        // Parse and show preview
+        await parseForecastAndCreateChart(blob, 'csv');
+        showSuccess('Forecast generated successfully! Preview is now available.');
         
-        // Add to DOM and trigger
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Cleanup
-        setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 2000);
-        
-        console.log('Download triggered for:', filename);
+      } catch (e) {
+        console.error('Forecast error:', e);
+        showError('Error: ' + e.message);
+      } finally {
+        generateBtn.disabled = false;
+        hideModal();
       }
+    }
+
+
+
+    function showError(message) {
+      showModal('Error', `<div style="color: var(--error-color); font-weight: 600;">${message}</div>`, true);
+    }
+
+    function showSuccess(message) {
+      showModal('Success', `<div style="color: var(--secondary-color); font-weight: 600;">${message}</div>`);
+      setTimeout(hideModal, 2000);
+    }
+
+    function downloadCSV(text, filename) {
+      const blob = new Blob([text], { type: 'text/csv' });
+      downloadBlob(blob, filename);
+    }
+
+    function downloadBlob(blob, filename) {
+      console.log('Starting download for:', filename);
+      console.log('Blob type:', blob.type);
+      console.log('Blob size:', blob.size);
       
-      // Parse forecast data and create chart
-      async function parseForecastAndCreateChart(blob, outputFormat) {
-        try {
-          let forecastData = [];
+      // Single download method to prevent duplicate popups
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      link.style.display = 'none';
+      
+      // Add to DOM and trigger
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 2000);
+      
+      console.log('Download triggered for:', filename);
+    }
+    
+    // Parse forecast data and create chart
+    async function parseForecastAndCreateChart(blob, outputFormat) {
+      try {
+        let forecastData = [];
           let bestModel = null;
           let bestModelCol = null;
           let header = [];
-          if (outputFormat === 'xlsx') {
-            // Parse Excel file
-            const arrayBuffer = await blob.arrayBuffer();
-            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-            const sheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[sheetName];
-            forecastData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-          } else {
-            // Parse CSV file
-            const text = await blob.text();
-            const lines = text.split('\n');
-            forecastData = lines.map(line => line.split(',').map(cell => cell.trim()));
-          }
+        if (outputFormat === 'xlsx') {
+          // Parse Excel file
+          const arrayBuffer = await blob.arrayBuffer();
+          const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          forecastData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        } else {
+          // Parse CSV file
+          const text = await blob.text();
+          const lines = text.split('\n');
+          forecastData = lines.map(line => line.split(',').map(cell => cell.trim()));
+        }
           if (forecastData.length < 2) return;
           header = forecastData[0];
           // --- Custom logic: Use TOTAL Prophet row if present ---
@@ -1933,633 +1933,633 @@
           const sortedDates = Object.keys(dateAggregation).sort();
           const dates = sortedDates;
           const quantities = sortedDates.map(date => dateAggregation[date]);
-          createForecastChart(dates, quantities);
+        createForecastChart(dates, quantities);
           showForecastSummary(Object.fromEntries(dates.map((d, i) => [d, quantities[i]])));
-          document.getElementById('forecastPreview').style.display = 'block';
-          document.getElementById('downloadOptions').style.display = 'block';
-          setTimeout(() => {
-            const previewElement = document.getElementById('forecastPreview');
+        document.getElementById('forecastPreview').style.display = 'block';
+        document.getElementById('downloadOptions').style.display = 'block';
+        setTimeout(() => {
+          const previewElement = document.getElementById('forecastPreview');
             const offset = 80;
-            const elementPosition = previewElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - offset;
-            const startPosition = window.pageYOffset;
-            const distance = offsetPosition - startPosition;
+          const elementPosition = previewElement.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.pageYOffset - offset;
+          const startPosition = window.pageYOffset;
+          const distance = offsetPosition - startPosition;
             const duration = 1200;
-            let start = null;
-            function animation(currentTime) {
-              if (start === null) start = currentTime;
-              const timeElapsed = currentTime - start;
-              const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
-              window.scrollTo(0, run);
-              if (timeElapsed < duration) requestAnimationFrame(animation);
-            }
-            function easeInOutCubic(t, b, c, d) {
-              t /= d / 2;
-              if (t < 1) return c / 2 * t * t * t + b;
-              t -= 2;
-              return c / 2 * (t * t * t + 2) + b;
-            }
-            requestAnimationFrame(animation);
-          }, 500);
-        } catch (error) {
-          console.error('Error parsing forecast data:', error);
-        }
-      }
-      
-      function createForecastChart(dates, quantities) {
-        const ctx = document.getElementById('forecastChart').getContext('2d');
-        // Destroy existing chart if it exists and is a Chart.js instance
-        if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
-          window.forecastChart.destroy();
-        }
-        window.forecastChart = new Chart(ctx, {
-          type: 'line',
-          data: {
-            labels: dates,
-            datasets: [{
-              label: 'Total Forecast Quantity',
-              data: quantities,
-              borderColor: 'rgb(99, 102, 241)',
-              backgroundColor: 'rgba(99, 102, 241, 0.1)',
-              borderWidth: 3,
-              fill: true,
-              tension: 0.4,
-              pointBackgroundColor: 'rgb(99, 102, 241)',
-              pointBorderColor: '#fff',
-              pointBorderWidth: 2,
-              pointRadius: 4,
-              pointHoverRadius: 6
-            }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                display: false
-              },
-              tooltip: {
-                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                titleColor: '#fff',
-                bodyColor: '#fff',
-                borderColor: 'rgb(99, 102, 241)',
-                borderWidth: 1,
-                cornerRadius: 8,
-                displayColors: false,
-                callbacks: {
-                  title: function(context) {
-                    return 'Date: ' + context[0].label;
-                  },
-                  label: function(context) {
-                    return 'Forecast: ' + context.parsed.y.toLocaleString();
-                  }
-                }
-              }
-            },
-            scales: {
-              x: {
-                title: {
-                  display: true,
-                  text: 'Time Period',
-                  color: 'var(--text-secondary)',
-                  font: {
-                    size: 12,
-                    weight: '500'
-                  }
-                },
-                grid: {
-                  color: 'rgba(0, 0, 0, 0.1)',
-                  drawBorder: false
-                },
-                ticks: {
-                  color: 'var(--text-secondary)',
-                  maxTicksLimit: 8
-                }
-              },
-              y: {
-                title: {
-                  display: true,
-                  text: 'Total Forecast Quantity',
-                  color: 'var(--text-secondary)',
-                  font: {
-                    size: 12,
-                    weight: '500'
-                  }
-                },
-                grid: {
-                  color: 'rgba(0, 0, 0, 0.1)',
-                  drawBorder: false
-                },
-                ticks: {
-                  color: 'var(--text-secondary)',
-                  callback: function(value) {
-                    return value.toLocaleString();
-                  }
-                }
-              }
-            },
-            interaction: {
-              intersect: false,
-              mode: 'index'
-            }
+          let start = null;
+          function animation(currentTime) {
+            if (start === null) start = currentTime;
+            const timeElapsed = currentTime - start;
+            const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+            window.scrollTo(0, run);
+            if (timeElapsed < duration) requestAnimationFrame(animation);
           }
-        });
-      }
-      
-      function showForecastSummary(aggregatedData) {
-        const quantities = Object.values(aggregatedData);
-        const total = quantities.reduce((sum, qty) => sum + qty, 0);
-        const average = total / quantities.length;
-        const min = Math.min(...quantities);
-        const max = Math.max(...quantities);
-        const periods = quantities.length;
-        
-        const summaryText = `
-          <strong>Total Forecast:</strong> ${total.toLocaleString()} units<br>
-          <strong>Average per Period:</strong> ${average.toLocaleString(undefined, {maximumFractionDigits: 0})} units<br>
-          <strong>Range:</strong> ${min.toLocaleString()} - ${max.toLocaleString()} units<br>
-          <strong>Forecast Periods:</strong> ${periods} periods
-        `;
-        
-        document.getElementById('summaryText').innerHTML = summaryText;
-      }
-
-      async function downloadForecast(format) {
-        if (!window.forecastSettings) {
-          showError('No forecast data available. Please generate a forecast first.');
-          return;
-        }
-
-        const downloadBtn = event.target;
-        const originalText = downloadBtn.innerHTML;
-        downloadBtn.disabled = true;
-        downloadBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Generating...';
-
-        try {
-          const res = await fetch('/api/forecast', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              ...window.forecastSettings,
-              exportFormat: format
-            })
-          });
-          
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.error || "Download generation failed");
+          function easeInOutCubic(t, b, c, d) {
+            t /= d / 2;
+            if (t < 1) return c / 2 * t * t * t + b;
+            t -= 2;
+            return c / 2 * (t * t * t + 2) + b;
           }
-          
-          const blob = await res.blob();
-          const filename = format === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv';
-          
-          downloadBlob(blob, filename);
-          showSuccess(`${format.toUpperCase()} forecast downloaded successfully!`);
-          
-        } catch (e) {
-          console.error('Download error:', e);
-          showError('Error: ' + e.message);
-        } finally {
-          downloadBtn.disabled = false;
-          downloadBtn.innerHTML = originalText;
-        }
-      }
-
-      function downloadXLSX(csvText, filename) {
-        const rows = csvText.split('\n').map(r => r.split(',').map(c => c.trim()));
-        const ws = XLSX.utils.aoa_to_sheet(rows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Forecast');
-        XLSX.writeFile(wb, filename);
-      }
-
-      // File upload visual feedback
-      document.querySelectorAll('input[type="file"]').forEach(input => {
-        input.addEventListener('change', function() {
-          const label = this.parentElement.querySelector('.file-upload-label');
-          if (this.files.length > 0) {
-            label.classList.add('success');
-            label.innerHTML = `<i class="fas fa-check"></i><span>${this.files[0].name}</span>`;
-          } else {
-            label.classList.remove('success');
-            const defaultText = this.id === 'historicalFile' ? 'Choose file or drag and drop' : 'Choose file or drag and drop';
-            label.innerHTML = `<i class="fas fa-file-upload"></i><span>${defaultText}</span>`;
-          }
-        });
-      });
-
-      // Drag and drop functionality
-      document.querySelectorAll('.file-upload-label').forEach(label => {
-        label.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          label.style.borderColor = 'var(--primary-color)';
-          label.style.background = 'rgb(99 102 241 / 0.1)';
-        });
-
-        label.addEventListener('dragleave', (e) => {
-          e.preventDefault();
-          label.style.borderColor = 'var(--border-color)';
-          label.style.background = 'var(--bg-color)';
-        });
-
-        label.addEventListener('drop', (e) => {
-          e.preventDefault();
-          label.style.borderColor = 'var(--border-color)';
-          label.style.background = 'var(--bg-color)';
-          
-          const input = label.parentElement.querySelector('input[type="file"]');
-          const files = e.dataTransfer.files;
-          if (files.length > 0) {
-            input.files = files;
-            input.dispatchEvent(new Event('change'));
-          }
-        });
-      });
-
-      // Supabase config
-      const SUPABASE_URL = 'https://iayecqndmobjswtzoldb.supabase.co';
-      const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q';
-      
-      console.log('Supabase URL:', SUPABASE_URL);
-      console.log('Current location:', window.location.href);
-      
-      let supabase;
-      try {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('Supabase client initialized successfully');
+          requestAnimationFrame(animation);
+        }, 500);
       } catch (error) {
-        console.error('Failed to initialize Supabase client:', error);
-        // Fallback: show auth modal immediately
-        window.addEventListener('DOMContentLoaded', () => {
-          showAuthModal();
-        });
+        console.error('Error parsing forecast data:', error);
       }
-
-      // Auth modal logic
-      const authModal = document.getElementById('authModal');
-      const authForm = document.getElementById('authForm');
-      const authTitle = document.getElementById('authTitle');
-      const authError = document.getElementById('authError');
-      const authSubmitBtn = document.getElementById('authSubmitBtn');
-      const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
-      const googleSignInBtn = document.getElementById('googleSignInBtn');
-      let isSignIn = true;
-
-      function showAuthModal(mode = 'signin') {
-        authModal.style.display = 'flex';
-        authError.style.display = 'none';
-        authForm.reset();
-        
-        // Set the mode based on parameter
-        isSignIn = mode === 'signin';
-        
-        authTitle.textContent = isSignIn ? 'Sign In' : 'Register';
-        authSubmitBtn.textContent = isSignIn ? 'Sign In' : 'Register';
-        toggleAuthModeBtn.textContent = isSignIn ? "Don't have an account? Register" : 'Already have an account? Sign In';
+    }
+    
+    function createForecastChart(dates, quantities) {
+      const ctx = document.getElementById('forecastChart').getContext('2d');
+      // Destroy existing chart if it exists and is a Chart.js instance
+      if (window.forecastChart && typeof window.forecastChart.destroy === 'function') {
+        window.forecastChart.destroy();
       }
-      
-      function toggleAuthModal(mode = 'signin') {
-        showAuthModal(mode);
-      }
-      
-      function hideAuthModal() {
-        authModal.style.display = 'none';
-      }
-      toggleAuthModeBtn.onclick = function() {
-        isSignIn = !isSignIn;
-        showAuthModal();
-      };
-      authForm.onsubmit = async function(e) {
-        e.preventDefault();
-        authError.style.display = 'none';
-        authSubmitBtn.disabled = true;
-        const email = document.getElementById('authEmail').value.trim();
-        const password = document.getElementById('authPassword').value;
-        try {
-          // Use Flask backend authentication instead of Supabase client
-          const endpoint = isSignIn ? '/api/auth/signin' : '/api/auth/signup';
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+      window.forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: dates,
+          datasets: [{
+              label: 'Total Forecast Quantity',
+            data: quantities,
+            borderColor: 'rgb(99, 102, 241)',
+            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+            borderWidth: 3,
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgb(99, 102, 241)',
+            pointBorderColor: '#fff',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
             },
-            body: JSON.stringify({ email, password })
-          });
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              titleColor: '#fff',
+              bodyColor: '#fff',
+              borderColor: 'rgb(99, 102, 241)',
+              borderWidth: 1,
+              cornerRadius: 8,
+              displayColors: false,
+              callbacks: {
+                title: function(context) {
+                  return 'Date: ' + context[0].label;
+                },
+                label: function(context) {
+                  return 'Forecast: ' + context.parsed.y.toLocaleString();
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: {
+                display: true,
+                text: 'Time Period',
+                color: 'var(--text-secondary)',
+                font: {
+                  size: 12,
+                  weight: '500'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)',
+                drawBorder: false
+              },
+              ticks: {
+                color: 'var(--text-secondary)',
+                maxTicksLimit: 8
+              }
+            },
+            y: {
+              title: {
+                display: true,
+                  text: 'Total Forecast Quantity',
+                color: 'var(--text-secondary)',
+                font: {
+                  size: 12,
+                  weight: '500'
+                }
+              },
+              grid: {
+                color: 'rgba(0, 0, 0, 0.1)',
+                drawBorder: false
+              },
+              ticks: {
+                color: 'var(--text-secondary)',
+                callback: function(value) {
+                  return value.toLocaleString();
+                }
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
+        }
+      });
+    }
+    
+    function showForecastSummary(aggregatedData) {
+      const quantities = Object.values(aggregatedData);
+      const total = quantities.reduce((sum, qty) => sum + qty, 0);
+      const average = total / quantities.length;
+      const min = Math.min(...quantities);
+      const max = Math.max(...quantities);
+      const periods = quantities.length;
+      
+      const summaryText = `
+        <strong>Total Forecast:</strong> ${total.toLocaleString()} units<br>
+        <strong>Average per Period:</strong> ${average.toLocaleString(undefined, {maximumFractionDigits: 0})} units<br>
+        <strong>Range:</strong> ${min.toLocaleString()} - ${max.toLocaleString()} units<br>
+        <strong>Forecast Periods:</strong> ${periods} periods
+      `;
+      
+      document.getElementById('summaryText').innerHTML = summaryText;
+    }
+
+    async function downloadForecast(format) {
+      if (!window.forecastSettings) {
+        showError('No forecast data available. Please generate a forecast first.');
+        return;
+      }
+
+      const downloadBtn = event.target;
+      const originalText = downloadBtn.innerHTML;
+      downloadBtn.disabled = true;
+      downloadBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Generating...';
+
+      try {
+        const res = await fetch('/api/forecast', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            ...window.forecastSettings,
+            exportFormat: format
+          })
+        });
+        
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Download generation failed");
+        }
+        
+        const blob = await res.blob();
+        const filename = format === 'xlsx' ? 'AI_generated_Forecast.xlsx' : 'AI_generated_Forecast.csv';
+        
+        downloadBlob(blob, filename);
+        showSuccess(`${format.toUpperCase()} forecast downloaded successfully!`);
+        
+      } catch (e) {
+        console.error('Download error:', e);
+        showError('Error: ' + e.message);
+      } finally {
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = originalText;
+      }
+    }
+
+    function downloadXLSX(csvText, filename) {
+      const rows = csvText.split('\n').map(r => r.split(',').map(c => c.trim()));
+      const ws = XLSX.utils.aoa_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Forecast');
+      XLSX.writeFile(wb, filename);
+    }
+
+    // File upload visual feedback
+    document.querySelectorAll('input[type="file"]').forEach(input => {
+      input.addEventListener('change', function() {
+        const label = this.parentElement.querySelector('.file-upload-label');
+        if (this.files.length > 0) {
+          label.classList.add('success');
+          label.innerHTML = `<i class="fas fa-check"></i><span>${this.files[0].name}</span>`;
+        } else {
+          label.classList.remove('success');
+          const defaultText = this.id === 'historicalFile' ? 'Choose file or drag and drop' : 'Choose file or drag and drop';
+          label.innerHTML = `<i class="fas fa-file-upload"></i><span>${defaultText}</span>`;
+        }
+      });
+    });
+
+    // Drag and drop functionality
+    document.querySelectorAll('.file-upload-label').forEach(label => {
+      label.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        label.style.borderColor = 'var(--primary-color)';
+        label.style.background = 'rgb(99 102 241 / 0.1)';
+      });
+
+      label.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        label.style.borderColor = 'var(--border-color)';
+        label.style.background = 'var(--bg-color)';
+      });
+
+      label.addEventListener('drop', (e) => {
+        e.preventDefault();
+        label.style.borderColor = 'var(--border-color)';
+        label.style.background = 'var(--bg-color)';
+        
+        const input = label.parentElement.querySelector('input[type="file"]');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+          input.files = files;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+    });
+
+    // Supabase config
+    const SUPABASE_URL = 'https://iayecqndmobjswtzoldb.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q';
+    
+    console.log('Supabase URL:', SUPABASE_URL);
+    console.log('Current location:', window.location.href);
+    
+    let supabase;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('Supabase client initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize Supabase client:', error);
+      // Fallback: show auth modal immediately
+      window.addEventListener('DOMContentLoaded', () => {
+        showAuthModal();
+      });
+    }
+
+    // Auth modal logic
+    const authModal = document.getElementById('authModal');
+    const authForm = document.getElementById('authForm');
+    const authTitle = document.getElementById('authTitle');
+    const authError = document.getElementById('authError');
+    const authSubmitBtn = document.getElementById('authSubmitBtn');
+    const toggleAuthModeBtn = document.getElementById('toggleAuthMode');
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    let isSignIn = true;
+
+    function showAuthModal(mode = 'signin') {
+      authModal.style.display = 'flex';
+      authError.style.display = 'none';
+      authForm.reset();
+      
+      // Set the mode based on parameter
+      isSignIn = mode === 'signin';
+      
+      authTitle.textContent = isSignIn ? 'Sign In' : 'Register';
+      authSubmitBtn.textContent = isSignIn ? 'Sign In' : 'Register';
+      toggleAuthModeBtn.textContent = isSignIn ? "Don't have an account? Register" : 'Already have an account? Sign In';
+    }
+    
+    function toggleAuthModal(mode = 'signin') {
+      showAuthModal(mode);
+    }
+    
+    function hideAuthModal() {
+      authModal.style.display = 'none';
+    }
+    toggleAuthModeBtn.onclick = function() {
+      isSignIn = !isSignIn;
+      showAuthModal();
+    };
+    authForm.onsubmit = async function(e) {
+      e.preventDefault();
+      authError.style.display = 'none';
+      authSubmitBtn.disabled = true;
+      const email = document.getElementById('authEmail').value.trim();
+      const password = document.getElementById('authPassword').value;
+      try {
+        // Use Flask backend authentication instead of Supabase client
+        const endpoint = isSignIn ? '/api/auth/signin' : '/api/auth/signup';
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(result.error || 'Authentication failed');
+        }
+        
+        // Store the token locally
+        if (result.token) {
+          localStorage.setItem('auth_token', result.token);
+          localStorage.setItem('user_email', result.user.email);
+        }
+        
+        hideAuthModal();
+        onAuthStateChanged();
+        
+        // If we were on the forecast page, stay there and show subscription status
+        if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
+          setTimeout(updateSubscriptionUI, 100);
+        }
+      } catch (err) {
+        authError.textContent = err.message;
+        authError.style.display = 'block';
+      } finally {
+        authSubmitBtn.disabled = false;
+      }
+    };
+
+    // Google Sign-in functionality
+    googleSignInBtn.onclick = async function() {
+      try {
+        authError.style.display = 'none';
+        googleSignInBtn.disabled = true;
+        googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
+        
+        console.log('Starting Google OAuth flow...');
+        
+        // Use redirect-based OAuth with explicit redirectTo
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo: 'https://r4ise.up.railway.app/',
+            queryParams: {
+              access_type: 'offline',
+              prompt: 'consent'
+            }
+          }
+        });
+        
+        if (error) throw error;
+        
+        console.log('Google sign-in initiated:', data);
+        console.log('OAuth URL:', data?.url);
+        
+        // If we get a URL, redirect to it
+        if (data?.url) {
+          console.log('OAuth URL received:', data.url);
+          console.log('About to redirect to:', data.url);
           
-          const result = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(result.error || 'Authentication failed');
+          // Check if the URL contains localhost
+          if (data.url.includes('localhost')) {
+            console.error('ERROR: OAuth URL contains localhost!');
+            console.error('This means Google Cloud Console still has localhost redirect URIs');
+            throw new Error('OAuth configuration error: URL contains localhost');
           }
           
-          // Store the token locally
-          if (result.token) {
-            localStorage.setItem('auth_token', result.token);
-            localStorage.setItem('user_email', result.user.email);
+          console.log('Redirecting to OAuth URL...');
+          window.location.href = data.url;
+        } else {
+          throw new Error('No OAuth URL received');
+        }
+        
+      } catch (err) {
+        console.error('Google sign-in error:', err);
+        authError.textContent = err.message || 'Google sign-in failed';
+        authError.style.display = 'block';
+        googleSignInBtn.disabled = false;
+        googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
+      }
+    };
+
+
+    // Show login modal if not logged in
+    async function onAuthStateChanged() {
+      try {
+        console.log('Checking authentication state...');
+        // Check for local authentication token
+        const token = localStorage.getItem('auth_token');
+        const userEmail = localStorage.getItem('user_email');
+        if (!token || !userEmail) {
+          console.log('No local auth found, showing auth buttons');
+          document.getElementById('authButtons').style.display = 'flex';
+          document.getElementById('userInfo').style.display = 'none';
+          // Only redirect to home if we're not already on a page
+          if (document.getElementById('forecastPage').classList.contains('hidden') && 
+              document.getElementById('homePage').classList.contains('hidden')) {
+            document.getElementById('forecastPage').classList.add('hidden');
+            document.getElementById('homePage').classList.remove('hidden');
           }
-          
+        } else {
+          console.log('Local auth found, showing user info');
+          document.getElementById('authButtons').style.display = 'none';
+          document.getElementById('userInfo').style.display = 'flex';
+          document.getElementById('userName').textContent = userEmail;
           hideAuthModal();
-          onAuthStateChanged();
-          
-          // If we were on the forecast page, stay there and show subscription status
+          // Update subscription UI if on forecast page
           if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
             setTimeout(updateSubscriptionUI, 100);
           }
-        } catch (err) {
-          authError.textContent = err.message;
-          authError.style.display = 'block';
-        } finally {
-          authSubmitBtn.disabled = false;
         }
-      };
-
-      // Google Sign-in functionality
-      googleSignInBtn.onclick = async function() {
-        try {
-          authError.style.display = 'none';
-          googleSignInBtn.disabled = true;
-          googleSignInBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Signing in...';
-          
-          console.log('Starting Google OAuth flow...');
-          
-          // Use redirect-based OAuth with explicit redirectTo
-          const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: 'https://r4ise.up.railway.app/',
-              queryParams: {
-                access_type: 'offline',
-                prompt: 'consent'
-              }
-            }
-          });
-          
-          if (error) throw error;
-          
-          console.log('Google sign-in initiated:', data);
-          console.log('OAuth URL:', data?.url);
-          
-          // If we get a URL, redirect to it
-          if (data?.url) {
-            console.log('OAuth URL received:', data.url);
-            console.log('About to redirect to:', data.url);
-            
-            // Check if the URL contains localhost
-            if (data.url.includes('localhost')) {
-              console.error('ERROR: OAuth URL contains localhost!');
-              console.error('This means Google Cloud Console still has localhost redirect URIs');
-              throw new Error('OAuth configuration error: URL contains localhost');
-            }
-            
-            console.log('Redirecting to OAuth URL...');
-            window.location.href = data.url;
-          } else {
-            throw new Error('No OAuth URL received');
-          }
-          
-        } catch (err) {
-          console.error('Google sign-in error:', err);
-          authError.textContent = err.message || 'Google sign-in failed';
-          authError.style.display = 'block';
-          googleSignInBtn.disabled = false;
-          googleSignInBtn.innerHTML = '<i class="fab fa-google" style="color: #4285f4; margin-right: 0.5rem;"></i>Continue with Google';
-        }
-      };
-
-
-      // Show login modal if not logged in
-      async function onAuthStateChanged() {
-        try {
-          console.log('Checking authentication state...');
-          // Check for local authentication token
-          const token = localStorage.getItem('auth_token');
-          const userEmail = localStorage.getItem('user_email');
-          if (!token || !userEmail) {
-            console.log('No local auth found, showing auth buttons');
-            document.getElementById('authButtons').style.display = 'flex';
-            document.getElementById('userInfo').style.display = 'none';
-            // Only redirect to home if we're not already on a page
-            if (document.getElementById('forecastPage').classList.contains('hidden') && 
-                document.getElementById('homePage').classList.contains('hidden')) {
-              document.getElementById('forecastPage').classList.add('hidden');
-              document.getElementById('homePage').classList.remove('hidden');
-            }
-          } else {
-            console.log('Local auth found, showing user info');
-            document.getElementById('authButtons').style.display = 'none';
-            document.getElementById('userInfo').style.display = 'flex';
-            document.getElementById('userName').textContent = userEmail;
-            hideAuthModal();
-            // Update subscription UI if on forecast page
-            if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
-              setTimeout(updateSubscriptionUI, 100);
-            }
-          }
-        } catch (err) {
-          console.error('Auth state check error:', err);
-          document.getElementById('authButtons').style.display = 'flex';
-          document.getElementById('userInfo').style.display = 'none';
-        }
+      } catch (err) {
+        console.error('Auth state check error:', err);
+        document.getElementById('authButtons').style.display = 'flex';
+        document.getElementById('userInfo').style.display = 'none';
       }
-      // Logout function
-      async function logout() {
-        try {
-          localStorage.removeItem('auth_token');
-          localStorage.removeItem('user_email');
-          onAuthStateChanged();
-        } catch (err) {
-          console.error('Logout error:', err);
-        }
+    }
+    // Logout function
+    async function logout() {
+      try {
+        localStorage.removeItem('auth_token');
+        localStorage.removeItem('user_email');
+        onAuthStateChanged();
+      } catch (err) {
+        console.error('Logout error:', err);
       }
-      // Update subscription UI to use local auth
-      async function checkUserAccess() {
-        try {
-          const token = localStorage.getItem('auth_token');
-          const userEmail = localStorage.getItem('user_email');
-          if (!token || !userEmail) {
-            return null;
-          }
-          const response = await fetch(`/api/subscription/access?user_email=${encodeURIComponent(userEmail)}`);
-          const access = await response.json();
-          return { userEmail, access };
-        } catch (error) {
-          console.error('Error checking user access:', error);
+    }
+    // Update subscription UI to use local auth
+    async function checkUserAccess() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const userEmail = localStorage.getItem('user_email');
+        if (!token || !userEmail) {
           return null;
         }
+        const response = await fetch(`/api/subscription/access?user_email=${encodeURIComponent(userEmail)}`);
+        const access = await response.json();
+        return { userEmail, access };
+      } catch (error) {
+        console.error('Error checking user access:', error);
+        return null;
       }
-      async function updateSubscriptionUI() {
-        const userAccess = await checkUserAccess();
-        if (!userAccess) {
-          document.getElementById('subscriptionStatus').style.display = 'none';
-          document.getElementById('paymentRequired').style.display = 'none';
+    }
+    async function updateSubscriptionUI() {
+      const userAccess = await checkUserAccess();
+      if (!userAccess) {
+        document.getElementById('subscriptionStatus').style.display = 'none';
+        document.getElementById('paymentRequired').style.display = 'none';
+        return;
+      }
+      const { userEmail, access } = userAccess;
+      if (access.is_active) {
+        document.getElementById('subscriptionStatus').style.display = 'block';
+        document.getElementById('paymentRequired').style.display = 'none';
+        const details = document.getElementById('subscriptionDetails');
+        if (access.access_type === 'trial') {
+          details.innerHTML = `
+            <strong>Free Trial Active</strong><br>
+            ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
+            ${access.forecasts_remaining} forecasts remaining
+          `;
+        } else if (access.access_type === 'development') {
+          details.innerHTML = `
+            <strong>Development Mode Active</strong><br>
+            Unlimited forecasts available<br>
+            Payment system disabled for development
+          `;
+        } else {
+          details.innerHTML = `
+            <strong>${access.access_type === 'subscription' ? 'Monthly Subscription' : 'Lifetime Access'} Active</strong><br>
+            ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
+            ${access.forecasts_remaining} forecasts remaining
+          `;
+        }
+      } else {
+        document.getElementById('subscriptionStatus').style.display = 'none';
+        document.getElementById('paymentRequired').style.display = 'block';
+      }
+    }
+    async function activateTrial() {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const userEmail = localStorage.getItem('user_email');
+        if (!token || !userEmail) {
+          showAuthModal();
           return;
         }
-        const { userEmail, access } = userAccess;
-        if (access.is_active) {
-          document.getElementById('subscriptionStatus').style.display = 'block';
-          document.getElementById('paymentRequired').style.display = 'none';
-          const details = document.getElementById('subscriptionDetails');
-          if (access.access_type === 'trial') {
-            details.innerHTML = `
-              <strong>Free Trial Active</strong><br>
-              ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
-              ${access.forecasts_remaining} forecasts remaining
-            `;
-          } else if (access.access_type === 'development') {
-            details.innerHTML = `
-              <strong>Development Mode Active</strong><br>
-              Unlimited forecasts available<br>
-              Payment system disabled for development
-            `;
-          } else {
-            details.innerHTML = `
-              <strong>${access.access_type === 'subscription' ? 'Monthly Subscription' : 'Lifetime Access'} Active</strong><br>
-              ${access.forecasts_used} of ${access.forecasts_allowed} forecasts used<br>
-              ${access.forecasts_remaining} forecasts remaining
-            `;
-          }
+        const response = await fetch('/api/subscription/activate-trial', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_email: userEmail })
+        });
+        const result = await response.json();
+        if (result.success) {
+          showSuccess('Free trial activated successfully!');
+          updateSubscriptionUI();
+          hidePricingModal();
         } else {
-          document.getElementById('subscriptionStatus').style.display = 'none';
-          document.getElementById('paymentRequired').style.display = 'block';
+          showError(result.error || 'Failed to activate trial');
         }
+      } catch (error) {
+        console.error('Error activating trial:', error);
+        showError('Failed to activate trial');
       }
-      async function activateTrial() {
-        try {
-          const token = localStorage.getItem('auth_token');
-          const userEmail = localStorage.getItem('user_email');
-          if (!token || !userEmail) {
-            showAuthModal();
-            return;
-          }
-          const response = await fetch('/api/subscription/activate-trial', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_email: userEmail })
-          });
-          const result = await response.json();
-          if (result.success) {
-            showSuccess('Free trial activated successfully!');
-            updateSubscriptionUI();
-            hidePricingModal();
-          } else {
-            showError(result.error || 'Failed to activate trial');
-          }
-        } catch (error) {
-          console.error('Error activating trial:', error);
-          showError('Failed to activate trial');
+    }
+    async function purchasePlan(productId) {
+      try {
+        const token = localStorage.getItem('auth_token');
+        const userEmail = localStorage.getItem('user_email');
+        
+        // If not authenticated, show auth modal first
+        if (!token || !userEmail) {
+          hidePricingModal();
+          showAuthModal();
+          return;
         }
-      }
-      async function purchasePlan(productId) {
-        try {
-          const token = localStorage.getItem('auth_token');
-          const userEmail = localStorage.getItem('user_email');
-          
-          // If not authenticated, show auth modal first
-          if (!token || !userEmail) {
-            hidePricingModal();
-            showAuthModal();
-            return;
-          }
-          
-          const response = await fetch('/api/payments/create-checkout', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ product_id: productId, user_email: userEmail })
-          });
-          const result = await response.json();
-          if (result.url) {
-            hidePricingModal();
-            window.location.href = result.url;
-          } else {
-            showError(result.error || 'Failed to create checkout session');
-          }
-        } catch (error) {
-          console.error('Error creating checkout:', error);
-          showError('Failed to create checkout session');
-        }
-      }
-      // Restrict forecast functionality
-      const origShowPage = showPage;
-      showPage = function(id) {
-        if (id === 'forecastPage') {
-          // Allow guests to access forecast page
-          origShowPage(id);
-          // Check if user is authenticated and update UI accordingly
-          const token = localStorage.getItem('auth_token');
-          const userEmail = localStorage.getItem('user_email');
-          if (token && userEmail) {
-            setTimeout(updateSubscriptionUI, 100);
-          }
+        
+        const response = await fetch('/api/payments/create-checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ product_id: productId, user_email: userEmail })
+        });
+        const result = await response.json();
+        if (result.url) {
+          hidePricingModal();
+          window.location.href = result.url;
         } else {
-          origShowPage(id);
+          showError(result.error || 'Failed to create checkout session');
         }
-      };
+      } catch (error) {
+        console.error('Error creating checkout:', error);
+        showError('Failed to create checkout session');
+      }
+    }
+    // Restrict forecast functionality
+    const origShowPage = showPage;
+    showPage = function(id) {
+      if (id === 'forecastPage') {
+        // Allow guests to access forecast page
+        origShowPage(id);
+        // Check if user is authenticated and update UI accordingly
+        const token = localStorage.getItem('auth_token');
+        const userEmail = localStorage.getItem('user_email');
+        if (token && userEmail) {
+          setTimeout(updateSubscriptionUI, 100);
+        }
+      } else {
+        origShowPage(id);
+      }
+    };
 
-      // Pricing modal functions
+    // Pricing modal functions
       // function showPricingModal() {
       //   document.getElementById('pricingModal').style.display = 'flex';
       // }
       // function hidePricingModal() {
       //   document.getElementById('pricingModal').style.display = 'none';
       // }
+    
+    // Handle payment success/cancellation
+    function handlePaymentReturn() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const paymentStatus = urlParams.get('payment');
+      const sessionId = urlParams.get('session_id');
       
-      // Handle payment success/cancellation
-      function handlePaymentReturn() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const paymentStatus = urlParams.get('payment');
-        const sessionId = urlParams.get('session_id');
-        
-        if (paymentStatus === 'success' && sessionId) {
-          // Verify the payment
-          verifyPayment(sessionId);
-        } else if (paymentStatus === 'cancelled') {
-          showError('Payment was cancelled');
-        }
-        
-        // Clean up URL
-        const newUrl = window.location.pathname;
-        window.history.replaceState({}, document.title, newUrl);
+      if (paymentStatus === 'success' && sessionId) {
+        // Verify the payment
+        verifyPayment(sessionId);
+      } else if (paymentStatus === 'cancelled') {
+        showError('Payment was cancelled');
       }
       
-      async function verifyPayment(sessionId) {
-        try {
-          showModal('Verifying your payment...');
-          
-          const response = await fetch('/api/payments/verify-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ session_id: sessionId })
-          });
-          
-          const result = await response.json();
-          
-          if (result.success) {
-            showSuccess('Payment verified! Your subscription is now active.');
-            updateSubscriptionUI();
-          } else {
-            showError(result.error || 'Failed to verify payment');
-          }
-        } catch (error) {
-          console.error('Error verifying payment:', error);
-          showError('Failed to verify payment');
-        } finally {
-          hideModal();
-        }
-      }
-      
-      // On page load, check auth and handle payment returns
-      window.addEventListener('DOMContentLoaded', async () => {
-        // Handle payment return first
-        handlePaymentReturn();
+      // Clean up URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+    }
+    
+    async function verifyPayment(sessionId) {
+      try {
+        showModal('Verifying your payment...');
         
-        // Check local authentication
+        const response = await fetch('/api/payments/verify-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: sessionId })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showSuccess('Payment verified! Your subscription is now active.');
+          updateSubscriptionUI();
+        } else {
+          showError(result.error || 'Failed to verify payment');
+        }
+      } catch (error) {
+        console.error('Error verifying payment:', error);
+        showError('Failed to verify payment');
+      } finally {
+        hideModal();
+      }
+    }
+    
+    // On page load, check auth and handle payment returns
+    window.addEventListener('DOMContentLoaded', async () => {
+      // Handle payment return first
+      handlePaymentReturn();
+      
+      // Check local authentication
+      onAuthStateChanged();
+      
+      // Also check auth state after a short delay to ensure everything is loaded
+      setTimeout(() => {
         onAuthStateChanged();
-        
-        // Also check auth state after a short delay to ensure everything is loaded
-        setTimeout(() => {
-          onAuthStateChanged();
-        }, 500);
-      });
+      }, 500);
+    });
 
       // --- Model selection All toggle logic ---
       document.addEventListener('DOMContentLoaded', function() {
@@ -2576,8 +2576,8 @@
         arimaBox.addEventListener('change', updateAllBox);
         hwBox.addEventListener('change', updateAllBox);
         prophetBox.addEventListener('change', updateAllBox);
-      });
-    </script>
+    });
+  </script>
   </main>
 </body>
 </html>
