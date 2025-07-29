@@ -719,10 +719,10 @@
       }
     }
     .site-logo {
-      position: absolute;
+      position: fixed;
       top: 24px;
       left: 24px;
-      z-index: 100;
+      z-index: 1000;
       display: flex;
       align-items: center;
       text-decoration: none;
@@ -776,10 +776,10 @@
     
     /* Auth Header Styles */
     .auth-header {
-      position: absolute;
+      position: fixed;
       top: 24px;
       right: 24px;
-      z-index: 100;
+      z-index: 1000;
       display: flex;
       align-items: center;
       gap: 1rem;
@@ -994,20 +994,11 @@
       margin-left: 12px;
     }
     main, .main-content {
-      padding-top: 80px; /* header height + margin */
+      padding-top: 110px; /* header height + margin */
     }
   </style>
 </head>
 <body>
-  <header class="sticky-header">
-    <div class="logo-container">
-      <img src="static/logo.png" alt="R4ise Logo" class="logo" />
-    </div>
-    <div class="auth-buttons">
-      <button id="signInBtn">Sign In</button>
-      <button id="signUpBtn">Sign Up</button>
-    </div>
-  </header>
   <main class="main-content">
     <a href="/" class="site-logo">
       <img src="static/logo.png" alt="r4ise logo" />
