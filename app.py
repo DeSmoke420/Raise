@@ -320,9 +320,9 @@ def create_forecast_model_with_diagnostics(
         logger.info('Attempting ARIMA fit...')
         ARIMA_TIMEOUT = 20
         try:
-            if len(train_ts) > 100:
-                diagnostics['ARIMA'] = "Skipped: individual item too long (>100 points)"
-                logger.warning(f"ARIMA skipped for item: too long ({len(train_ts)} points)")
+            if len(train_ts) > 50:  # Lowered from 100
+                diagnostics['ARIMA'] = "Skipped: individual item too long (>50 points)"
+                logger.warning(f"ARIMA skipped for item: too long ({len(train_ts)} points, stricter)")
                 forecasts['ARIMA'] = [None] * period_count
             else:
                 import concurrent.futures
@@ -398,18 +398,20 @@ def create_forecast_model_with_diagnostics(
                         logger.warning(f"ARIMA failed: {e}")
                         forecasts['ARIMA'] = [None] * period_count
         except Exception as e:
-            diagnostics['ARIMA'] = f"Failed: {e}"
-            logger.warning(f"ARIMA failed: {e}")
+            diagnostics['ARIMA'] = f"Failed: {e} (outer catch)"
+            logger.warning(f"ARIMA failed (outer catch): {e}")
             forecasts['ARIMA'] = [None] * period_count
     elif not use_arima:
-        diagnostics['ARIMA'] = "Skipped: not selected by user."
+        diagnostics['ARIMA'] = "Skipped: not selected by user (default is off)."
+        logger.info("ARIMA skipped: not selected by user (default is off).")
         forecasts['ARIMA'] = [None] * period_count
     elif skip_arima:
-        diagnostics['ARIMA'] = "Skipped: global skip for performance."
-        logger.warning(f"ARIMA skipped for performance (global skip).")
+        diagnostics['ARIMA'] = "Skipped: global skip for performance (stricter)."
+        logger.info(f"ARIMA skipped for performance (global skip, stricter).")
         forecasts['ARIMA'] = [None] * period_count
     elif pm is None:
         diagnostics['ARIMA'] = "Not available (pmdarima not installed)."
+        logger.info("ARIMA not available: pmdarima not installed.")
         forecasts['ARIMA'] = [None] * period_count
 
     # --- Best model selection ---
@@ -1066,13 +1068,13 @@ def forecast():
 
         # --- Skip ARIMA logic ---
         skip_arima = False
-        if len(df) > 1000 or len(unique_items) > 10:
+        if len(df) > 500 or len(unique_items) > 5:
             skip_arima = True
-            logger.info(f"Skipping ARIMA for performance: {len(unique_items)} items, {len(df)} rows")
+            logger.info(f"Skipping ARIMA for performance: {len(unique_items)} items, {len(df)} rows (stricter)")
         # --- End skip ARIMA logic ---
 
-        # Read model selection flags from request (default True)
-        use_arima = data.get('useARIMA', True)
+        # Read model selection flags from request (default False for ARIMA)
+        use_arima = data.get('useARIMA', False)  # ARIMA now opt-in
         use_hw = data.get('useHW', True)
         use_prophet = data.get('useProphet', True)
 
