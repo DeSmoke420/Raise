@@ -909,13 +909,28 @@ def forecast():
         
         # Parse scenario data if provided
         scenario = data.get('scenario', None)
+        logger.info(f"Raw scenario data from request: {scenario}")
+        logger.info(f"Type of scenario data: {type(scenario)}")
+        
         if scenario:
             logger.info(f"Scenario data received: {scenario}")
             logger.info(f"Scenario type: {scenario.get('type')}")
             logger.info(f"Scenario adjustments: {scenario.get('adjustments', [])}")
-            if scenario.get('type') != 'multiplier':
+            logger.info(f"Scenario data type: {type(scenario)}")
+            logger.info(f"Scenario keys: {list(scenario.keys()) if isinstance(scenario, dict) else 'Not a dict'}")
+            
+            # Validate scenario structure
+            if not isinstance(scenario, dict):
+                logger.error(f"Scenario is not a dict: {type(scenario)}")
+                scenario = None
+            elif scenario.get('type') != 'multiplier':
                 logger.warning(f"Unsupported scenario type: {scenario.get('type')}")
                 scenario = None
+            elif 'adjustments' not in scenario or not scenario['adjustments']:
+                logger.warning("No adjustments found in scenario")
+                scenario = None
+            else:
+                logger.info(f"Scenario validated successfully with {len(scenario['adjustments'])} adjustments")
         else:
             logger.info("No scenario data provided")
         
