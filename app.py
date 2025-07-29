@@ -938,7 +938,7 @@ def forecast():
         logger.info(f"Date parsing: dayfirst=True valid={valid1}, dayfirst=False valid={valid2}")
         if valid1 == 0 and valid2 == 0:
             # 2. Try common custom formats
-            custom_formats = ['%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%d/%m/%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
+            custom_formats = ['%d/%m/%Y', '%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
             for fmt in custom_formats:
                 try:
                     dt_custom = pd.to_datetime(df[date_col], format=fmt, errors='coerce')
@@ -1152,8 +1152,8 @@ def forecast():
                         val_raw = forecast_list[idx]
                         if val_raw is not None:
                             val = round(float(val_raw), decimal_places)
-                            if not allow_negative and val < 0:
-                                val = 0
+                if not allow_negative and val < 0:
+                    val = 0
                             row[f'Forecast ({model})'] = val
                         else:
                             row[f'Forecast ({model})'] = ''
