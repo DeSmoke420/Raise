@@ -934,7 +934,7 @@ def forecast():
         logger.info(f"Auto-detecting input date format (user output preference: {date_format})")
         
         # Check if dates look like DD/MM/YYYY format
-        sample_dates = df[date_col].head(10).astype(str).tolist()
+        sample_dates = df[date_col].head(100).astype(str).tolist()
         logger.info(f"Analyzing date patterns in: {sample_dates}")
         dd_mm_yyyy_pattern = False
         day_values = []
