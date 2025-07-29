@@ -1152,8 +1152,8 @@ def forecast():
                         val_raw = forecast_list[idx]
                         if val_raw is not None:
                             val = round(float(val_raw), decimal_places)
-                if not allow_negative and val < 0:
-                    val = 0
+                            if not allow_negative and val < 0:
+                                val = 0
                             row[f'Forecast ({model})'] = val
                         else:
                             row[f'Forecast ({model})'] = ''
