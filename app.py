@@ -1278,22 +1278,23 @@ def forecast():
                         if 'start_dt' in adjustment and 'end_dt' in adjustment:
                             logger.info(f"Checking if {row_date} is between {adjustment['start_dt']} and {adjustment['end_dt']}")
                             if adjustment['start_dt'] <= row_date <= adjustment['end_dt']:
-                                # Get target model for this adjustment (fallback to global target)
-                                adjustment_target_model = adjustment.get('targetModel', target_model)
-                                target_col = f'Forecast ({adjustment_target_model})'
+                                # Apply adjustment to all available models
+                                models_to_adjust = ['Holt-Winters', 'Prophet', 'ARIMA', 'Average']
                                 
-                                # Handle special case for Average
-                                if adjustment_target_model == 'Average':
-                                    target_col = 'Average'
-                                
-                                if target_col in row and row[target_col] != '':
-                                    original_val = float(row[target_col])
-                                    adjusted_val = original_val * adjustment['factor']
-                                    row[target_col] = round(adjusted_val, decimal_places)
-                                    adjustments_applied += 1
-                                    logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {adjustment_target_model}: {original_val} -> {adjusted_val}")
-                                else:
-                                    logger.warning(f"No value found for {target_col} on {row_date}")
+                                for model_name in models_to_adjust:
+                                    if model_name == 'Average':
+                                        target_col = 'Average'
+                                    else:
+                                        target_col = f'Forecast ({model_name})'
+                                    
+                                    if target_col in row and row[target_col] != '':
+                                        original_val = float(row[target_col])
+                                        adjusted_val = original_val * adjustment['factor']
+                                        row[target_col] = round(adjusted_val, decimal_places)
+                                        adjustments_applied += 1
+                                        logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {model_name}: {original_val} -> {adjusted_val}")
+                                    else:
+                                        logger.info(f"No value found for {target_col} on {row_date} (skipping)")
                                 break
                 except Exception as e:
                     logger.warning(f"Error processing row {row}: {e}")

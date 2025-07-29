@@ -1172,8 +1172,11 @@
           <h3 style="margin-bottom: 1rem; color: var(--text-primary);">
             <i class="fas fa-sliders-h"></i> Scenario Adjustment
           </h3>
+          <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+            <i class="fas fa-info-circle"></i> Adjustments will be applied to all available forecast models (Holt-Winters, Prophet, ARIMA, and Average).
+          </p>
           
-          <div class="scenario-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+          <div class="scenario-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
             <div class="field">
               <label for="scenarioName">
                 <i class="fas fa-tag"></i> Scenario Name
@@ -1214,20 +1217,7 @@
               </div>
             </div>
             
-            <div class="field">
-              <label for="scenarioModel">
-                <i class="fas fa-robot"></i> Target Model
-              </label>
-              <div class="input-group">
-                <i class="fas fa-cogs"></i>
-                <select id="scenarioModel" style="width: 100%;">
-                  <option value="Prophet">Prophet</option>
-                  <option value="Holt-Winters">Holt-Winters</option>
-                  <option value="ARIMA">ARIMA</option>
-                  <option value="Average">Average</option>
-                </select>
-              </div>
-            </div>
+
             
             <button class="btn btn-secondary" onclick="addScenarioAdjustment()" style="height: fit-content; padding: 0.75rem 1rem;">
               <i class="fas fa-plus"></i> Add
@@ -1246,7 +1236,6 @@
                     <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Start Date</th>
                     <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">End Date</th>
                     <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Factor</th>
-                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Target Model</th>
                     <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color);">Action</th>
                   </tr>
                 </thead>
@@ -1570,7 +1559,6 @@
         const startDate = document.getElementById('startDate').value;
         const endDate = document.getElementById('endDate').value;
         const factor = parseFloat(document.getElementById('adjustmentFactor').value);
-        const targetModel = document.getElementById('scenarioModel').value;
         
         // Validation
         if (!name) {
@@ -1595,8 +1583,7 @@
           name: name,
           start: startDate,
           end: endDate,
-          factor: factor,
-          targetModel: targetModel
+          factor: factor
         };
         scenarioAdjustments.push(adjustment);
         
@@ -1644,7 +1631,6 @@
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.start}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.end}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.factor}x</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.targetModel}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;">
               <button onclick="removeScenarioAdjustment(${index})" style="background: var(--error-color); color: white; border: none; border-radius: var(--radius-sm); padding: 0.25rem 0.5rem; cursor: pointer;">
                 <i class="fas fa-trash"></i>
@@ -1665,12 +1651,11 @@
         const scenario = {
           type: "multiplier",
           name: scenarioAdjustments[0].name, // Use first scenario name as overall name
-          target: scenarioAdjustments[0].targetModel, // Use the target model from the first adjustment
+          target: "all", // Apply to all models
           adjustments: scenarioAdjustments.map(adj => ({
             start: adj.start,
             end: adj.end,
-            factor: adj.factor,
-            targetModel: adj.targetModel
+            factor: adj.factor
           }))
         };
         
