@@ -903,6 +903,16 @@ def forecast():
         decimal_places = int(data.get('decimalPlaces', 0))  # Default to 0
         allow_negative = data.get('allowNegative', False)  # Default to False
         
+        # Parse scenario data if provided
+        scenario = data.get('scenario', None)
+        if scenario:
+            logger.info(f"Scenario data received: {scenario}")
+            if scenario.get('type') != 'multiplier':
+                logger.warning(f"Unsupported scenario type: {scenario.get('type')}")
+                scenario = None
+        else:
+            logger.info("No scenario data provided")
+        
         logger.info(f"Processing forecast: time_unit={time_unit}, periods={period_count}, format={export_format}, date_format={date_format}, decimal_places={decimal_places}, allow_negative={allow_negative}")
         logger.info(f"CSV data length: {len(csv_text)} characters")
         
@@ -1208,6 +1218,52 @@ def forecast():
                 else:
                     row['Average'] = ''
                 output_rows.append(row)
+        
+        # Apply scenario adjustments if provided
+        if scenario and scenario.get('type') == 'multiplier':
+            logger.info("Applying scenario adjustments to forecasts")
+            target_model = scenario.get('target', 'Prophet')
+            adjustments = scenario.get('adjustments', [])
+            
+            # Convert date strings to datetime for comparison
+            for adjustment in adjustments:
+                try:
+                    adjustment['start_dt'] = pd.to_datetime(adjustment['start'])
+                    adjustment['end_dt'] = pd.to_datetime(adjustment['end'])
+                except Exception as e:
+                    logger.warning(f"Invalid date in adjustment: {e}")
+                    continue
+            
+            # Apply adjustments to each row
+            for row in output_rows:
+                row_date = pd.to_datetime(row['Date'])
+                target_col = f'Forecast ({target_model})'
+                
+                # Check if this date falls within any adjustment period
+                for adjustment in adjustments:
+                    if 'start_dt' in adjustment and 'end_dt' in adjustment:
+                        if adjustment['start_dt'] <= row_date <= adjustment['end_dt']:
+                            if target_col in row and row[target_col] != '':
+                                original_val = float(row[target_col])
+                                adjusted_val = original_val * adjustment['factor']
+                                row[target_col] = round(adjusted_val, decimal_places)
+                                logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {target_model}")
+                            break
+            
+            # Recalculate average after adjustments
+            for row in output_rows:
+                forecast_values = []
+                for model in model_names:
+                    v = row[f'Forecast ({model})']
+                    if isinstance(v, (int, float)) and v != '':
+                        forecast_values.append(v)
+                if forecast_values:
+                    row['Average'] = round(sum(forecast_values) / len(forecast_values), decimal_places)
+                else:
+                    row['Average'] = ''
+            
+            logger.info(f"Scenario adjustments applied to {target_model} forecasts")
+        
         if not output_rows:
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400

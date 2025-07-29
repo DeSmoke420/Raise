@@ -1167,6 +1167,89 @@
           </div>
         </div>
         
+        <!-- Scenario Adjustment Section -->
+        <div class="scenario-section" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-color); border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
+          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">
+            <i class="fas fa-sliders-h"></i> Scenario Adjustment
+          </h3>
+          
+          <div class="scenario-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+            <div class="field">
+              <label for="scenarioName">
+                <i class="fas fa-tag"></i> Scenario Name
+              </label>
+              <div class="input-group">
+                <i class="fas fa-edit"></i>
+                <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%;">
+              </div>
+            </div>
+            
+            <div class="field">
+              <label for="startDate">
+                <i class="fas fa-calendar"></i> Start Date
+              </label>
+              <div class="input-group">
+                <i class="fas fa-calendar-day"></i>
+                <input type="date" id="startDate" style="width: 100%;">
+              </div>
+            </div>
+            
+            <div class="field">
+              <label for="endDate">
+                <i class="fas fa-calendar"></i> End Date
+              </label>
+              <div class="input-group">
+                <i class="fas fa-calendar-day"></i>
+                <input type="date" id="endDate" style="width: 100%;">
+              </div>
+            </div>
+            
+            <div class="field">
+              <label for="adjustmentFactor">
+                <i class="fas fa-percentage"></i> Adjustment Factor
+              </label>
+              <div class="input-group">
+                <i class="fas fa-calculator"></i>
+                <input type="number" id="adjustmentFactor" step="0.01" min="0.01" placeholder="e.g. 1.2" style="width: 100%;">
+              </div>
+            </div>
+            
+            <button class="btn btn-secondary" onclick="addScenarioAdjustment()" style="height: fit-content; padding: 0.75rem 1rem;">
+              <i class="fas fa-plus"></i> Add
+            </button>
+          </div>
+          
+          <div class="scenario-table" id="scenarioTable" style="display: none;">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">
+              <i class="fas fa-list"></i> Applied Adjustments
+            </h4>
+            <div class="table-container" style="background: white; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-color);">
+              <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: var(--bg-color);">
+                  <tr>
+                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Scenario</th>
+                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Start Date</th>
+                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">End Date</th>
+                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Factor</th>
+                    <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color);">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="scenarioTableBody">
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div class="scenario-actions" style="margin-top: 1rem; display: flex; gap: 1rem;">
+            <button class="btn btn-primary" onclick="applyScenario()" id="applyScenarioBtn" style="display: none;">
+              <i class="fas fa-check"></i> Apply Scenario
+            </button>
+            <button class="btn btn-secondary" onclick="clearScenario()" id="clearScenarioBtn" style="display: none;">
+              <i class="fas fa-trash"></i> Clear All
+            </button>
+          </div>
+        </div>
+        
 
         
 
@@ -1463,6 +1546,127 @@
         });
       }
 
+      // Scenario Adjustment Functions
+      let scenarioAdjustments = [];
+      
+      function addScenarioAdjustment() {
+        const name = document.getElementById('scenarioName').value.trim();
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        const factor = parseFloat(document.getElementById('adjustmentFactor').value);
+        
+        // Validation
+        if (!name) {
+          showError('Please enter a scenario name');
+          return;
+        }
+        if (!startDate || !endDate) {
+          showError('Please select both start and end dates');
+          return;
+        }
+        if (startDate >= endDate) {
+          showError('End date must be after start date');
+          return;
+        }
+        if (!factor || factor <= 0) {
+          showError('Please enter a valid adjustment factor (greater than 0)');
+          return;
+        }
+        
+        // Add to adjustments array
+        const adjustment = {
+          name: name,
+          start: startDate,
+          end: endDate,
+          factor: factor
+        };
+        scenarioAdjustments.push(adjustment);
+        
+        // Update table
+        updateScenarioTable();
+        
+        // Clear inputs
+        document.getElementById('scenarioName').value = '';
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        document.getElementById('adjustmentFactor').value = '';
+        
+        // Show success message
+        showSuccess(`Added scenario: ${name} (${factor}x from ${startDate} to ${endDate})`);
+      }
+      
+      function removeScenarioAdjustment(index) {
+        const removed = scenarioAdjustments.splice(index, 1)[0];
+        updateScenarioTable();
+        showSuccess(`Removed scenario: ${removed.name}`);
+      }
+      
+      function updateScenarioTable() {
+        const tableBody = document.getElementById('scenarioTableBody');
+        const table = document.getElementById('scenarioTable');
+        const applyBtn = document.getElementById('applyScenarioBtn');
+        const clearBtn = document.getElementById('clearScenarioBtn');
+        
+        if (scenarioAdjustments.length === 0) {
+          table.style.display = 'none';
+          applyBtn.style.display = 'none';
+          clearBtn.style.display = 'none';
+          return;
+        }
+        
+        table.style.display = 'block';
+        applyBtn.style.display = 'inline-flex';
+        clearBtn.style.display = 'inline-flex';
+        
+        tableBody.innerHTML = '';
+        scenarioAdjustments.forEach((adjustment, index) => {
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.name}</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.start}</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.end}</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.factor}x</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;">
+              <button onclick="removeScenarioAdjustment(${index})" style="background: var(--error-color); color: white; border: none; border-radius: var(--radius-sm); padding: 0.25rem 0.5rem; cursor: pointer;">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          `;
+          tableBody.appendChild(row);
+        });
+      }
+      
+      function applyScenario() {
+        if (scenarioAdjustments.length === 0) {
+          showError('No scenario adjustments to apply');
+          return;
+        }
+        
+        // Create scenario JSON structure
+        const scenario = {
+          type: "multiplier",
+          name: scenarioAdjustments[0].name, // Use first scenario name as overall name
+          target: "Prophet", // Default to Prophet, could be made configurable
+          adjustments: scenarioAdjustments.map(adj => ({
+            start: adj.start,
+            end: adj.end,
+            factor: adj.factor
+          }))
+        };
+        
+        // Store scenario for use in forecast generation
+        window.currentScenario = scenario;
+        
+        showSuccess(`Scenario applied: ${scenario.name} with ${scenario.adjustments.length} adjustment(s)`);
+      }
+      
+      function clearScenario() {
+        scenarioAdjustments = [];
+        window.currentScenario = null;
+        updateScenarioTable();
+        showSuccess('All scenario adjustments cleared');
+      }
+
       async function generateForecast() {
         // const token = localStorage.getItem('auth_token');
         // const userEmail = localStorage.getItem('user_email');
@@ -1530,21 +1734,30 @@
             useProphet = true;
           }
           
+          // Prepare request body with scenario data if available
+          const requestBody = { 
+            csv, 
+            timeUnit, 
+            periods, 
+            exportFormat: 'csv',
+            dateFormat: dateFormat,
+            decimalPlaces: parseInt(decimalPlaces),
+            allowNegative: allowNegative,
+            useARIMA,
+            useHW,
+            useProphet
+          };
+          
+          // Add scenario data if available
+          if (window.currentScenario) {
+            requestBody.scenario = window.currentScenario;
+            console.log('Including scenario in request:', window.currentScenario);
+          }
+          
           const res = await fetch('/api/forecast', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              csv, 
-              timeUnit, 
-              periods, 
-              exportFormat: 'csv',
-              dateFormat: dateFormat,
-              decimalPlaces: parseInt(decimalPlaces),
-              allowNegative: allowNegative,
-              useARIMA,
-              useHW,
-              useProphet
-            })
+            body: JSON.stringify(requestBody)
           });
           
           console.log('Response status:', res.status);
