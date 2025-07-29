@@ -1222,6 +1222,7 @@ def forecast():
         # Apply scenario adjustments if provided
         if scenario and scenario.get('type') == 'multiplier':
             logger.info("Applying scenario adjustments to forecasts")
+            logger.info(f"Scenario data: {scenario}")
             target_model = scenario.get('target', 'Prophet')
             adjustments = scenario.get('adjustments', [])
             
@@ -1230,25 +1231,73 @@ def forecast():
                 try:
                     adjustment['start_dt'] = pd.to_datetime(adjustment['start'])
                     adjustment['end_dt'] = pd.to_datetime(adjustment['end'])
+                    logger.info(f"Parsed adjustment dates: {adjustment['start']} -> {adjustment['start_dt']}, {adjustment['end']} -> {adjustment['end_dt']}")
                 except Exception as e:
                     logger.warning(f"Invalid date in adjustment: {e}")
                     continue
             
             # Apply adjustments to each row
+            adjustments_applied = 0
             for row in output_rows:
-                row_date = pd.to_datetime(row['Date'])
-                target_col = f'Forecast ({target_model})'
-                
-                # Check if this date falls within any adjustment period
-                for adjustment in adjustments:
-                    if 'start_dt' in adjustment and 'end_dt' in adjustment:
-                        if adjustment['start_dt'] <= row_date <= adjustment['end_dt']:
-                            if target_col in row and row[target_col] != '':
-                                original_val = float(row[target_col])
-                                adjusted_val = original_val * adjustment['factor']
-                                row[target_col] = round(adjusted_val, decimal_places)
-                                logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {target_model}")
-                            break
+                try:
+                    # Parse row date using the same logic as the main date parsing
+                    row_date_str = row['Date']
+                    logger.info(f"Processing row date: {row_date_str}")
+                    
+                    # Try different date parsing strategies for row dates
+                    row_date = None
+                    try:
+                        # First try direct parsing
+                        row_date = pd.to_datetime(row_date_str)
+                    except:
+                        try:
+                            # Try with dayfirst=True (DD/MM/YYYY)
+                            row_date = pd.to_datetime(row_date_str, dayfirst=True)
+                        except:
+                            try:
+                                # Try with dayfirst=False (MM/DD/YYYY)
+                                row_date = pd.to_datetime(row_date_str, dayfirst=False)
+                            except:
+                                # Try custom formats
+                                custom_formats = ['%d/%m/%Y', '%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
+                                for fmt in custom_formats:
+                                    try:
+                                        row_date = pd.to_datetime(row_date_str, format=fmt)
+                                        break
+                                    except:
+                                        continue
+                    
+                    if row_date is None:
+                        logger.warning(f"Could not parse row date: {row_date_str}")
+                        continue
+                    
+                    logger.info(f"Parsed row date: {row_date_str} -> {row_date}")
+                    target_col = f'Forecast ({target_model})'
+                    
+                    # Check if this date falls within any adjustment period
+                    for adjustment in adjustments:
+                        if 'start_dt' in adjustment and 'end_dt' in adjustment:
+                            logger.info(f"Checking if {row_date} is between {adjustment['start_dt']} and {adjustment['end_dt']}")
+                            if adjustment['start_dt'] <= row_date <= adjustment['end_dt']:
+                                if target_col in row and row[target_col] != '':
+                                    original_val = float(row[target_col])
+                                    adjusted_val = original_val * adjustment['factor']
+                                    row[target_col] = round(adjusted_val, decimal_places)
+                                    adjustments_applied += 1
+                                    logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {target_model}: {original_val} -> {adjusted_val}")
+                                break
+                except Exception as e:
+                    logger.warning(f"Error processing row {row}: {e}")
+                    continue
+            
+            logger.info(f"Total adjustments applied: {adjustments_applied}")
+            
+            # Debug: Show sample of forecast values before and after
+            if adjustments_applied > 0:
+                logger.info("Sample of adjusted forecasts:")
+                for i, row in enumerate(output_rows[:5]):  # Show first 5 rows
+                    prophet_val = row.get('Forecast (Prophet)', 'N/A')
+                    logger.info(f"Row {i}: Date={row['Date']}, Prophet={prophet_val}")
             
             # Recalculate average after adjustments
             for row in output_rows:
