@@ -1361,6 +1361,30 @@ def forecast():
         result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Average", "Best Model"])
         result_df["Item ID"] = result_df["Item ID"].astype(str)
         
+        # Force scenario adjustments to be applied to DataFrame if scenario is active
+        if scenario and scenario.get('type') == 'multiplier':
+            logger.info("Forcing scenario adjustments to DataFrame...")
+            adjustments = scenario.get('adjustments', [])
+            
+            for adjustment in adjustments:
+                try:
+                    start_dt = pd.to_datetime(adjustment['start'])
+                    end_dt = pd.to_datetime(adjustment['end'])
+                    factor = adjustment['factor']
+                    
+                    # Apply to all forecast columns
+                    for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
+                        mask = (pd.to_datetime(result_df['Date'], errors='coerce') >= start_dt) & \
+                               (pd.to_datetime(result_df['Date'], errors='coerce') <= end_dt) & \
+                               (result_df[col] != '') & (result_df[col].notna())
+                        
+                        if mask.any():
+                            result_df.loc[mask, col] = result_df.loc[mask, col] * factor
+                            logger.info(f"Applied {factor}x to {col} for {mask.sum()} rows")
+                            
+                except Exception as e:
+                    logger.warning(f"Error applying adjustment to DataFrame: {e}")
+        
         # Debug: Check what's actually in the DataFrame after creation
         if scenario and scenario.get('type') == 'multiplier':
             logger.info("DataFrame after creation:")

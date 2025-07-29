@@ -1932,7 +1932,31 @@
           // Sort dates and build arrays for chart
           const sortedDates = Object.keys(dateAggregation).sort();
           const dates = sortedDates;
-          const quantities = sortedDates.map(date => dateAggregation[date]);
+          let quantities = sortedDates.map(date => dateAggregation[date]);
+          
+          // Apply scenario adjustments to chart data if scenario is active
+          if (window.currentScenario && window.currentScenario.type === 'multiplier') {
+            console.log('Applying scenario adjustments to chart data:', window.currentScenario);
+            quantities = quantities.map((quantity, index) => {
+              const date = dates[index];
+              let adjustedQuantity = quantity;
+              
+              // Check if this date falls within any adjustment period
+              for (const adjustment of window.currentScenario.adjustments) {
+                const startDate = new Date(adjustment.start);
+                const endDate = new Date(adjustment.end);
+                const currentDate = new Date(date);
+                
+                if (currentDate >= startDate && currentDate <= endDate) {
+                  adjustedQuantity = quantity * adjustment.factor;
+                  console.log(`Applied ${adjustment.factor}x adjustment to ${date}: ${quantity} -> ${adjustedQuantity}`);
+                  break;
+                }
+              }
+              
+              return adjustedQuantity;
+            });
+          }
         createForecastChart(dates, quantities);
           showForecastSummary(Object.fromEntries(dates.map((d, i) => [d, quantities[i]])));
         document.getElementById('forecastPreview').style.display = 'block';
