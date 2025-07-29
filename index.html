@@ -1168,61 +1168,70 @@
       </div>
       
         <!-- Scenario Adjustment Section -->
-        <div class="scenario-section" style="margin-top: 2rem; padding: 1.5rem; background: var(--bg-color); border-radius: var(--radius-lg); border: 2px solid var(--border-color);">
-          <h3 style="margin-bottom: 1rem; color: var(--text-primary);">
-            <i class="fas fa-sliders-h"></i> Scenario Adjustment
-          </h3>
-          <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-            <i class="fas fa-info-circle"></i> Adjustments will be applied to all available forecast models (Holt-Winters, Prophet, ARIMA, and Average).
-          </p>
-          
-          <div class="scenario-inputs" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-            <div class="field">
-              <label for="scenarioName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
-                <i class="fas fa-tag"></i> Scenario Name
-              </label>
-              <div class="input-group" style="position: relative;">
-                <i class="fas fa-edit" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
-                <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
-              </div>
-            </div>
-            
-            <div class="field">
-              <label for="startDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
-                <i class="fas fa-calendar"></i> Start Date
-              </label>
-              <div class="input-group" style="position: relative;">
-                <i class="fas fa-calendar-day" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
-                <input type="date" id="startDate" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
-              </div>
-            </div>
-            
-            <div class="field">
-              <label for="endDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
-                <i class="fas fa-calendar"></i> End Date
-              </label>
-              <div class="input-group" style="position: relative;">
-                <i class="fas fa-calendar-day" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
-                <input type="date" id="endDate" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
-              </div>
-            </div>
+        <div class="scenario-section" style="margin-top: 2rem; background: var(--bg-color); border-radius: var(--radius-lg); border: 2px solid var(--border-color); overflow: hidden;">
+          <!-- Collapsible Header -->
+          <div class="scenario-header" onclick="toggleScenarioPanel()" style="padding: 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color);">
+            <h3 style="margin: 0; color: var(--text-primary);">
+              <i class="fas fa-sliders-h"></i> Scenario Adjustment
+            </h3>
+            <i class="fas fa-chevron-down" id="scenarioToggleIcon" style="color: var(--text-secondary); transition: transform 0.3s ease;"></i>
           </div>
           
-          <div class="scenario-inputs-row2" style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
-            <div class="field">
-              <label for="adjustmentFactor" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
-                <i class="fas fa-percentage"></i> Adjustment Factor
-              </label>
-              <div class="input-group" style="position: relative;">
-                <i class="fas fa-calculator" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
-                <input type="number" id="adjustmentFactor" step="0.01" min="0.01" placeholder="e.g. 1.2" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
+          <!-- Collapsible Content -->
+          <div class="scenario-content" id="scenarioContent" style="display: none; padding: 0 1.5rem 1.5rem 1.5rem;">
+            <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+              <i class="fas fa-info-circle"></i> Adjustments will be applied to all available forecast models (Holt-Winters, Prophet, ARIMA, and Average).
+            </p>
+            
+            <!-- Row 1: Scenario Name only -->
+            <div class="scenario-inputs-row1" style="margin-bottom: 1rem;">
+              <div class="field">
+                <label for="scenarioName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+                  <i class="fas fa-tag"></i> Scenario Name
+                </label>
+                <div class="input-group" style="position: relative;">
+                  <i class="fas fa-edit" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                  <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
+                </div>
               </div>
             </div>
             
-            <button class="btn btn-secondary" onclick="addScenarioAdjustment()" style="height: fit-content; padding: 0.75rem 1rem; margin-top: 1.5rem;">
-              <i class="fas fa-plus"></i> Add
-            </button>
-          </div>
+            <!-- Row 2: Start Date, End Date, Adjustment Factor, Add Button -->
+            <div class="scenario-inputs-row2" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+              <div class="field">
+                <label for="startDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+                  <i class="fas fa-calendar"></i> Start Date
+                </label>
+                <div class="input-group" style="position: relative;">
+                  <i class="fas fa-calendar-day" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                  <input type="date" id="startDate" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
+                </div>
+              </div>
+              
+              <div class="field">
+                <label for="endDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+                  <i class="fas fa-calendar"></i> End Date
+                </label>
+                <div class="input-group" style="position: relative;">
+                  <i class="fas fa-calendar-day" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                  <input type="date" id="endDate" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
+                </div>
+              </div>
+              
+              <div class="field">
+                <label for="adjustmentFactor" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+                  <i class="fas fa-percentage"></i> Adjustment Factor
+                </label>
+                <div class="input-group" style="position: relative;">
+                  <i class="fas fa-calculator" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
+                  <input type="number" id="adjustmentFactor" step="0.01" min="0.01" placeholder="e.g. 1.2" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
+                </div>
+              </div>
+              
+              <button class="btn btn-secondary" onclick="addScenarioAdjustment()" style="height: fit-content; padding: 0.75rem 1rem; margin-top: 1.5rem;">
+                <i class="fas fa-plus"></i> Add
+              </button>
+            </div>
           
           <div class="scenario-table" id="scenarioTable" style="display: none;">
             <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">
@@ -1551,8 +1560,22 @@
       });
     }
 
-      // Scenario Adjustment Functions
-      let scenarioAdjustments = [];
+          // Scenario Adjustment Functions
+    let scenarioAdjustments = [];
+    
+    // Toggle scenario panel visibility
+    function toggleScenarioPanel() {
+      const content = document.getElementById('scenarioContent');
+      const icon = document.getElementById('scenarioToggleIcon');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
       
       function addScenarioAdjustment() {
         const name = document.getElementById('scenarioName').value.trim();
