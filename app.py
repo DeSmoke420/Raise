@@ -1307,7 +1307,10 @@ def forecast():
                 logger.info("Sample of adjusted forecasts:")
                 for i, row in enumerate(output_rows[:5]):  # Show first 5 rows
                     prophet_val = row.get('Forecast (Prophet)', 'N/A')
-                    logger.info(f"Row {i}: Date={row['Date']}, Prophet={prophet_val}")
+                    hw_val = row.get('Forecast (Holt-Winters)', 'N/A')
+                    arima_val = row.get('Forecast (ARIMA)', 'N/A')
+                    avg_val = row.get('Average', 'N/A')
+                    logger.info(f"Row {i}: Date={row['Date']}, Prophet={prophet_val}, HW={hw_val}, ARIMA={arima_val}, Avg={avg_val}")
             
             # Recalculate average after adjustments
             for row in output_rows:
@@ -1327,6 +1330,17 @@ def forecast():
             logger.error(f"No forecasts generated. Diagnostics: {diagnostics_log}")
             return jsonify({'error': 'No forecasts could be generated.\n' + '\n'.join(diagnostics_log)}), 400
         logger.info(f"Generated {len(output_rows)} forecast entries")
+        
+        # Debug: Show final values before creating DataFrame
+        if scenario and scenario.get('type') == 'multiplier':
+            logger.info("Final forecast values before DataFrame creation:")
+            for i, row in enumerate(output_rows[:3]):  # Show first 3 rows
+                prophet_val = row.get('Forecast (Prophet)', 'N/A')
+                hw_val = row.get('Forecast (Holt-Winters)', 'N/A')
+                arima_val = row.get('Forecast (ARIMA)', 'N/A')
+                avg_val = row.get('Average', 'N/A')
+                logger.info(f"Final Row {i}: Date={row['Date']}, Prophet={prophet_val}, HW={hw_val}, ARIMA={arima_val}, Avg={avg_val}")
+        
         # Record forecast generation for authenticated users
         if PAYMENT_AVAILABLE and user_email and user_email != 'anonymous':
             subscription_manager.record_forecast_generation(user_email)
