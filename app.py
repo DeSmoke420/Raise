@@ -930,12 +930,19 @@ def forecast():
         # --- Robust date parsing: try multiple strategies ---
         sample_dates = df[date_col].head(100).astype(str).tolist()
         logger.info(f"Analyzing date patterns in: {sample_dates}")
+        
+        # Log the first few raw date values before parsing
+        logger.info(f"Raw date values (first 10): {df[date_col].head(10).tolist()}")
+        
         # 1. Try pandas flexible parsing with dayfirst True/False
         dt1 = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
         dt2 = pd.to_datetime(df[date_col], dayfirst=False, errors='coerce')
         valid1 = dt1.notna().sum()
         valid2 = dt2.notna().sum()
         logger.info(f"Date parsing: dayfirst=True valid={valid1}, dayfirst=False valid={valid2}")
+        logger.info(f"Sample parsed with dayfirst=True: {dt1.head(5).tolist()}")
+        logger.info(f"Sample parsed with dayfirst=False: {dt2.head(5).tolist()}")
+        
         if valid1 == 0 and valid2 == 0:
             # 2. Try common custom formats
             custom_formats = ['%d/%m/%Y', '%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
