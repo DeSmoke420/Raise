@@ -1370,6 +1370,17 @@ def forecast():
             for i in range(min(3, len(result_df))):
                 row = result_df.iloc[i]
                 logger.info(f"DataFrame Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
+        # Debug: Final check before export
+        if scenario and scenario.get('type') == 'multiplier':
+            logger.info("=== FINAL EXPORT DEBUG ===")
+            logger.info(f"Export format: {export_format}")
+            logger.info(f"DataFrame shape: {result_df.shape}")
+            logger.info("Sample of final DataFrame values:")
+            for i in range(min(3, len(result_df))):
+                row = result_df.iloc[i]
+                logger.info(f"Export Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
+            logger.info("=== END FINAL EXPORT DEBUG ===")
+        
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
