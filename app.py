@@ -911,6 +911,8 @@ def forecast():
         scenario = data.get('scenario', None)
         if scenario:
             logger.info(f"Scenario data received: {scenario}")
+            logger.info(f"Scenario type: {scenario.get('type')}")
+            logger.info(f"Scenario adjustments: {scenario.get('adjustments', [])}")
             if scenario.get('type') != 'multiplier':
                 logger.warning(f"Unsupported scenario type: {scenario.get('type')}")
                 scenario = None
@@ -1297,6 +1299,7 @@ def forecast():
                                         row[target_col] = round(adjusted_val, decimal_places)
                                         adjustments_applied += 1
                                         logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {model_name}: {original_val} -> {adjusted_val}")
+                                        logger.info(f"Row after adjustment: {row}")
                                     else:
                                         logger.info(f"No value found for {target_col} on {row_date} (skipping)")
                                 break
@@ -1344,6 +1347,11 @@ def forecast():
                 arima_val = row.get('Forecast (ARIMA)', 'N/A')
                 avg_val = row.get('Average', 'N/A')
                 logger.info(f"Final Row {i}: Date={row['Date']}, Prophet={prophet_val}, HW={hw_val}, ARIMA={arima_val}, Avg={avg_val}")
+            
+            # Also log the actual data types and values being passed to DataFrame
+            logger.info("DataFrame creation debug:")
+            for i, row in enumerate(output_rows[:3]):
+                logger.info(f"Row {i} data types: {[(k, type(v), v) for k, v in row.items()]}")
         
         # Record forecast generation for authenticated users
         if PAYMENT_AVAILABLE and user_email and user_email != 'anonymous':
@@ -1352,6 +1360,16 @@ def forecast():
         # Create result dataframe
         result_df = pd.DataFrame(output_rows, columns=["Date", "Item ID", "Forecast (ARIMA)", "Forecast (Holt-Winters)", "Forecast (Prophet)", "Average", "Best Model"])
         result_df["Item ID"] = result_df["Item ID"].astype(str)
+        
+        # Debug: Check what's actually in the DataFrame after creation
+        if scenario and scenario.get('type') == 'multiplier':
+            logger.info("DataFrame after creation:")
+            logger.info(f"DataFrame shape: {result_df.shape}")
+            logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
+            logger.info("First 3 rows of DataFrame:")
+            for i in range(min(3, len(result_df))):
+                row = result_df.iloc[i]
+                logger.info(f"DataFrame Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
         # Return single file based on export format
         if export_format == 'xlsx':
             try:
