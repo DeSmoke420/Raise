@@ -1184,8 +1184,8 @@
               <i class="fas fa-info-circle"></i> Adjustments will be applied to all available forecast models (Holt-Winters, Prophet, ARIMA, and Average).
             </p>
             
-            <!-- Row 1: Scenario Name only -->
-            <div class="scenario-inputs-row1" style="margin-bottom: 1rem;">
+            <!-- Row 1: Scenario Name and Item Selection -->
+            <div class="scenario-inputs-row1" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
               <div class="field">
                 <label for="scenarioName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                   <i class="fas fa-tag"></i> Scenario Name
@@ -1194,6 +1194,21 @@
                   <i class="fas fa-edit" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
                   <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
                 </div>
+              </div>
+              
+              <div class="field">
+                <label for="scenarioItems" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
+                  <i class="fas fa-boxes"></i> Select Items
+                </label>
+                <div class="input-group" style="position: relative;">
+                  <input type="text" id="scenarioItemsSearch" placeholder="Search items..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md) var(--radius-md) 0 0; background: white; font-size: 0.9rem; border-bottom: none;">
+                  <select id="scenarioItems" multiple style="width: 100%; padding: 0.75rem 0.75rem; border: 1px solid var(--border-color); border-radius: 0 0 var(--radius-md) var(--radius-md); background: white; font-size: 0.9rem; min-height: 3rem; max-height: 8rem; overflow-y: auto;">
+                    <option value="">Loading items...</option>
+                  </select>
+                </div>
+                <small style="color: var(--text-secondary); font-size: 0.8rem;">
+                  <i class="fas fa-info-circle"></i> Leave empty to apply to all items
+                </small>
               </div>
             </div>
             
@@ -1246,6 +1261,7 @@
                     <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Start Date</th>
                     <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">End Date</th>
                     <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Factor</th>
+                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Items</th>
                     <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color);">Action</th>
                   </tr>
                 </thead>
@@ -1531,12 +1547,79 @@
             
             document.getElementById('previewTable').innerHTML = tableHTML;
             document.getElementById('dataPreview').style.display = 'block';
+            
+            // Extract and populate distinct Item IDs for scenario dropdown
+            populateItemDropdown(data, headers);
           }
         } catch (error) {
           console.error('Error previewing data:', error);
         }
       };
       reader.readAsBinaryString(file);
+    }
+    
+    // Populate Item ID dropdown for scenario adjustments
+    function populateItemDropdown(data, headers) {
+      try {
+        // Find the Item ID column index
+        const itemIdIndex = headers.findIndex(header => 
+          header && header.toLowerCase().includes('item') && header.toLowerCase().includes('id')
+        );
+        
+        if (itemIdIndex === -1) {
+          console.warn('Item ID column not found in headers:', headers);
+          return;
+        }
+        
+        // Extract distinct Item IDs from the data (skip header row)
+        const itemIds = [...new Set(data.slice(1).map(row => row[itemIdIndex]).filter(id => id && id.toString().trim() !== ''))];
+        
+        // Sort Item IDs for better UX
+        itemIds.sort();
+        
+        // Populate the dropdown
+        const dropdown = document.getElementById('scenarioItems');
+        dropdown.innerHTML = '';
+        
+        // Add a placeholder option
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = 'All Items (default)';
+        placeholderOption.disabled = true;
+        placeholderOption.selected = true;
+        dropdown.appendChild(placeholderOption);
+        
+        // Add Item ID options
+        itemIds.forEach(itemId => {
+          const option = document.createElement('option');
+          option.value = itemId;
+          option.textContent = itemId;
+          dropdown.appendChild(option);
+        });
+        
+        console.log(`Populated scenario dropdown with ${itemIds.length} distinct Item IDs`);
+        
+        // Add search functionality
+        const searchInput = document.getElementById('scenarioItemsSearch');
+        if (searchInput) {
+          searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const options = dropdown.querySelectorAll('option:not([disabled])');
+            
+            options.forEach(option => {
+              const text = option.textContent.toLowerCase();
+              if (text.includes(searchTerm)) {
+                option.style.display = '';
+              } else {
+                option.style.display = 'none';
+              }
+            });
+          });
+        }
+        
+      } catch (error) {
+        console.error('Error populating Item ID dropdown:', error);
+      }
     }
 
     function readFileAsCSV(file) {
@@ -1580,6 +1663,10 @@
         const endDate = document.getElementById('endDate').value;
         const factor = parseFloat(document.getElementById('adjustmentFactor').value);
         
+        // Get selected items from dropdown
+        const itemSelect = document.getElementById('scenarioItems');
+        const selectedItems = Array.from(itemSelect.selectedOptions).map(option => option.value).filter(value => value !== '');
+        
         // Validation
         if (!name) {
           showError('Please enter a scenario name');
@@ -1603,7 +1690,8 @@
           name: name,
           start: startDate,
           end: endDate,
-          factor: factor
+          factor: factor,
+          items: selectedItems // Include selected items
         };
         scenarioAdjustments.push(adjustment);
         
@@ -1646,11 +1734,15 @@
         tableBody.innerHTML = '';
         scenarioAdjustments.forEach((adjustment, index) => {
           const row = document.createElement('tr');
+          const itemsText = adjustment.items && adjustment.items.length > 0 
+            ? adjustment.items.join(', ') 
+            : 'All Items';
           row.innerHTML = `
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.name}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.start}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.end}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.factor}x</td>
+            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${itemsText}</td>
             <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;">
               <button onclick="removeScenarioAdjustment(${index})" style="background: var(--error-color); color: white; border: none; border-radius: var(--radius-sm); padding: 0.25rem 0.5rem; cursor: pointer;">
                 <i class="fas fa-trash"></i>
@@ -1678,7 +1770,8 @@
           adjustments: scenarioAdjustments.map(adj => ({
             start: adj.start,
             end: adj.end,
-            factor: adj.factor
+            factor: adj.factor,
+            items: adj.items || [] // Include selected items for each adjustment
           }))
         };
         

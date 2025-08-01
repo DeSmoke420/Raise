@@ -1332,7 +1332,19 @@ def forecast():
                     for adjustment in adjustments:
                         if 'start_dt' in adjustment and 'end_dt' in adjustment:
                             logger.info(f"Checking if {row_date} is between {adjustment['start_dt']} and {adjustment['end_dt']}")
-                            if adjustment['start_dt'] <= row_date <= adjustment['end_dt']:
+                            
+                            # Check date range
+                            date_matches = adjustment['start_dt'] <= row_date <= adjustment['end_dt']
+                            
+                            # Check item selection (if specified)
+                            item_matches = True
+                            if 'items' in adjustment and adjustment['items'] and len(adjustment['items']) > 0:
+                                row_item_id = row.get('Item ID', '')
+                                item_matches = row_item_id in adjustment['items']
+                                logger.info(f"Item check: row_item_id='{row_item_id}', selected_items={adjustment['items']}, item_matches={item_matches}")
+                            
+                            # Apply adjustment if both date and item conditions are met
+                            if date_matches and item_matches:
                                 # Apply adjustment to all available models
                                 models_to_adjust = ['Holt-Winters', 'Prophet', 'ARIMA', 'Average']
                                 
