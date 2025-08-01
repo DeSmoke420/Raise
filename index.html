@@ -1184,8 +1184,8 @@
               <i class="fas fa-info-circle"></i> Adjustments will be applied to all available forecast models (Holt-Winters, Prophet, ARIMA, and Average).
             </p>
             
-            <!-- Row 1: Scenario Name and Item Selection -->
-            <div class="scenario-inputs-row1" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+            <!-- Row 1: Scenario Name -->
+            <div class="scenario-inputs-row1" style="margin-bottom: 1rem;">
               <div class="field">
                 <label for="scenarioName" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                   <i class="fas fa-tag"></i> Scenario Name
@@ -1195,33 +1195,41 @@
                   <input type="text" id="scenarioName" placeholder="e.g. Marketing Campaign" style="width: 100%; padding: 0.75rem 0.75rem 0.75rem 2.5rem; border: 1px solid var(--border-color); border-radius: var(--radius-md); background: white; font-size: 0.9rem;">
                 </div>
               </div>
-              
+            </div>
+            
+            <!-- Row 2: Select Items (Collapsible) -->
+            <div class="scenario-inputs-row2" style="margin-bottom: 1rem;">
               <div class="field">
-                <label for="scenarioItems" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
-                  <i class="fas fa-boxes"></i> Select Items
-                </label>
-                <div class="input-group" style="position: relative;">
-                  <input type="text" id="scenarioItemsSearch" placeholder="Search items..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md) var(--radius-md) 0 0; background: white; font-size: 0.9rem; border-bottom: none;">
-                  <div id="scenarioItemsContainer" style="width: 100%; border: 1px solid var(--border-color); border-radius: 0 0 var(--radius-md) var(--radius-md); background: white; max-height: 8rem; overflow-y: auto; padding: 0.5rem;">
-                    <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
-                      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500; color: var(--primary-color);">
-                        <input type="checkbox" id="selectAllItems" style="margin: 0;">
-                        <span>Select All Items</span>
-                      </label>
-                    </div>
-                    <div id="scenarioItemsList" style="display: flex; flex-direction: column; gap: 0.25rem;">
-                      <div style="text-align: center; color: var(--text-secondary); padding: 1rem;">Loading items...</div>
+                <div class="items-header" onclick="toggleItemsPanel()" style="padding: 0.5rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color); border: 1px solid var(--border-color); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+                  <label style="margin: 0; font-weight: 500; color: var(--text-primary);">
+                    <i class="fas fa-boxes"></i> Select Items
+                  </label>
+                  <i class="fas fa-chevron-down" id="itemsToggleIcon" style="color: var(--text-secondary); transition: transform 0.3s ease;"></i>
+                </div>
+                <div class="items-content" id="itemsContent" style="display: none; padding: 1rem; background: white; border: 1px solid var(--border-color); border-top: none; border-radius: 0 0 var(--radius-md) var(--radius-md); box-shadow: var(--shadow-sm); margin-top: -1px;">
+                  <div class="input-group" style="position: relative;">
+                    <input type="text" id="scenarioItemsSearch" placeholder="Search items..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: var(--radius-md) var(--radius-md) 0 0; background: white; font-size: 0.9rem; border-bottom: none;">
+                    <div id="scenarioItemsContainer" style="width: 100%; border: 1px solid var(--border-color); border-radius: 0 0 var(--radius-md) var(--radius-md); background: white; max-height: 8rem; overflow-y: auto; padding: 0.5rem;">
+                      <div style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0.5rem;">
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-weight: 500; color: var(--primary-color);">
+                          <input type="checkbox" id="selectAllItems" style="margin: 0;">
+                          <span>Select All Items</span>
+                        </label>
+                      </div>
+                      <div id="scenarioItemsList" style="display: flex; flex-direction: column; gap: 0.25rem;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 1rem;">Loading items...</div>
+                      </div>
                     </div>
                   </div>
+                  <small style="color: var(--text-secondary); font-size: 0.8rem; margin-top: 0.5rem; display: block;">
+                    <i class="fas fa-info-circle"></i> Leave empty to apply to all items
+                  </small>
                 </div>
-                <small style="color: var(--text-secondary); font-size: 0.8rem;">
-                  <i class="fas fa-info-circle"></i> Leave empty to apply to all items
-                </small>
               </div>
             </div>
             
-            <!-- Row 2: Start Date, End Date, Adjustment Factor, Add Button -->
-            <div class="scenario-inputs-row2" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
+            <!-- Row 3: Start Date, End Date, % Factor, Add Button (All on one line) -->
+            <div class="scenario-inputs-row3" style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;">
               <div class="field">
                 <label for="startDate" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
                   <i class="fas fa-calendar"></i> Start Date
@@ -1244,7 +1252,7 @@
               
               <div class="field">
                 <label for="adjustmentFactor" style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary);">
-                  <i class="fas fa-percentage"></i> Adjustment Factor
+                  <i class="fas fa-percentage"></i> % Factor
                 </label>
                 <div class="input-group" style="position: relative;">
                   <i class="fas fa-calculator" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); z-index: 1;"></i>
@@ -1704,6 +1712,20 @@
     function toggleScenarioPanel() {
       const content = document.getElementById('scenarioContent');
       const icon = document.getElementById('scenarioToggleIcon');
+      
+      if (content.style.display === 'none') {
+        content.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+      } else {
+        content.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+      }
+    }
+    
+    // Toggle items panel visibility
+    function toggleItemsPanel() {
+      const content = document.getElementById('itemsContent');
+      const icon = document.getElementById('itemsToggleIcon');
       
       if (content.style.display === 'none') {
         content.style.display = 'block';
