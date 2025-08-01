@@ -1169,9 +1169,9 @@
       </div>
       
         <!-- Scenario Adjustment Section -->
-        <div class="scenario-section" style="margin-top: 2rem; background: var(--bg-color); border-radius: var(--radius-lg); border: 2px solid var(--border-color); overflow: hidden;">
+        <div class="scenario-section" style="margin-top: 2rem; margin-bottom: 2rem; background: var(--card-bg); border-radius: var(--radius-xl); border: 2px solid var(--border-color); overflow: hidden; box-shadow: var(--shadow-md);">
           <!-- Collapsible Header -->
-          <div class="scenario-header" onclick="toggleScenarioPanel()" style="padding: 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--bg-color);">
+          <div class="scenario-header" onclick="toggleScenarioPanel()" style="padding: 1.5rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: var(--card-bg); border-bottom: 1px solid var(--border-color);">
             <h3 style="margin: 0; color: var(--text-primary);">
               <i class="fas fa-sliders-h"></i> Scenario Adjustment
             </h3>
@@ -1264,11 +1264,8 @@
             </button>
           </div>
         </div>
-        
-        <!-- Add spacing between scenario section and generate button -->
-        <div style="margin-top: 3.5rem;"></div>
       
-      <button class="btn btn-primary" onclick="generateForecast()" id="generateBtn" style="margin-top: 1rem;">
+      <button class="btn btn-primary" onclick="generateForecast()" id="generateBtn">
         <i class="fas fa-rocket"></i>
         Generate Forecast
       </button>
