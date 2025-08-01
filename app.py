@@ -1427,6 +1427,8 @@ def forecast():
             forecast_dates = pd.to_datetime(result_df['Date'], errors='coerce')
             logger.info(f"Forecast date range: {forecast_dates.min()} to {forecast_dates.max()}")
             logger.info(f"Total forecast periods: {len(forecast_dates)}")
+            logger.info(f"Sample raw date values: {result_df['Date'].head(5).tolist()}")
+            logger.info(f"Sample parsed date values: {forecast_dates.head(5).tolist()}")
             
             # Convert forecast columns to numeric, handling empty strings and invalid values
             for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
@@ -1467,10 +1469,12 @@ def forecast():
                             logger.info(f"No rows found for {col} in date range {start_dt} to {end_dt}")
                             # Debug: Show some sample dates from the DataFrame
                             sample_dates = pd.to_datetime(result_df['Date'], errors='coerce').head(10)
+                            all_dates = pd.to_datetime(result_df['Date'], errors='coerce')
                             logger.info(f"Sample dates in DataFrame: {sample_dates.tolist()}")
-                            logger.info(f"Date range in DataFrame: {sample_dates.min()} to {sample_dates.max()}")
+                            logger.info(f"Full date range in DataFrame: {all_dates.min()} to {all_dates.max()}")
+                            logger.info(f"Total dates in DataFrame: {len(all_dates)}")
                             logger.info(f"Scenario date range: {start_dt} to {end_dt}")
-                            logger.info(f"Date range overlap: {start_dt <= sample_dates.max() and end_dt >= sample_dates.min()}")
+                            logger.info(f"Date range overlap: {start_dt <= all_dates.max() and end_dt >= all_dates.min()}")
                             
                 except Exception as e:
                     logger.warning(f"Error applying adjustment to DataFrame: {e}")
