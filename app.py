@@ -1412,99 +1412,100 @@ def forecast():
         result_df["Item ID"] = result_df["Item ID"].astype(str)
         
         # Force scenario adjustments to be applied to DataFrame if scenario is active
-        if scenario and scenario.get('type') == 'multiplier':
-            logger.info("=== SECOND SCENARIO APPLICATION (DataFrame) ===")
-            logger.info("Forcing scenario adjustments to DataFrame...")
-            logger.info(f"Scenario data: {scenario}")
-            adjustments = scenario.get('adjustments', [])
-            logger.info(f"Number of adjustments: {len(adjustments)}")
-            logger.info(f"Adjustments: {adjustments}")
+        # DISABLED: Second application is causing errors, first application is working correctly
+        # if scenario and scenario.get('type') == 'multiplier':
+        #     logger.info("=== SECOND SCENARIO APPLICATION (DataFrame) ===")
+        #     logger.info("Forcing scenario adjustments to DataFrame...")
+        #     logger.info(f"Scenario data: {scenario}")
+        #     adjustments = scenario.get('adjustments', [])
+        #     logger.info(f"Number of adjustments: {len(adjustments)}")
+        #     logger.info(f"Adjustments: {adjustments}")
             
             # Debug: Show DataFrame before conversion
-            logger.info("DataFrame before conversion:")
-            logger.info(f"DataFrame shape: {result_df.shape}")
-            logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
-            logger.info("First 5 rows before conversion:")
-            for i in range(min(5, len(result_df))):
-                row = result_df.iloc[i]
-                logger.info(f"Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
+            # logger.info("DataFrame before conversion:")
+            # logger.info(f"DataFrame shape: {result_df.shape}")
+            # logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
+            # logger.info("First 5 rows before conversion:")
+            # for i in range(min(5, len(result_df))):
+            #     row = result_df.iloc[i]
+            #     logger.info(f"Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
             
             # Show date range of forecast data
-            forecast_dates = pd.to_datetime(result_df['Date'], errors='coerce')
-            logger.info(f"Forecast date range: {forecast_dates.min()} to {forecast_dates.max()}")
-            logger.info(f"Total forecast periods: {len(forecast_dates)}")
-            logger.info(f"Sample raw date values: {result_df['Date'].head(5).tolist()}")
-            logger.info(f"Sample parsed date values: {forecast_dates.head(5).tolist()}")
+            # forecast_dates = pd.to_datetime(result_df['Date'], errors='coerce')
+            # logger.info(f"Forecast date range: {forecast_dates.min()} to {forecast_dates.max()}")
+            # logger.info(f"Total forecast periods: {len(forecast_dates)}")
+            # logger.info(f"Sample raw date values: {result_df['Date'].head(5).tolist()}")
+            # logger.info(f"Sample parsed date values: {forecast_dates.head(5).tolist()}")
             
             # Convert forecast columns to numeric, handling empty strings and invalid values
-            for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
-                # Replace empty strings with NaN
-                result_df[col] = result_df[col].replace('', np.nan)
-                # Convert to numeric, coercing errors to NaN
-                result_df[col] = pd.to_numeric(result_df[col], errors='coerce')
-                logger.info(f"Converted {col} to numeric. Sample values: {result_df[col].head(3).tolist()}")
+            # for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
+            #     # Replace empty strings with NaN
+            #     result_df[col] = result_df[col].replace('', np.nan)
+            #     # Convert to numeric, coercing errors to NaN
+            #     result_df[col] = pd.to_numeric(result_df[col], errors='coerce')
+            #     logger.info(f"Converted {col} to numeric. Sample values: {result_df[col].head(3).tolist()}")
             
-            for adjustment in adjustments:
-                try:
-                    logger.info(f"Processing adjustment: {adjustment}")
-                    start_dt = pd.to_datetime(adjustment['start'])
-                    end_dt = pd.to_datetime(adjustment['end'])
-                    factor = adjustment['factor']
+            # for adjustment in adjustments:
+            #     try:
+            #         logger.info(f"Processing adjustment: {adjustment}")
+            #         start_dt = pd.to_datetime(adjustment['start'])
+            #         end_dt = pd.to_datetime(adjustment['end'])
+            #         factor = adjustment['factor']
                     
-                    logger.info(f"Parsed dates: start={start_dt}, end={end_dt}, factor={factor}")
-                    logger.info(f"Applying adjustment: {factor}x from {start_dt} to {end_dt}")
+            #         logger.info(f"Parsed dates: start={start_dt}, end={end_dt}, factor={factor}")
+            #         logger.info(f"Applying adjustment: {factor}x from {start_dt} to {end_dt}")
                     
-                    # Apply to all forecast columns
-                    for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
-                        # Create mask for date range and non-null values
-                        date_mask = (pd.to_datetime(result_df['Date'], errors='coerce') >= start_dt) & \
-                                   (pd.to_datetime(result_df['Date'], errors='coerce') <= end_dt)
-                        value_mask = result_df[col].notna()
-                        mask = date_mask & value_mask
+            #         # Apply to all forecast columns
+            #         for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
+            #             # Create mask for date range and non-null values
+            #             date_mask = (pd.to_datetime(result_df['Date'], errors='coerce') >= start_dt) & \
+            #                        (pd.to_datetime(result_df['Date'], errors='coerce') <= end_dt)
+            #             value_mask = result_df[col].notna()
+            #             mask = date_mask & value_mask
                         
-                        logger.info(f"Date mask for {col}: {date_mask.sum()} rows in date range")
-                        logger.info(f"Value mask for {col}: {value_mask.sum()} rows with valid values")
-                        logger.info(f"Combined mask for {col}: {mask.sum()} rows to adjust")
+            #             logger.info(f"Date mask for {col}: {date_mask.sum()} rows in date range")
+            #             logger.info(f"Value mask for {col}: {value_mask.sum()} rows with valid values")
+            #             logger.info(f"Combined mask for {col}: {mask.sum()} rows to adjust")
                         
-                        if mask.any():
-                            # Apply the factor and round to specified decimal places
-                            result_df.loc[mask, col] = (result_df.loc[mask, col] * factor).round(decimal_places)
-                            logger.info(f"Applied {factor}x to {col} for {mask.sum()} rows")
-                            logger.info(f"Sample adjusted values: {result_df.loc[mask, col].head(3).tolist()}")
-                        else:
-                            logger.info(f"No rows found for {col} in date range {start_dt} to {end_dt}")
-                            # Debug: Show some sample dates from the DataFrame
-                            sample_dates = pd.to_datetime(result_df['Date'], errors='coerce').head(10)
-                            all_dates = pd.to_datetime(result_df['Date'], errors='coerce')
-                            logger.info(f"Sample dates in DataFrame: {sample_dates.tolist()}")
-                            logger.info(f"Full date range in DataFrame: {all_dates.min()} to {all_dates.max()}")
-                            logger.info(f"Total dates in DataFrame: {len(all_dates)}")
-                            logger.info(f"Scenario date range: {start_dt} to {end_dt}")
-                            logger.info(f"Date range overlap: {start_dt <= all_dates.max() and end_dt >= all_dates.min()}")
+            #             if mask.any():
+            #                 # Apply the factor and round to specified decimal places
+            #                 result_df.loc[mask, col] = (result_df.loc[mask, col] * factor).round(decimal_places)
+            #                 logger.info(f"Applied {factor}x to {col} for {mask.sum()} rows")
+            #                 logger.info(f"Sample adjusted values: {result_df.loc[mask, col].head(3).tolist()}")
+            #             else:
+            #                 logger.info(f"No rows found for {col} in date range {start_dt} to {end_dt}")
+            #                 # Debug: Show some sample dates from the DataFrame
+            #                 sample_dates = pd.to_datetime(result_df['Date'], errors='coerce').head(10)
+            #                 all_dates = pd.to_datetime(result_df['Date'], errors='coerce')
+            #                 logger.info(f"Sample dates in DataFrame: {sample_dates.tolist()}")
+            #                 logger.info(f"Full date range in DataFrame: {all_dates.min()} to {all_dates.max()}")
+            #                 logger.info(f"Total dates in DataFrame: {len(all_dates)}")
+            #                 logger.info(f"Scenario date range: {start_dt} to {end_dt}")
+            #                 logger.info(f"Date range overlap: {start_dt <= all_dates.max() and end_dt >= all_dates.min()}")
                             
-                except Exception as e:
-                    logger.warning(f"Error applying adjustment to DataFrame: {e}")
-                    logger.warning(f"Adjustment data: {adjustment}")
+            #     except Exception as e:
+            #         logger.warning(f"Error applying adjustment to DataFrame: {e}")
+            #         logger.warning(f"Adjustment data: {adjustment}")
         
         # Debug: Check what's actually in the DataFrame after creation
-        if scenario and scenario.get('type') == 'multiplier':
-            logger.info("DataFrame after creation:")
-            logger.info(f"DataFrame shape: {result_df.shape}")
-            logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
-            logger.info("First 3 rows of DataFrame:")
-            for i in range(min(3, len(result_df))):
-                row = result_df.iloc[i]
-                logger.info(f"DataFrame Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
+        # if scenario and scenario.get('type') == 'multiplier':
+        #     logger.info("DataFrame after creation:")
+        #     logger.info(f"DataFrame shape: {result_df.shape}")
+        #     logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
+        #     logger.info("First 3 rows of DataFrame:")
+        #     for i in range(min(3, len(result_df))):
+        #         row = result_df.iloc[i]
+        #         logger.info(f"DataFrame Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
         # Debug: Final check before export
-        if scenario and scenario.get('type') == 'multiplier':
-            logger.info("=== FINAL EXPORT DEBUG ===")
-            logger.info(f"Export format: {export_format}")
-            logger.info(f"DataFrame shape: {result_df.shape}")
-            logger.info("Sample of final DataFrame values:")
-            for i in range(min(3, len(result_df))):
-                row = result_df.iloc[i]
-                logger.info(f"Export Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
-            logger.info("=== END FINAL EXPORT DEBUG ===")
+        # if scenario and scenario.get('type') == 'multiplier':
+        #     logger.info("=== FINAL EXPORT DEBUG ===")
+        #     logger.info(f"Export format: {export_format}")
+        #     logger.info(f"DataFrame shape: {result_df.shape}")
+        #     logger.info("Sample of final DataFrame values:")
+        #     for i in range(min(3, len(result_df))):
+        #         row = result_df.iloc[i]
+        #         logger.info(f"Export Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
+        #     logger.info("=== END FINAL EXPORT DEBUG ===")
         
         # Return single file based on export format
         if export_format == 'xlsx':
