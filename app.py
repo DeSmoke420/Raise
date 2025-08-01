@@ -1418,10 +1418,15 @@ def forecast():
             logger.info("DataFrame before conversion:")
             logger.info(f"DataFrame shape: {result_df.shape}")
             logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
-            logger.info("First 3 rows before conversion:")
-            for i in range(min(3, len(result_df))):
+            logger.info("First 5 rows before conversion:")
+            for i in range(min(5, len(result_df))):
                 row = result_df.iloc[i]
                 logger.info(f"Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
+            
+            # Show date range of forecast data
+            forecast_dates = pd.to_datetime(result_df['Date'], errors='coerce')
+            logger.info(f"Forecast date range: {forecast_dates.min()} to {forecast_dates.max()}")
+            logger.info(f"Total forecast periods: {len(forecast_dates)}")
             
             # Convert forecast columns to numeric, handling empty strings and invalid values
             for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
@@ -1461,8 +1466,11 @@ def forecast():
                         else:
                             logger.info(f"No rows found for {col} in date range {start_dt} to {end_dt}")
                             # Debug: Show some sample dates from the DataFrame
-                            sample_dates = pd.to_datetime(result_df['Date'], errors='coerce').head(5)
+                            sample_dates = pd.to_datetime(result_df['Date'], errors='coerce').head(10)
                             logger.info(f"Sample dates in DataFrame: {sample_dates.tolist()}")
+                            logger.info(f"Date range in DataFrame: {sample_dates.min()} to {sample_dates.max()}")
+                            logger.info(f"Scenario date range: {start_dt} to {end_dt}")
+                            logger.info(f"Date range overlap: {start_dt <= sample_dates.max() and end_dt >= sample_dates.min()}")
                             
                 except Exception as e:
                     logger.warning(f"Error applying adjustment to DataFrame: {e}")
