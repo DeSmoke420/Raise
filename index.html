@@ -1795,6 +1795,77 @@
       // Update placeholder to show the new limit
       periodInput.placeholder = `e.g. 12 (max: ${maxPeriods})`;
     }
+    
+    // Update date input types based on time unit granularity
+    function updateDateInputGranularity() {
+      const timeUnit = document.getElementById('timeUnit').value;
+      const startDateInput = document.getElementById('startDate');
+      const endDateInput = document.getElementById('endDate');
+      
+      switch (timeUnit) {
+        case 'monthly':
+          startDateInput.type = 'month';
+          endDateInput.type = 'month';
+          startDateInput.placeholder = 'YYYY-MM';
+          endDateInput.placeholder = 'YYYY-MM';
+          break;
+        case 'weekly':
+          startDateInput.type = 'week';
+          endDateInput.type = 'week';
+          startDateInput.placeholder = 'YYYY-WNN';
+          endDateInput.placeholder = 'YYYY-WNN';
+          break;
+        case 'daily':
+          startDateInput.type = 'date';
+          endDateInput.type = 'date';
+          startDateInput.placeholder = 'YYYY-MM-DD';
+          endDateInput.placeholder = 'YYYY-MM-DD';
+          break;
+      }
+      
+      // Clear existing values when granularity changes
+      startDateInput.value = '';
+      endDateInput.value = '';
+    }
+    
+    // Validate scenario dates match time unit granularity
+    function validateScenarioDates() {
+      const timeUnit = document.getElementById('timeUnit').value;
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      
+      if (!startDate || !endDate) {
+        return { valid: false, message: 'Please select both start and end dates' };
+      }
+      
+      switch (timeUnit) {
+        case 'monthly':
+          // For monthly, dates should be in YYYY-MM format
+          if (!/^\d{4}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}$/.test(endDate)) {
+            return { valid: false, message: 'For monthly forecasts, please select months (YYYY-MM format)' };
+          }
+          break;
+        case 'weekly':
+          // For weekly, dates should be in YYYY-WNN format
+          if (!/^\d{4}-W\d{2}$/.test(startDate) || !/^\d{4}-W\d{2}$/.test(endDate)) {
+            return { valid: false, message: 'For weekly forecasts, please select weeks (YYYY-WNN format)' };
+          }
+          break;
+        case 'daily':
+          // For daily, dates should be in YYYY-MM-DD format
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate) || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+            return { valid: false, message: 'For daily forecasts, please select specific dates (YYYY-MM-DD format)' };
+          }
+          break;
+      }
+      
+      // Check if end date is after start date
+      if (startDate >= endDate) {
+        return { valid: false, message: 'End date must be after start date' };
+      }
+      
+      return { valid: true };
+    }
       
       function addScenarioAdjustment() {
         const name = document.getElementById('scenarioName').value.trim();
@@ -1811,18 +1882,18 @@
           showError('Please enter a scenario name');
           return;
         }
-        if (!startDate || !endDate) {
-          showError('Please select both start and end dates');
+        
+        // Validate date granularity matches time unit
+        const dateValidation = validateScenarioDates();
+        if (!dateValidation.valid) {
+          showError(dateValidation.message);
           return;
         }
-        if (startDate >= endDate) {
-          showError('End date must be after start date');
-          return;
-        }
+        
         if (!factor || factor <= 0) {
           showError('Please enter a valid adjustment factor (greater than 0)');
-        return;
-      }
+          return;
+        }
       
         // Add to adjustments array
         const adjustment = {
@@ -2891,10 +2962,16 @@
         // Initialize forecast periods limit based on time unit
         updateForecastPeriodsLimit();
         
+        // Initialize date input granularity
+        updateDateInputGranularity();
+        
         // Add event listener for time unit changes
         const timeUnitSelect = document.getElementById('timeUnit');
         if (timeUnitSelect) {
-          timeUnitSelect.addEventListener('change', updateForecastPeriodsLimit);
+          timeUnitSelect.addEventListener('change', function() {
+            updateForecastPeriodsLimit();
+            updateDateInputGranularity();
+          });
         }
     });
   </script>
