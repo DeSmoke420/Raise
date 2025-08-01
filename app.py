@@ -1413,25 +1413,37 @@ def forecast():
         
         # Debug: Check if scenario adjustments are preserved in the DataFrame
         if scenario and scenario.get('type') == 'multiplier':
-            logger.info("=== CHECKING SCENARIO PRESERVATION IN DATAFRAME ===")
-            logger.info(f"DataFrame shape: {result_df.shape}")
-            
-            # Check June 2025 values specifically
-            june_rows = result_df[result_df['Date'] == '01/06/2025']
-            if not june_rows.empty:
-                logger.info("June 2025 rows found in DataFrame:")
-                for idx, row in june_rows.iterrows():
-                    logger.info(f"Row {idx}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
-            else:
-                logger.info("No June 2025 rows found in DataFrame")
+            try:
+                logger.info("=== CHECKING SCENARIO PRESERVATION IN DATAFRAME ===")
+                logger.info(f"DataFrame shape: {result_df.shape}")
                 
-            # Check a few sample rows to see if adjustments are preserved
-            logger.info("Sample rows from DataFrame (first 3):")
-            for i in range(min(3, len(result_df))):
-                row = result_df.iloc[i]
-                logger.info(f"Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
-            
-            logger.info("=== END SCENARIO PRESERVATION CHECK ===")
+                # Check June 2025 values specifically
+                june_rows = result_df[result_df['Date'] == '01/06/2025']
+                logger.info(f"June 2025 rows found: {len(june_rows)}")
+                
+                if not june_rows.empty:
+                    logger.info("June 2025 rows found in DataFrame:")
+                    for idx, row in june_rows.iterrows():
+                        try:
+                            logger.info(f"Row {idx}: Date={row['Date']}, Prophet={row.get('Forecast (Prophet)', 'N/A')}, HW={row.get('Forecast (Holt-Winters)', 'N/A')}, ARIMA={row.get('Forecast (ARIMA)', 'N/A')}, Avg={row.get('Average', 'N/A')}")
+                        except Exception as e:
+                            logger.error(f"Error logging row {idx}: {e}")
+                else:
+                    logger.info("No June 2025 rows found in DataFrame")
+                    
+                # Check a few sample rows to see if adjustments are preserved
+                logger.info("Sample rows from DataFrame (first 3):")
+                for i in range(min(3, len(result_df))):
+                    try:
+                        row = result_df.iloc[i]
+                        logger.info(f"Row {i}: Date={row['Date']}, Prophet={row.get('Forecast (Prophet)', 'N/A')}, HW={row.get('Forecast (Holt-Winters)', 'N/A')}, ARIMA={row.get('Forecast (ARIMA)', 'N/A')}, Avg={row.get('Average', 'N/A')}")
+                    except Exception as e:
+                        logger.error(f"Error logging sample row {i}: {e}")
+                
+                logger.info("=== END SCENARIO PRESERVATION CHECK ===")
+            except Exception as e:
+                logger.error(f"Error in scenario preservation check: {e}")
+                logger.info("=== END SCENARIO PRESERVATION CHECK (WITH ERROR) ===")
         
         # Force scenario adjustments to be applied to DataFrame if scenario is active
         # DISABLED: Second application is causing errors, first application is working correctly
@@ -1534,20 +1546,29 @@ def forecast():
             try:
                 # Debug: Check final DataFrame before export
                 if scenario and scenario.get('type') == 'multiplier':
-                    logger.info("=== FINAL EXPORT CHECK ===")
-                    logger.info(f"Export format: {export_format}")
-                    logger.info(f"Final DataFrame shape: {result_df.shape}")
-                    
-                    # Check June 2025 values one more time before export
-                    june_rows = result_df[result_df['Date'] == '01/06/2025']
-                    if not june_rows.empty:
-                        logger.info("June 2025 rows in final DataFrame before export:")
-                        for idx, row in june_rows.iterrows():
-                            logger.info(f"Row {idx}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
-                    else:
-                        logger.info("No June 2025 rows found in final DataFrame")
-                    
-                    logger.info("=== END FINAL EXPORT CHECK ===")
+                    try:
+                        logger.info("=== FINAL EXPORT CHECK ===")
+                        logger.info(f"Export format: {export_format}")
+                        logger.info(f"Final DataFrame shape: {result_df.shape}")
+                        
+                        # Check June 2025 values one more time before export
+                        june_rows = result_df[result_df['Date'] == '01/06/2025']
+                        logger.info(f"June 2025 rows in final DataFrame: {len(june_rows)}")
+                        
+                        if not june_rows.empty:
+                            logger.info("June 2025 rows in final DataFrame before export:")
+                            for idx, row in june_rows.iterrows():
+                                try:
+                                    logger.info(f"Row {idx}: Date={row['Date']}, Prophet={row.get('Forecast (Prophet)', 'N/A')}, HW={row.get('Forecast (Holt-Winters)', 'N/A')}, ARIMA={row.get('Forecast (ARIMA)', 'N/A')}, Avg={row.get('Average', 'N/A')}")
+                                except Exception as e:
+                                    logger.error(f"Error logging final export row {idx}: {e}")
+                        else:
+                            logger.info("No June 2025 rows found in final DataFrame")
+                        
+                        logger.info("=== END FINAL EXPORT CHECK ===")
+                    except Exception as e:
+                        logger.error(f"Error in final export check: {e}")
+                        logger.info("=== END FINAL EXPORT CHECK (WITH ERROR) ===")
                 
                 import tempfile
                 with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp_file:
