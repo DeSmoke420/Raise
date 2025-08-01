@@ -1564,6 +1564,35 @@
             document.getElementById('previewTable').innerHTML = tableHTML;
             document.getElementById('dataPreview').style.display = 'block';
             
+            // Smooth scroll to show the uploaded file name and Scenario Adjustment section
+            setTimeout(() => {
+              const scenarioSection = document.querySelector('.scenario-section');
+              if (scenarioSection) {
+                const offset = 80;
+                const elementPosition = scenarioSection.getBoundingClientRect().top;
+                const offsetPosition = elementPosition + window.pageYOffset - offset;
+                const startPosition = window.pageYOffset;
+                const distance = offsetPosition - startPosition;
+                const duration = 1200;
+                
+                let start = null;
+                function animation(currentTime) {
+                  if (start === null) start = currentTime;
+                  const timeElapsed = currentTime - start;
+                  const run = easeInOutCubic(timeElapsed, startPosition, distance, duration);
+                  window.scrollTo(0, run);
+                  if (timeElapsed < duration) requestAnimationFrame(animation);
+                }
+                function easeInOutCubic(t, b, c, d) {
+                  t /= d / 2;
+                  if (t < 1) return c / 2 * t * t * t + b;
+                  t -= 2;
+                  return c / 2 * (t * t * t + 2) + b;
+                }
+                requestAnimationFrame(animation);
+              }
+            }, 500);
+            
             // Extract and populate distinct Item IDs for scenario dropdown
             populateItemDropdown(data, headers);
           }
