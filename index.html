@@ -1564,12 +1564,12 @@
             document.getElementById('previewTable').innerHTML = tableHTML;
             document.getElementById('dataPreview').style.display = 'block';
             
-            // Smooth scroll to show the uploaded file name and Scenario Adjustment section
+            // Smooth scroll to show the uploaded file name at the top of the page
             setTimeout(() => {
-              const scenarioSection = document.querySelector('.scenario-section');
-              if (scenarioSection) {
-                const offset = 80;
-                const elementPosition = scenarioSection.getBoundingClientRect().top;
+              const historicalDataLabel = document.querySelector('label[for="historicalFile"]');
+              if (historicalDataLabel) {
+                const offset = 20;
+                const elementPosition = historicalDataLabel.getBoundingClientRect().top;
                 const offsetPosition = elementPosition + window.pageYOffset - offset;
                 const startPosition = window.pageYOffset;
                 const distance = offsetPosition - startPosition;
