@@ -1349,6 +1349,7 @@ def forecast():
                                         adjustments_applied += 1
                                         logger.info(f"Applied {adjustment['factor']}x adjustment to {row_date} for {model_name}: {original_val} -> {adjusted_val}")
                                         logger.info(f"Row after adjustment: {row}")
+                                        logger.info(f"=== FIRST APPLICATION SUCCESSFUL ===")
                                     else:
                                         logger.info(f"No value found for {target_col} on {row_date} (skipping)")
                                 break
@@ -1412,6 +1413,7 @@ def forecast():
         
         # Force scenario adjustments to be applied to DataFrame if scenario is active
         if scenario and scenario.get('type') == 'multiplier':
+            logger.info("=== SECOND SCENARIO APPLICATION (DataFrame) ===")
             logger.info("Forcing scenario adjustments to DataFrame...")
             logger.info(f"Scenario data: {scenario}")
             adjustments = scenario.get('adjustments', [])
