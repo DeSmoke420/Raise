@@ -1266,19 +1266,19 @@
             </div>
           
           <div class="scenario-table" id="scenarioTable" style="display: none;">
-            <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary);">
+            <h4 style="margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
               <i class="fas fa-list"></i> Applied Adjustments
             </h4>
             <div class="table-container" style="background: white; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--border-color);">
-              <table style="width: 100%; border-collapse: collapse;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
                 <thead style="background: var(--bg-color);">
                   <tr>
-                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Scenario</th>
-                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Start Date</th>
-                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">End Date</th>
-                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Factor</th>
-                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border-color);">Items</th>
-                    <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid var(--border-color);">Action</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600;">Scenario</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600;">Start Date</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600;">End Date</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600;">Factor</th>
+                    <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600;">Items</th>
+                    <th style="padding: 0.5rem; text-align: center; border-bottom: 1px solid var(--border-color); font-size: 0.75rem; font-weight: 600;">Action</th>
                   </tr>
                 </thead>
                 <tbody id="scenarioTableBody">
@@ -1867,13 +1867,13 @@
             ? adjustment.items.join(', ') 
             : 'All Items';
           row.innerHTML = `
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.name}</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.start}</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.end}</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${adjustment.factor}x</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color);">${itemsText}</td>
-            <td style="padding: 0.75rem; border-bottom: 1px solid var(--border-color); text-align: center;">
-              <button onclick="removeScenarioAdjustment(${index})" style="background: var(--error-color); color: white; border: none; border-radius: var(--radius-sm); padding: 0.25rem 0.5rem; cursor: pointer;">
+            <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); font-size: 0.75rem;">${adjustment.name}</td>
+            <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); font-size: 0.75rem;">${adjustment.start}</td>
+            <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); font-size: 0.75rem;">${adjustment.end}</td>
+            <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); font-size: 0.75rem;">${adjustment.factor}x</td>
+            <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); font-size: 0.75rem;">${itemsText}</td>
+            <td style="padding: 0.5rem; border-bottom: 1px solid var(--border-color); text-align: center; font-size: 0.75rem;">
+              <button onclick="removeScenarioAdjustment(${index})" style="background: var(--error-color); color: white; border: none; border-radius: var(--radius-sm); padding: 0.2rem 0.4rem; cursor: pointer; font-size: 0.7rem;">
                 <i class="fas fa-trash"></i>
               </button>
             </td>
