@@ -2145,13 +2145,22 @@
       downloadBtn.innerHTML = '<i class="fas fa-spinner spinning"></i> Generating...';
 
       try {
+        // Prepare request body with scenario data if available
+        const requestBody = { 
+          ...window.forecastSettings,
+          exportFormat: format
+        };
+        
+        // Add scenario data if available
+        if (window.currentScenario) {
+          requestBody.scenario = window.currentScenario;
+          console.log('Including scenario in download request:', window.currentScenario);
+        }
+        
         const res = await fetch('/api/forecast', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            ...window.forecastSettings,
-            exportFormat: format
-          })
+          body: JSON.stringify(requestBody)
         });
         
         if (!res.ok) {
