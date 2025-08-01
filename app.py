@@ -18,6 +18,7 @@ try:
     from flask import Flask, request, jsonify, send_file, send_from_directory, redirect
     from flask_cors import CORS
     import pandas as pd
+    import numpy as np
     import io
     from statsmodels.tsa.holtwinters import ExponentialSmoothing
     from datetime import datetime, timedelta, date
@@ -1379,24 +1380,41 @@ def forecast():
             logger.info("Forcing scenario adjustments to DataFrame...")
             adjustments = scenario.get('adjustments', [])
             
+            # Convert forecast columns to numeric, handling empty strings and invalid values
+            for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
+                # Replace empty strings with NaN
+                result_df[col] = result_df[col].replace('', np.nan)
+                # Convert to numeric, coercing errors to NaN
+                result_df[col] = pd.to_numeric(result_df[col], errors='coerce')
+                logger.info(f"Converted {col} to numeric. Sample values: {result_df[col].head(3).tolist()}")
+            
             for adjustment in adjustments:
                 try:
                     start_dt = pd.to_datetime(adjustment['start'])
                     end_dt = pd.to_datetime(adjustment['end'])
                     factor = adjustment['factor']
                     
+                    logger.info(f"Applying adjustment: {adjustment['name']} - {factor}x from {start_dt} to {end_dt}")
+                    
                     # Apply to all forecast columns
                     for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
-                        mask = (pd.to_datetime(result_df['Date'], errors='coerce') >= start_dt) & \
-                               (pd.to_datetime(result_df['Date'], errors='coerce') <= end_dt) & \
-                               (result_df[col] != '') & (result_df[col].notna())
+                        # Create mask for date range and non-null values
+                        date_mask = (pd.to_datetime(result_df['Date'], errors='coerce') >= start_dt) & \
+                                   (pd.to_datetime(result_df['Date'], errors='coerce') <= end_dt)
+                        value_mask = result_df[col].notna()
+                        mask = date_mask & value_mask
                         
                         if mask.any():
-                            result_df.loc[mask, col] = result_df.loc[mask, col] * factor
+                            # Apply the factor and round to specified decimal places
+                            result_df.loc[mask, col] = (result_df.loc[mask, col] * factor).round(decimal_places)
                             logger.info(f"Applied {factor}x to {col} for {mask.sum()} rows")
+                            logger.info(f"Sample adjusted values: {result_df.loc[mask, col].head(3).tolist()}")
+                        else:
+                            logger.info(f"No rows found for {col} in date range {start_dt} to {end_dt}")
                             
                 except Exception as e:
                     logger.warning(f"Error applying adjustment to DataFrame: {e}")
+                    logger.warning(f"Adjustment data: {adjustment}")
         
         # Debug: Check what's actually in the DataFrame after creation
         if scenario and scenario.get('type') == 'multiplier':
