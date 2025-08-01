@@ -1298,22 +1298,26 @@ def forecast():
                     # Try different date parsing strategies for row dates
                     row_date = None
                     try:
-                        # First try direct parsing
-                        row_date = pd.to_datetime(row_date_str)
+                        # For EUR format (DD/MM/YYYY), try dayfirst=True first
+                        row_date = pd.to_datetime(row_date_str, dayfirst=True)
+                        logger.info(f"Parsed with dayfirst=True: {row_date_str} -> {row_date}")
                     except:
                         try:
-                            # Try with dayfirst=True (DD/MM/YYYY)
-                            row_date = pd.to_datetime(row_date_str, dayfirst=True)
+                            # Try with dayfirst=False (MM/DD/YYYY)
+                            row_date = pd.to_datetime(row_date_str, dayfirst=False)
+                            logger.info(f"Parsed with dayfirst=False: {row_date_str} -> {row_date}")
                         except:
                             try:
-                                # Try with dayfirst=False (MM/DD/YYYY)
-                                row_date = pd.to_datetime(row_date_str, dayfirst=False)
+                                # Try direct parsing
+                                row_date = pd.to_datetime(row_date_str)
+                                logger.info(f"Parsed with direct parsing: {row_date_str} -> {row_date}")
                             except:
                                 # Try custom formats
                                 custom_formats = ['%d/%m/%Y', '%Y-%m', '%m/%Y', '%Y/%m', '%m-%Y', '%Y-%m-%d', '%d-%m-%Y', '%m-%d-%Y', '%m/%d/%Y', '%d/%m/%y', '%m/%d/%y', '%y/%d/%m', '%y/%m/%d', '%y-%d-%m', '%y-%m-%d']
                                 for fmt in custom_formats:
                                     try:
                                         row_date = pd.to_datetime(row_date_str, format=fmt)
+                                        logger.info(f"Parsed with format {fmt}: {row_date_str} -> {row_date}")
                                         break
                                     except:
                                         continue
