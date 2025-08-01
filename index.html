@@ -1764,6 +1764,37 @@
         icon.style.transform = 'rotate(0deg)';
       }
     }
+    
+    // Update forecast periods limit based on time unit
+    function updateForecastPeriodsLimit() {
+      const timeUnit = document.getElementById('timeUnit').value;
+      const periodInput = document.getElementById('periodCount');
+      
+      let maxPeriods;
+      switch (timeUnit) {
+        case 'monthly':
+          maxPeriods = 36;
+          break;
+        case 'weekly':
+          maxPeriods = 156;
+          break;
+        case 'daily':
+          maxPeriods = 1096;
+          break;
+        default:
+          maxPeriods = 36;
+      }
+      
+      periodInput.max = maxPeriods;
+      
+      // If current value exceeds new max, reset to max
+      if (parseInt(periodInput.value) > maxPeriods) {
+        periodInput.value = maxPeriods;
+      }
+      
+      // Update placeholder to show the new limit
+      periodInput.placeholder = `e.g. 12 (max: ${maxPeriods})`;
+    }
       
       function addScenarioAdjustment() {
         const name = document.getElementById('scenarioName').value.trim();
@@ -2856,6 +2887,15 @@
         arimaBox.addEventListener('change', updateAllBox);
         hwBox.addEventListener('change', updateAllBox);
         prophetBox.addEventListener('change', updateAllBox);
+        
+        // Initialize forecast periods limit based on time unit
+        updateForecastPeriodsLimit();
+        
+        // Add event listener for time unit changes
+        const timeUnitSelect = document.getElementById('timeUnit');
+        if (timeUnitSelect) {
+          timeUnitSelect.addEventListener('change', updateForecastPeriodsLimit);
+        }
     });
   </script>
   </main>
