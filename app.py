@@ -864,6 +864,37 @@ def activate_trial():
         logger.error(f"Error activating trial: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/debug/scenario', methods=['POST'])
+def debug_scenario():
+    """Debug endpoint to test scenario data processing"""
+    try:
+        data = request.get_json()
+        logger.info("=== SCENARIO DEBUG ENDPOINT ===")
+        logger.info(f"Received data: {data}")
+        
+        scenario = data.get('scenario', None)
+        logger.info(f"Scenario data: {scenario}")
+        
+        if scenario:
+            logger.info(f"Scenario type: {scenario.get('type')}")
+            logger.info(f"Scenario adjustments: {scenario.get('adjustments', [])}")
+            
+            # Test date parsing
+            adjustments = scenario.get('adjustments', [])
+            for i, adj in enumerate(adjustments):
+                try:
+                    start_dt = pd.to_datetime(adj['start'])
+                    end_dt = pd.to_datetime(adj['end'])
+                    factor = adj['factor']
+                    logger.info(f"Adjustment {i}: start={start_dt}, end={end_dt}, factor={factor}")
+                except Exception as e:
+                    logger.error(f"Error parsing adjustment {i}: {e}")
+        
+        return jsonify({'status': 'success', 'scenario': scenario})
+    except Exception as e:
+        logger.error(f"Debug endpoint error: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/forecast', methods=['POST'])
 @optional_auth
 def forecast():

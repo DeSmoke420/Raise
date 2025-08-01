@@ -1661,7 +1661,7 @@
         });
       }
       
-      function applyScenario() {
+      async function applyScenario() {
         console.log('applyScenario called');
         console.log('scenarioAdjustments:', scenarioAdjustments);
         
@@ -1689,6 +1689,19 @@
         console.log('Stored scenario in window.currentScenario:', window.currentScenario);
         
         showSuccess(`Scenario applied: ${scenario.name} with ${scenario.adjustments.length} adjustment(s)`);
+        
+        // Test the debug endpoint
+        try {
+          const debugResponse = await fetch('/api/debug/scenario', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ scenario: scenario })
+          });
+          const debugResult = await debugResponse.json();
+          console.log('Debug endpoint result:', debugResult);
+        } catch (e) {
+          console.error('Debug endpoint error:', e);
+        }
       }
       
       function clearScenario() {
