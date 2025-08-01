@@ -1378,7 +1378,19 @@ def forecast():
         # Force scenario adjustments to be applied to DataFrame if scenario is active
         if scenario and scenario.get('type') == 'multiplier':
             logger.info("Forcing scenario adjustments to DataFrame...")
+            logger.info(f"Scenario data: {scenario}")
             adjustments = scenario.get('adjustments', [])
+            logger.info(f"Number of adjustments: {len(adjustments)}")
+            logger.info(f"Adjustments: {adjustments}")
+            
+            # Debug: Show DataFrame before conversion
+            logger.info("DataFrame before conversion:")
+            logger.info(f"DataFrame shape: {result_df.shape}")
+            logger.info(f"DataFrame columns: {result_df.columns.tolist()}")
+            logger.info("First 3 rows before conversion:")
+            for i in range(min(3, len(result_df))):
+                row = result_df.iloc[i]
+                logger.info(f"Row {i}: Date={row['Date']}, Prophet={row['Forecast (Prophet)']}, HW={row['Forecast (Holt-Winters)']}, ARIMA={row['Forecast (ARIMA)']}, Avg={row['Average']}")
             
             # Convert forecast columns to numeric, handling empty strings and invalid values
             for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
@@ -1390,11 +1402,13 @@ def forecast():
             
             for adjustment in adjustments:
                 try:
+                    logger.info(f"Processing adjustment: {adjustment}")
                     start_dt = pd.to_datetime(adjustment['start'])
                     end_dt = pd.to_datetime(adjustment['end'])
                     factor = adjustment['factor']
                     
-                    logger.info(f"Applying adjustment: {adjustment['name']} - {factor}x from {start_dt} to {end_dt}")
+                    logger.info(f"Parsed dates: start={start_dt}, end={end_dt}, factor={factor}")
+                    logger.info(f"Applying adjustment: {factor}x from {start_dt} to {end_dt}")
                     
                     # Apply to all forecast columns
                     for col in ['Forecast (ARIMA)', 'Forecast (Holt-Winters)', 'Forecast (Prophet)', 'Average']:
@@ -1404,6 +1418,10 @@ def forecast():
                         value_mask = result_df[col].notna()
                         mask = date_mask & value_mask
                         
+                        logger.info(f"Date mask for {col}: {date_mask.sum()} rows in date range")
+                        logger.info(f"Value mask for {col}: {value_mask.sum()} rows with valid values")
+                        logger.info(f"Combined mask for {col}: {mask.sum()} rows to adjust")
+                        
                         if mask.any():
                             # Apply the factor and round to specified decimal places
                             result_df.loc[mask, col] = (result_df.loc[mask, col] * factor).round(decimal_places)
@@ -1411,6 +1429,9 @@ def forecast():
                             logger.info(f"Sample adjusted values: {result_df.loc[mask, col].head(3).tolist()}")
                         else:
                             logger.info(f"No rows found for {col} in date range {start_dt} to {end_dt}")
+                            # Debug: Show some sample dates from the DataFrame
+                            sample_dates = pd.to_datetime(result_df['Date'], errors='coerce').head(5)
+                            logger.info(f"Sample dates in DataFrame: {sample_dates.tolist()}")
                             
                 except Exception as e:
                     logger.warning(f"Error applying adjustment to DataFrame: {e}")
