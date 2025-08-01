@@ -359,7 +359,7 @@ def create_forecast_model_with_diagnostics(
                         )
                     forecast_values = model.predict(n_periods=period_count)
                     return model, forecast_values
-                
+
                 with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
                     if len(train_ts) >= seasonal_periods * 2:
                         future = executor.submit(fit_arima, train_ts, True, seasonal_periods, test_len)
@@ -397,13 +397,9 @@ def create_forecast_model_with_diagnostics(
                         diagnostics['ARIMA'] = f"Skipped: fitting timed out after {ARIMA_TIMEOUT} seconds."
                         logger.warning(f"ARIMA fitting timed out after {ARIMA_TIMEOUT} seconds.")
                         forecasts['ARIMA'] = [None] * period_count
-                    except Exception as e:
-                        diagnostics['ARIMA'] = f"Failed: {e}"
-                        logger.warning(f"ARIMA failed: {e}")
-                        forecasts['ARIMA'] = [None] * period_count
         except Exception as e:
-            diagnostics['ARIMA'] = f"Failed: {e} (outer catch)"
-            logger.warning(f"ARIMA failed (outer catch): {e}")
+            diagnostics['ARIMA'] = f"Failed: {e}"
+            logger.warning(f"ARIMA failed: {e}")
             forecasts['ARIMA'] = [None] * period_count
     elif not use_arima:
         diagnostics['ARIMA'] = "Skipped: not selected by user (default is off)."
@@ -436,14 +432,14 @@ def create_forecast_model_with_diagnostics(
     if best_model:
         if best_model == 'Holt-Winters':
             if len(ts) >= seasonal_periods * 2:
-                    model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
+                model = ExponentialSmoothing(ts, trend='add', seasonal='add', seasonal_periods=seasonal_periods)
             elif len(ts) >= 4:
                 model = ExponentialSmoothing(ts, trend='add', seasonal=None)
             else:
                 model = None
             if model:
-                    fit = model.fit()
-                    best_forecast = fit.forecast(period_count).tolist()
+                fit = model.fit()
+                best_forecast = fit.forecast(period_count).tolist()
         elif best_model == 'Prophet':
             from prophet import Prophet
             df_prophet = ts.reset_index()
@@ -1227,6 +1223,8 @@ def forecast():
                             row[f'Forecast ({model})'] = val
                         else:
                             row[f'Forecast ({model})'] = ''
+                    else:
+                        row[f'Forecast ({model})'] = ''
                 
                 # Calculate average of available forecasts
                 forecast_values = []
