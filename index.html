@@ -2673,7 +2673,7 @@
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
-            redirectTo: 'https://r4ise.up.railway.app/',
+            redirectTo: window.location.origin + '/',
             queryParams: {
               access_type: 'offline',
               prompt: 'consent'
@@ -2825,6 +2825,23 @@
       console.log('  authButtons display:', authButtons ? authButtons.style.display : 'Element not found');
       console.log('  userInfo display:', userInfo ? userInfo.style.display : 'Element not found');
       console.log('=== END DEBUG ===');
+    };
+    
+    // Force refresh auth state - can be called from browser console
+    window.refreshAuth = async function() {
+      console.log('=== FORCE REFRESH AUTH ===');
+      try {
+        // Try to refresh the session
+        const { data, error } = await supabase.auth.refreshSession();
+        console.log('Session refresh result:', data ? 'Success' : 'Failed');
+        console.log('Session refresh error:', error || 'None');
+        
+        // Check auth state again
+        onAuthStateChanged();
+      } catch (e) {
+        console.log('Session refresh failed:', e);
+        onAuthStateChanged();
+      }
     };
     // Toggle user dropdown
     function toggleUserDropdown() {
@@ -3091,6 +3108,18 @@
       setTimeout(() => {
         onAuthStateChanged();
       }, 500);
+      
+      // Additional check for OAuth redirect - check if we're coming back from OAuth
+      setTimeout(() => {
+        console.log('Checking for OAuth redirect...');
+        onAuthStateChanged();
+      }, 1000);
+      
+      // One more check after 2 seconds to catch any delayed auth state changes
+      setTimeout(() => {
+        console.log('Final auth state check...');
+        onAuthStateChanged();
+      }, 2000);
     });
 
       // --- Model selection All toggle logic ---
