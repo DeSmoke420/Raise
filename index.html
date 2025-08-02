@@ -2717,7 +2717,7 @@
     // Show login modal if not logged in
     async function onAuthStateChanged() {
       try {
-        console.log('Checking authentication state...');
+        console.log('=== AUTH STATE CHECK START ===');
         
         // Check for local authentication token
         const token = localStorage.getItem('auth_token');
@@ -2728,10 +2728,25 @@
         
         // Check for Supabase authentication (Google OAuth)
         let supabaseUser = null;
+        let supabaseSession = null;
         try {
-          const { data: { user } } = await supabase.auth.getUser();
-          supabaseUser = user;
-          console.log('Supabase User:', supabaseUser ? 'Present' : 'Missing');
+          console.log('Checking Supabase auth...');
+          const { data: { user }, error: userError } = await supabase.auth.getUser();
+          if (userError) {
+            console.log('Supabase getUser error:', userError);
+          } else {
+            supabaseUser = user;
+            console.log('Supabase User:', supabaseUser ? `Present (${supabaseUser.email})` : 'Missing');
+          }
+          
+          // Also check for session
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          if (sessionError) {
+            console.log('Supabase getSession error:', sessionError);
+          } else {
+            supabaseSession = session;
+            console.log('Supabase Session:', supabaseSession ? 'Present' : 'Missing');
+          }
         } catch (e) {
           console.log('Supabase auth check failed:', e);
         }
@@ -2740,8 +2755,14 @@
         const userInfo = document.getElementById('userInfo');
         const userName = document.getElementById('userName');
         
+        console.log('UI Elements - authButtons:', !!authButtons, 'userInfo:', !!userInfo, 'userName:', !!userName);
+        
         // Check if user is authenticated (either local or Supabase)
-        if ((!token || !userEmail) && !supabaseUser) {
+        const isAuthenticated = (token && userEmail) || supabaseUser || supabaseSession;
+        
+        console.log('Is Authenticated:', isAuthenticated);
+        
+        if (!isAuthenticated) {
           console.log('No auth found, showing auth buttons');
           if (authButtons) authButtons.style.display = 'flex';
           if (userInfo) userInfo.style.display = 'none';
@@ -2758,6 +2779,7 @@
           
           // Use Supabase user email if available, otherwise use local
           const displayEmail = supabaseUser ? supabaseUser.email : userEmail;
+          console.log('Display Email:', displayEmail);
           if (userName) userName.textContent = displayEmail;
           
           hideAuthModal();
@@ -2766,6 +2788,8 @@
             setTimeout(updateSubscriptionUI, 100);
           }
         }
+        
+        console.log('=== AUTH STATE CHECK END ===');
       } catch (err) {
         console.error('Auth state check error:', err);
         const authButtons = document.getElementById('authButtons');
@@ -2774,6 +2798,34 @@
         if (userInfo) userInfo.style.display = 'none';
       }
     }
+    
+    // Debug function - can be called from browser console
+    window.debugAuth = async function() {
+      console.log('=== MANUAL AUTH DEBUG ===');
+      console.log('Local Storage:');
+      console.log('  auth_token:', localStorage.getItem('auth_token') ? 'Present' : 'Missing');
+      console.log('  user_email:', localStorage.getItem('user_email') || 'Missing');
+      
+      try {
+        console.log('Supabase Auth:');
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        console.log('  User:', user ? `Present (${user.email})` : 'Missing');
+        console.log('  User Error:', userError || 'None');
+        
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        console.log('  Session:', session ? 'Present' : 'Missing');
+        console.log('  Session Error:', sessionError || 'None');
+      } catch (e) {
+        console.log('  Supabase Error:', e);
+      }
+      
+      console.log('UI State:');
+      const authButtons = document.getElementById('authButtons');
+      const userInfo = document.getElementById('userInfo');
+      console.log('  authButtons display:', authButtons ? authButtons.style.display : 'Element not found');
+      console.log('  userInfo display:', userInfo ? userInfo.style.display : 'Element not found');
+      console.log('=== END DEBUG ===');
+    };
     // Toggle user dropdown
     function toggleUserDropdown() {
       const dropdown = document.getElementById('userDropdown');
@@ -3018,10 +3070,16 @@
       
       // Set up Supabase auth state listener
       try {
-        supabase.auth.onAuthStateChange((event, session) => {
-          console.log('Supabase auth state changed:', event, session?.user?.email);
+        console.log('Setting up Supabase auth state listener...');
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('=== SUPABASE AUTH STATE CHANGE ===');
+          console.log('Event:', event);
+          console.log('Session:', session ? 'Present' : 'Missing');
+          console.log('User Email:', session?.user?.email || 'None');
+          console.log('=====================================');
           onAuthStateChanged();
         });
+        console.log('Supabase auth listener set up successfully');
       } catch (e) {
         console.log('Failed to set up Supabase auth listener:', e);
       }
