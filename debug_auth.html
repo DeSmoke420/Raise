@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug</title>
+</head>
+<body>
+    <h1>Authentication Debug</h1>
+    <div id="debug"></div>
+    
+    <script>
+        function debugAuth() {
+            const token = localStorage.getItem('auth_token');
+            const userEmail = localStorage.getItem('user_email');
+            
+            document.getElementById('debug').innerHTML = `
+                <p><strong>Token:</strong> ${token ? 'Present' : 'Missing'}</p>
+                <p><strong>User Email:</strong> ${userEmail || 'Missing'}</p>
+                <p><strong>Auth State:</strong> ${token && userEmail ? 'Authenticated' : 'Not Authenticated'}</p>
+            `;
+        }
+        
+        debugAuth();
+    </script>
+</body>
+</html> 

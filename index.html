@@ -838,6 +838,72 @@
       margin: 0;
     }
     
+    /* User Dropdown Styles */
+    .user-dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .user-dropdown-content {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 100%;
+      background: var(--card-bg);
+      min-width: 200px;
+      box-shadow: var(--shadow-lg);
+      border-radius: var(--radius-lg);
+      z-index: 1000;
+      margin-top: 0.5rem;
+      border: 1px solid var(--border-color);
+    }
+    
+    .user-dropdown-content.show {
+      display: block;
+    }
+    
+    .user-email {
+      padding: 1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(99, 102, 241, 0.05);
+    }
+    
+    .dropdown-divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 0.5rem 0;
+    }
+    
+    .dropdown-item {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: none;
+      background: none;
+      color: var(--text-primary);
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background-color 0.2s ease;
+    }
+    
+    .dropdown-item:hover {
+      background: rgba(99, 102, 241, 0.1);
+    }
+    
+    .dropdown-item i {
+      width: 16px;
+      color: var(--text-secondary);
+    }
+    
+    #dropdownArrow {
+      transition: transform 0.2s ease;
+      margin-left: 0.5rem;
+    }
+    
     /* Pricing Plans Styles */
     .pricing-plans {
       display: grid;
@@ -1018,11 +1084,21 @@
       </button>
     </div>
     <div class="user-info" id="userInfo" style="display: none;">
-      <span class="user-name" id="userName"></span>
-      <button class="btn btn-back" onclick="logout()">
-        <i class="fas fa-sign-out-alt"></i>
-        Logout
-      </button>
+      <div class="user-dropdown">
+        <button class="btn btn-primary" onclick="toggleUserDropdown()">
+          <i class="fas fa-user"></i>
+          My Account
+          <i class="fas fa-chevron-down" id="dropdownArrow"></i>
+        </button>
+        <div class="user-dropdown-content" id="userDropdown">
+          <div class="user-email" id="userName"></div>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" onclick="logout()">
+            <i class="fas fa-sign-out-alt"></i>
+            Logout
+          </button>
+        </div>
+      </div>
     </div>
   </div>
   <div class="container">
@@ -2645,10 +2721,18 @@
         // Check for local authentication token
         const token = localStorage.getItem('auth_token');
         const userEmail = localStorage.getItem('user_email');
+        
+        console.log('Token:', token ? 'Present' : 'Missing');
+        console.log('User Email:', userEmail || 'Missing');
+        
+        const authButtons = document.getElementById('authButtons');
+        const userInfo = document.getElementById('userInfo');
+        const userName = document.getElementById('userName');
+        
         if (!token || !userEmail) {
           console.log('No local auth found, showing auth buttons');
-          document.getElementById('authButtons').style.display = 'flex';
-          document.getElementById('userInfo').style.display = 'none';
+          if (authButtons) authButtons.style.display = 'flex';
+          if (userInfo) userInfo.style.display = 'none';
           // Only redirect to home if we're not already on a page
           if (document.getElementById('forecastPage').classList.contains('hidden') && 
               document.getElementById('homePage').classList.contains('hidden')) {
@@ -2657,9 +2741,9 @@
           }
         } else {
           console.log('Local auth found, showing user info');
-          document.getElementById('authButtons').style.display = 'none';
-          document.getElementById('userInfo').style.display = 'flex';
-          document.getElementById('userName').textContent = userEmail;
+          if (authButtons) authButtons.style.display = 'none';
+          if (userInfo) userInfo.style.display = 'flex';
+          if (userName) userName.textContent = userEmail;
           hideAuthModal();
           // Update subscription UI if on forecast page
           if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
@@ -2668,10 +2752,38 @@
         }
       } catch (err) {
         console.error('Auth state check error:', err);
-        document.getElementById('authButtons').style.display = 'flex';
-        document.getElementById('userInfo').style.display = 'none';
+        const authButtons = document.getElementById('authButtons');
+        const userInfo = document.getElementById('userInfo');
+        if (authButtons) authButtons.style.display = 'flex';
+        if (userInfo) userInfo.style.display = 'none';
       }
     }
+    // Toggle user dropdown
+    function toggleUserDropdown() {
+      const dropdown = document.getElementById('userDropdown');
+      const arrow = document.getElementById('dropdownArrow');
+      
+      if (dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+        arrow.style.transform = 'rotate(0deg)';
+      } else {
+        dropdown.classList.add('show');
+        arrow.style.transform = 'rotate(180deg)';
+      }
+    }
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const dropdown = document.getElementById('userDropdown');
+      const userDropdown = document.querySelector('.user-dropdown');
+      
+      if (dropdown && !userDropdown.contains(event.target)) {
+        dropdown.classList.remove('show');
+        const arrow = document.getElementById('dropdownArrow');
+        if (arrow) arrow.style.transform = 'rotate(0deg)';
+      }
+    });
+    
     // Logout function
     async function logout() {
       try {
