@@ -2571,14 +2571,31 @@
     console.log('Current location:', window.location.href);
     
     let supabase;
-    try {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      console.log('Supabase client initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize Supabase client:', error);
-      // Fallback: show auth modal immediately
+    
+    // Initialize Supabase client with retry logic
+    function initializeSupabase() {
+      try {
+        if (window.supabase) {
+          supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+          console.log('Supabase client initialized successfully');
+          return true;
+        } else {
+          console.log('Supabase library not loaded yet, retrying...');
+          return false;
+        }
+      } catch (error) {
+        console.error('Failed to initialize Supabase client:', error);
+        return false;
+      }
+    }
+    
+    // Try to initialize immediately
+    if (!initializeSupabase()) {
+      // If not ready, wait for DOM content loaded
       window.addEventListener('DOMContentLoaded', () => {
-        showAuthModal();
+        if (!initializeSupabase()) {
+          console.error('Failed to initialize Supabase after DOM load');
+        }
       });
     }
 
@@ -2719,6 +2736,11 @@
       try {
         console.log('=== AUTH STATE CHECK START ===');
         
+        // Check for OAuth completion in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const hasOAuthParams = urlParams.has('access_token') || urlParams.has('refresh_token') || urlParams.has('provider_token');
+        console.log('OAuth URL params detected:', hasOAuthParams);
+        
         // Check for local authentication token
         const token = localStorage.getItem('auth_token');
         const userEmail = localStorage.getItem('user_email');
@@ -2729,26 +2751,42 @@
         // Check for Supabase authentication (Google OAuth)
         let supabaseUser = null;
         let supabaseSession = null;
-        try {
-          console.log('Checking Supabase auth...');
-          const { data: { user }, error: userError } = await supabase.auth.getUser();
-          if (userError) {
-            console.log('Supabase getUser error:', userError);
-          } else {
-            supabaseUser = user;
-            console.log('Supabase User:', supabaseUser ? `Present (${supabaseUser.email})` : 'Missing');
+        
+        if (supabase) {
+          try {
+            console.log('Checking Supabase auth...');
+            const { data: { user }, error: userError } = await supabase.auth.getUser();
+            if (userError) {
+              console.log('Supabase getUser error:', userError);
+            } else {
+              supabaseUser = user;
+              console.log('Supabase User:', supabaseUser ? `Present (${supabaseUser.email})` : 'Missing');
+            }
+            
+            // Also check for session
+            const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+            if (sessionError) {
+              console.log('Supabase getSession error:', sessionError);
+            } else {
+              supabaseSession = session;
+              console.log('Supabase Session:', supabaseSession ? 'Present' : 'Missing');
+            }
+            
+            // If we have OAuth params but no session, try to get session from URL
+            if (hasOAuthParams && !supabaseSession) {
+              console.log('OAuth params detected, trying to get session from URL...');
+              const { data: { session: urlSession }, error: urlError } = await supabase.auth.getSession();
+              if (urlSession) {
+                supabaseSession = urlSession;
+                supabaseUser = urlSession.user;
+                console.log('Session retrieved from URL:', urlSession.user?.email);
+              }
+            }
+          } catch (e) {
+            console.log('Supabase auth check failed:', e);
           }
-          
-          // Also check for session
-          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-          if (sessionError) {
-            console.log('Supabase getSession error:', sessionError);
-          } else {
-            supabaseSession = session;
-            console.log('Supabase Session:', supabaseSession ? 'Present' : 'Missing');
-          }
-        } catch (e) {
-          console.log('Supabase auth check failed:', e);
+        } else {
+          console.log('Supabase client not initialized');
         }
         
         const authButtons = document.getElementById('authButtons');
@@ -2841,6 +2879,43 @@
       } catch (e) {
         console.log('Session refresh failed:', e);
         onAuthStateChanged();
+      }
+    };
+    
+    // Force auth state update - can be called from browser console
+    window.forceAuthUpdate = function() {
+      console.log('=== FORCE AUTH UPDATE ===');
+      onAuthStateChanged();
+    };
+    
+    // Check OAuth callback specifically
+    window.checkOAuthCallback = async function() {
+      console.log('=== CHECKING OAUTH CALLBACK ===');
+      const urlParams = new URLSearchParams(window.location.search);
+      console.log('URL params:', Object.fromEntries(urlParams.entries()));
+      
+      if (supabase) {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          console.log('Current session:', data?.session ? 'Present' : 'Missing');
+          console.log('Session error:', error || 'None');
+          
+          if (data?.session) {
+            console.log('User email:', data.session.user?.email);
+            // Force UI update
+            const authButtons = document.getElementById('authButtons');
+            const userInfo = document.getElementById('userInfo');
+            const userName = document.getElementById('userName');
+            
+            if (authButtons) authButtons.style.display = 'none';
+            if (userInfo) userInfo.style.display = 'flex';
+            if (userName) userName.textContent = data.session.user?.email;
+            
+            console.log('UI updated manually');
+          }
+        } catch (e) {
+          console.log('OAuth callback check failed:', e);
+        }
       }
     };
     // Toggle user dropdown
