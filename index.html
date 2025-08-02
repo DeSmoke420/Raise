@@ -2718,19 +2718,31 @@
     async function onAuthStateChanged() {
       try {
         console.log('Checking authentication state...');
+        
         // Check for local authentication token
         const token = localStorage.getItem('auth_token');
         const userEmail = localStorage.getItem('user_email');
         
-        console.log('Token:', token ? 'Present' : 'Missing');
-        console.log('User Email:', userEmail || 'Missing');
+        console.log('Local Token:', token ? 'Present' : 'Missing');
+        console.log('Local User Email:', userEmail || 'Missing');
+        
+        // Check for Supabase authentication (Google OAuth)
+        let supabaseUser = null;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          supabaseUser = user;
+          console.log('Supabase User:', supabaseUser ? 'Present' : 'Missing');
+        } catch (e) {
+          console.log('Supabase auth check failed:', e);
+        }
         
         const authButtons = document.getElementById('authButtons');
         const userInfo = document.getElementById('userInfo');
         const userName = document.getElementById('userName');
         
-        if (!token || !userEmail) {
-          console.log('No local auth found, showing auth buttons');
+        // Check if user is authenticated (either local or Supabase)
+        if ((!token || !userEmail) && !supabaseUser) {
+          console.log('No auth found, showing auth buttons');
           if (authButtons) authButtons.style.display = 'flex';
           if (userInfo) userInfo.style.display = 'none';
           // Only redirect to home if we're not already on a page
@@ -2740,10 +2752,14 @@
             document.getElementById('homePage').classList.remove('hidden');
           }
         } else {
-          console.log('Local auth found, showing user info');
+          console.log('Auth found, showing user info');
           if (authButtons) authButtons.style.display = 'none';
           if (userInfo) userInfo.style.display = 'flex';
-          if (userName) userName.textContent = userEmail;
+          
+          // Use Supabase user email if available, otherwise use local
+          const displayEmail = supabaseUser ? supabaseUser.email : userEmail;
+          if (userName) userName.textContent = displayEmail;
+          
           hideAuthModal();
           // Update subscription UI if on forecast page
           if (document.getElementById('forecastPage').classList.contains('hidden') === false) {
@@ -2787,8 +2803,18 @@
     // Logout function
     async function logout() {
       try {
+        // Clear local authentication
         localStorage.removeItem('auth_token');
         localStorage.removeItem('user_email');
+        
+        // Clear Supabase authentication (Google OAuth)
+        try {
+          await supabase.auth.signOut();
+          console.log('Supabase logout successful');
+        } catch (e) {
+          console.log('Supabase logout failed:', e);
+        }
+        
         onAuthStateChanged();
       } catch (err) {
         console.error('Logout error:', err);
@@ -2797,14 +2823,29 @@
     // Update subscription UI to use local auth
     async function checkUserAccess() {
       try {
+        // Check for local authentication
         const token = localStorage.getItem('auth_token');
         const userEmail = localStorage.getItem('user_email');
-        if (!token || !userEmail) {
+        
+        // Check for Supabase authentication
+        let supabaseUser = null;
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          supabaseUser = user;
+        } catch (e) {
+          console.log('Supabase auth check failed:', e);
+        }
+        
+        // Use Supabase user email if available, otherwise use local
+        const email = supabaseUser ? supabaseUser.email : userEmail;
+        
+        if (!email) {
           return null;
         }
-        const response = await fetch(`/api/subscription/access?user_email=${encodeURIComponent(userEmail)}`);
+        
+        const response = await fetch(`/api/subscription/access?user_email=${encodeURIComponent(email)}`);
         const access = await response.json();
-        return { userEmail, access };
+        return { userEmail: email, access };
       } catch (error) {
         console.error('Error checking user access:', error);
         return null;
@@ -2974,6 +3015,16 @@
     window.addEventListener('DOMContentLoaded', async () => {
       // Handle payment return first
       handlePaymentReturn();
+      
+      // Set up Supabase auth state listener
+      try {
+        supabase.auth.onAuthStateChange((event, session) => {
+          console.log('Supabase auth state changed:', event, session?.user?.email);
+          onAuthStateChanged();
+        });
+      } catch (e) {
+        console.log('Failed to set up Supabase auth listener:', e);
+      }
       
       // Check local authentication
       onAuthStateChanged();
