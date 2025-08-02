@@ -103,8 +103,8 @@ except ImportError as e:
     def sign_up_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]:
         return None
 
-# Force disable authentication for development
-AUTH_AVAILABLE = False
+# Enable authentication
+AUTH_AVAILABLE = True
 
 # Import payment and subscription modules
 try:

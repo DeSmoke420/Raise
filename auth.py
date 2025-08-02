@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # Supabase Configuration
 SUPABASE_URL = os.getenv('SUPABASE_URL', 'https://iayecqndmobjswtzoldb.supabase.co')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIyMjU1MjUsImV4cCI6MjA2NzgwMTUyNX0.FpndmbB-t9dvJsUFUX8l4VdLlbP4BZ1a425116UF10Q')
+SUPABASE_SERVICE_KEY = os.getenv('SUPABASE_SERVICE_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlheWVjcW5kbW9ianN3dHpvbGRiIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1MjIyNTUyNSwiZXhwIjoyMDY3ODAxNTI1fQ.zBOdEGbaf0_bpzhCh8o4C5xSEovN2KGQVQJhvJi2Va4')
 
 # Initialize Supabase client
 def initialize_supabase() -> Optional[Any]:
@@ -19,18 +20,28 @@ def initialize_supabase() -> Optional[Any]:
     try:
         # Try to import Supabase with error handling
         try:
-            from supabase._sync.client import create_client  # type: ignore
+            from supabase import create_client, Client
         except ImportError as e:
             logger.error(f"Failed to import Supabase client: {e}")
             return None
         
         # Create client with proper configuration
-        supabase = create_client(
-            supabase_url=SUPABASE_URL,
-            supabase_key=SUPABASE_ANON_KEY
-        )
-        logger.info("Supabase client initialized successfully")
-        return supabase
+        try:
+            supabase = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
+            logger.info("Supabase client initialized successfully")
+            return supabase
+        except TypeError as e:
+            if "proxy" in str(e):
+                logger.warning("Supabase client version compatibility issue detected. Using local authentication fallback.")
+                return None
+            else:
+                raise e
+        except Exception as e:
+            if "websockets.asyncio" in str(e) or "websockets" in str(e):
+                logger.warning("Websockets dependency issue detected. Using local authentication fallback.")
+                return None
+            else:
+                raise e
     except Exception as e:
         logger.error(f"Failed to initialize Supabase: {e}")
         return None
@@ -181,19 +192,22 @@ def sign_in_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]
     try:
         # Try Supabase first if available
         if supabase_client:
-            response = supabase_client.auth.sign_in_with_password({
-                "email": email,
-                "password": password
-            })
-            
-            if response.user:
-                return {
-                    'user_id': response.user.id,
-                    'email': response.user.email,
-                    'name': response.user.user_metadata.get('name', ''),
-                    'picture': response.user.user_metadata.get('avatar_url', ''),
-                    'access_token': response.session.access_token if response.session else None
-                }
+            try:
+                response = supabase_client.auth.sign_in_with_password({
+                    "email": email,
+                    "password": password
+                })
+                
+                if response.user:
+                    return {
+                        'user_id': response.user.id,
+                        'email': response.user.email,
+                        'name': response.user.user_metadata.get('name', ''),
+                        'picture': response.user.user_metadata.get('avatar_url', ''),
+                        'access_token': response.session.access_token if response.session else None
+                    }
+            except Exception as e:
+                logger.warning(f"Supabase authentication failed, falling back to local: {e}")
         
         # Fallback to local authentication
         logger.info(f"Trying local authentication for {email}")
@@ -225,19 +239,22 @@ def sign_up_with_supabase(email: str, password: str) -> Optional[Dict[str, Any]]
     try:
         # Try Supabase first if available
         if supabase_client:
-            response = supabase_client.auth.sign_up({
-                "email": email,
-                "password": password
-            })
-            
-            if response.user:
-                return {
-                    'user_id': response.user.id,
-                    'email': response.user.email,
-                    'name': response.user.user_metadata.get('name', ''),
-                    'picture': response.user.user_metadata.get('avatar_url', ''),
-                    'access_token': response.session.access_token if response.session else None
-                }
+            try:
+                response = supabase_client.auth.sign_up({
+                    "email": email,
+                    "password": password
+                })
+                
+                if response.user:
+                    return {
+                        'user_id': response.user.id,
+                        'email': response.user.email,
+                        'name': response.user.user_metadata.get('name', ''),
+                        'picture': response.user.user_metadata.get('avatar_url', ''),
+                        'access_token': response.session.access_token if response.session else None
+                    }
+            except Exception as e:
+                logger.warning(f"Supabase registration failed, falling back to local: {e}")
         
         # Fallback to local authentication (simple registration)
         if email not in LOCAL_USERS:
